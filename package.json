@@ -1,0 +1,56 @@
+{
+  "name": "fastmcp-oauth-obo",
+  "version": "1.0.0",
+  "description": "FastMCP OAuth On-Behalf-Of (OBO) authentication framework with Kerberos and SQL delegation",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "fastmcp",
+    "oauth",
+    "jwt",
+    "kerberos",
+    "sql",
+    "delegation",
+    "authentication",
+    "on-behalf-of"
+  ],
+  "author": "FastMCP OAuth OBO Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "fastmcp": "^1.0.0",
+    "jose": "^6.1.0",
+    "kerberos": "^2.2.2",
+    "mssql": "^11.0.1",
+    "undici": "^7.13.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/mssql": "^9.1.8",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "rimraf": "^6.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  }
+}
