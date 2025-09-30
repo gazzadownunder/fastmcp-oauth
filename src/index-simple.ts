@@ -11,6 +11,7 @@ export class OAuthOBOServer {
   private auditLog: AuditEntry[] = [];
 
   constructor() {
+    // FastMCP authenticate callback: validates JWT and creates session on initialize
     this.server = new FastMCP({
       name: 'FastMCP OAuth OBO Server',
       version: '1.0.0',
@@ -20,26 +21,69 @@ export class OAuthOBOServer {
     this.setupTools();
   }
 
-  private async authenticateRequest(auth: string | undefined): Promise<UserSession | undefined> {
-    if (!auth) {
+  private async authenticateRequest(request: any): Promise<UserSession | undefined> {
+    console.log('\n[AUTH DEBUG] ========== Authentication Request ==========');
+    console.log('[AUTH DEBUG] Request type:', typeof request);
+    console.log('[AUTH DEBUG] Request method:', request?.method);
+    console.log('[AUTH DEBUG] Request URL:', request?.url);
+    console.log('[AUTH DEBUG] Request body (first 100 chars):', JSON.stringify(request?.body)?.substring(0, 100));
+    console.log('[AUTH DEBUG] Request headers:', request?.headers);
+
+    // Extract Authorization header from HTTP request
+    const authHeader = request?.headers?.authorization;
+
+    if (!authHeader) {
+      console.log('[AUTH DEBUG] No authorization header provided');
       return undefined;
     }
 
+    console.log('[AUTH DEBUG] Authorization header found:', authHeader.substring(0, 20) + '...');
+
     try {
       // Extract JWT from Bearer token
-      const token = this.extractBearerToken(auth);
+      const token = this.extractBearerToken(authHeader);
       if (!token) {
+        console.log('[AUTH DEBUG] Failed to extract Bearer token from authorization header');
         return undefined;
       }
 
+      console.log('[AUTH DEBUG] Bearer token extracted successfully');
+      console.log('[AUTH DEBUG] Token preview:', token.substring(0, 50) + '...');
+
+      // Decode token to inspect claims before validation
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        console.log('[AUTH DEBUG] JWT Claims:');
+        console.log(`  - iss (issuer): ${payload.iss || 'NOT PRESENT'}`);
+        console.log(`  - aud (audience): ${JSON.stringify(payload.aud) || 'NOT PRESENT'}`);
+        console.log(`  - azp (authorized party): ${payload.azp || 'NOT PRESENT'}`);
+        console.log(`  - sub (subject): ${payload.sub || 'NOT PRESENT'}`);
+        console.log(`  - exp (expires): ${payload.exp ? new Date(payload.exp * 1000).toISOString() : 'NOT PRESENT'}`);
+      }
+
       // Validate JWT and create session
+      console.log('[AUTH DEBUG] Starting JWT validation...');
       const { session, auditEntry } = await jwtValidator.validateJWT(token);
+
+      console.log('[AUTH DEBUG] ✓ JWT validation SUCCESSFUL');
+      console.log('[AUTH DEBUG] Session created:');
+      console.log(`  - userId: ${session.userId}`);
+      console.log(`  - username: ${session.username}`);
+      console.log(`  - legacyUsername: ${session.legacyUsername || 'N/A'}`);
+      console.log(`  - role: ${session.role}`);
+      console.log(`  - permissions: ${session.permissions.join(', ')}`);
+      console.log('[AUTH DEBUG] ================================================\n');
 
       // Log audit entry
       this.auditLog.push(auditEntry);
 
       return session;
     } catch (error) {
+      console.error('[AUTH DEBUG] ✗ JWT validation FAILED');
+      console.error('[AUTH DEBUG] Error:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('[AUTH DEBUG] ================================================\n');
+
       // Log failed authentication attempt
       const auditEntry: AuditEntry = {
         timestamp: new Date(),
@@ -182,8 +226,9 @@ export class OAuthOBOServer {
   }
 
   async start(options: {
-    transportType?: 'stdio' | 'sse';
+    transportType?: 'stdio' | 'httpStream';
     port?: number;
+    endpoint?: string;
     configPath?: string;
   } = {}): Promise<void> {
     try {
@@ -193,16 +238,37 @@ export class OAuthOBOServer {
       // Initialize JWT validator
       await jwtValidator.initialize();
 
-      // Initialize SQL delegator
-      await sqlDelegator.initialize();
+      // Initialize SQL delegator only if SQL config is present
+      const config = configManager.getConfig();
+      if (config.sql) {
+        console.log('SQL configuration detected, initializing SQL delegator...');
+        await sqlDelegator.initialize();
+      } else {
+        console.log('No SQL configuration, skipping SQL delegator initialization');
+      }
 
-      // Start FastMCP server
-      await this.server.start({
-        transportType: options.transportType || 'stdio',
-        port: options.port || configManager.getServerPort(),
-        stateless: false,
-        logLevel: configManager.getLogLevel() as any,
-      });
+      // Start FastMCP server with appropriate transport
+      const transportType = options.transportType || 'stdio';
+
+      if (transportType === 'httpStream') {
+        console.log('[SERVER] Starting HTTP Stream transport');
+        console.log('[SERVER] Using stateless mode (stateless: true)');
+        await this.server.start({
+          transportType: 'httpStream',
+          httpStream: {
+            port: options.port || configManager.getServerPort(),
+            endpoint: options.endpoint || '/mcp',
+          },
+          stateless: true,
+          logLevel: 'debug',
+        });
+      } else {
+        await this.server.start({
+          transportType: 'stdio',
+          stateless: false,
+          logLevel: configManager.getLogLevel() as any,
+        });
+      }
 
       console.log('FastMCP OAuth OBO Server started successfully');
     } catch (error) {
@@ -214,7 +280,10 @@ export class OAuthOBOServer {
   async stop(): Promise<void> {
     try {
       // Cleanup resources
-      await sqlDelegator.destroy();
+      const config = configManager.getConfig();
+      if (config.sql) {
+        await sqlDelegator.destroy();
+      }
       jwtValidator.destroy();
 
       console.log('FastMCP OAuth OBO Server stopped successfully');

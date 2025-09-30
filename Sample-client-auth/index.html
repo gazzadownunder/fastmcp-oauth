@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDP Test - Keycloak Authentication</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>IDP Authentication Test Page</h1>
+            <p class="subtitle">Keycloak Integration Testing</p>
+        </header>
+
+        <main>
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Checking authentication status...</p>
+            </div>
+
+            <div id="unauthenticated" class="auth-section hidden">
+                <div class="card">
+                    <h2>Welcome Guest</h2>
+                    <p>You are not currently authenticated.</p>
+                    <p class="info">Click the button below to authenticate with Keycloak IDP</p>
+                    <button id="loginBtn" class="btn btn-primary">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                            <polyline points="10 17 15 12 10 7"></polyline>
+                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                        </svg>
+                        Login with Keycloak
+                    </button>
+                </div>
+
+                <div class="card info-card">
+                    <h3>Test Information</h3>
+                    <dl>
+                        <dt>IDP Provider:</dt>
+                        <dd>Keycloak</dd>
+                        <dt>IDP URL:</dt>
+                        <dd id="idpUrl">Loading...</dd>
+                        <dt>Client ID:</dt>
+                        <dd>contextflow</dd>
+                        <dt>Realm:</dt>
+                        <dd id="realmName">Loading...</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div id="authenticated" class="auth-section hidden">
+                <div class="card">
+                    <h2>Welcome <span id="userName"></span>!</h2>
+                    <p class="success-message">You have successfully authenticated with Keycloak.</p>
+
+                    <div class="user-info">
+                        <h3>User Information</h3>
+                        <dl id="userDetails">
+                        </dl>
+                    </div>
+
+                    <div class="token-info">
+                        <h3>Token Information</h3>
+                        <dl id="tokenDetails">
+                        </dl>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="refreshBtn" class="btn btn-secondary">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                            Refresh Token
+                        </button>
+                        <button id="exchangeBtn" class="btn btn-primary">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M16 3h5v5"></path>
+                                <path d="M8 3H3v5"></path>
+                                <path d="M21 3l-7 7"></path>
+                                <path d="M3 3l7 7"></path>
+                                <path d="M3 21h5v-5"></path>
+                                <path d="M16 21h5v-5"></path>
+                                <path d="M3 21l7-7"></path>
+                                <path d="M21 21l-7-7"></path>
+                            </svg>
+                            Token Exchange
+                        </button>
+                        <button id="logoutBtn" class="btn btn-danger">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            Logout
+                        </button>
+                    </div>
+
+                    <div id="exchangeResult" class="exchange-result hidden">
+                        <h3>Token Exchange Result</h3>
+                        <div class="exchange-status">
+                            <p id="exchangeStatus"></p>
+                        </div>
+                        <dl id="exchangeDetails">
+                        </dl>
+                        <div class="exchange-token">
+                            <h4>Exchanged Token</h4>
+                            <pre id="exchangedToken"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Session Details</h3>
+                    <dl id="sessionDetails">
+                    </dl>
+                </div>
+            </div>
+
+            <div id="error" class="error-section hidden">
+                <div class="card error-card">
+                    <h2>Authentication Error</h2>
+                    <p id="errorMessage"></p>
+                    <button id="retryBtn" class="btn btn-primary">Retry</button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="debug-info">
+                <h4>Debug Information</h4>
+                <button id="toggleDebug" class="btn btn-small">Show Debug Info</button>
+                <div id="debugContent" class="debug-content hidden">
+                    <pre id="debugOutput"></pre>
+                </div>
+            </div>
+            <p class="footer-text">IDP Test Page - Keycloak Integration</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/keycloak-js@latest/dist/keycloak.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

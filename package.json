@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "description": "FastMCP OAuth On-Behalf-Of (OBO) authentication framework with Kerberos and SQL delegation",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/index-simple.js",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -14,7 +13,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write src/**/*.ts",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/index.js",
+    "start": "node dist/start-server.js",
     "clean": "rimraf dist"
   },
   "keywords": [
@@ -33,9 +32,14 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "fastmcp": "^1.0.0",
+    "http-proxy": "^1.18.1",
+    "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
     "kerberos": "^2.2.2",
+    "mcp-proxy": "^2.14.3",
     "mssql": "^11.0.1",
     "undici": "^7.13.0",
     "zod": "^3.25.76"

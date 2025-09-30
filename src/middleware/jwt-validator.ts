@@ -56,16 +56,22 @@ export class JWTValidator {
       auditEntry.userId = issuer;
 
       // Get IDP configuration
+      console.log(`[JWT VALIDATOR] Checking if issuer is trusted: ${issuer}`);
       const idpConfig = configManager.getTrustedIDP(issuer);
       if (!idpConfig) {
+        console.error(`[JWT VALIDATOR] ✗ UNTRUSTED ISSUER: ${issuer}`);
         throw createSecurityError('UNTRUSTED_ISSUER', `Untrusted issuer: ${issuer}`, 401);
       }
+      console.log(`[JWT VALIDATOR] ✓ Issuer is trusted`);
 
       // Get JWKS resolver
+      console.log(`[JWT VALIDATOR] Looking up JWKS for issuer...`);
       const jwks = this.jwksSets.get(issuer);
       if (!jwks) {
+        console.error(`[JWT VALIDATOR] ✗ JWKS not found for issuer: ${issuer}`);
         throw createSecurityError('JWKS_NOT_FOUND', `JWKS not found for issuer: ${issuer}`, 500);
       }
+      console.log(`[JWT VALIDATOR] ✓ JWKS found`);
 
       // Prepare validation context
       const validationContext: ValidationContext = {
@@ -75,7 +81,14 @@ export class JWTValidator {
         maxTokenAge: context.maxTokenAge ?? idpConfig.security.maxTokenAge,
       };
 
+      console.log(`[JWT VALIDATOR] Validation context:`);
+      console.log(`  - Expected issuer: ${validationContext.expectedIssuer}`);
+      console.log(`  - Expected audiences: ${JSON.stringify(validationContext.expectedAudiences)}`);
+      console.log(`  - Clock tolerance: ${validationContext.clockTolerance}s`);
+      console.log(`  - Max token age: ${validationContext.maxTokenAge}s`);
+
       // Verify JWT signature and claims
+      console.log(`[JWT VALIDATOR] Verifying JWT signature and claims...`);
       const { payload } = await jwtVerify(token, jwks, {
         issuer: validationContext.expectedIssuer,
         audience: validationContext.expectedAudiences,
@@ -83,15 +96,21 @@ export class JWTValidator {
         clockTolerance: validationContext.clockTolerance,
         maxTokenAge: validationContext.maxTokenAge,
       });
+      console.log(`[JWT VALIDATOR] ✓ JWT signature and basic claims verified`);
 
       // Additional security validations
+      console.log(`[JWT VALIDATOR] Performing additional security validations...`);
+      console.log(`[JWT VALIDATOR]   Checking azp (authorized party) claim...`);
       this.validateSecurityRequirements(payload, idpConfig);
+      console.log(`[JWT VALIDATOR] ✓ Additional security validations passed`);
 
       // Create user session from JWT payload
+      console.log(`[JWT VALIDATOR] Creating user session from JWT payload...`);
       const session = this.createUserSession(payload, idpConfig);
       auditEntry.userId = session.userId;
       auditEntry.legacyUsername = session.legacyUsername;
       auditEntry.success = true;
+      console.log(`[JWT VALIDATOR] ✓ User session created`);
 
       return {
         payload: payload as JWTPayload,
@@ -157,35 +176,81 @@ export class JWTValidator {
   private validateSecurityRequirements(payload: JoseJWTPayload, idpConfig: any): void {
     const now = Math.floor(Date.now() / 1000);
 
+    // Check azp claim (critical for OAuth 2.1 security)
+    const azp = (payload as any).azp;
+    console.log(`[JWT VALIDATOR]   - azp claim: ${azp || 'NOT PRESENT'}`);
+    console.log(`[JWT VALIDATOR]   - Expected audience: ${idpConfig.audience}`);
+
+    if (azp) {
+      // CRITICAL: azp must match the expected audience for this service
+      // This prevents token substitution attacks where a token for one service
+      // is used to access another service
+      if (azp !== idpConfig.audience) {
+        console.error(`[JWT VALIDATOR] ✗ AZP MISMATCH: Token azp='${azp}' does not match expected audience='${idpConfig.audience}'`);
+        console.error(`[JWT VALIDATOR]   This token was issued for a different client and cannot be used here`);
+        throw createSecurityError(
+          'AZP_MISMATCH',
+          `Token authorized party '${azp}' does not match expected audience '${idpConfig.audience}'`,
+          403
+        );
+      }
+      console.log(`[JWT VALIDATOR]   ✓ azp claim matches expected audience`);
+    } else {
+      console.warn(`[JWT VALIDATOR]   ⚠ WARNING: azp claim not present in token (this is acceptable for some token types)`);
+    }
+
     // RFC 8725 validations
+    console.log(`[JWT VALIDATOR]   Checking temporal claims (nbf, iat, exp)...`);
     if (idpConfig.security.requireNbf && !payload.nbf) {
+      console.error(`[JWT VALIDATOR] ✗ MISSING NBF: Token missing not-before claim`);
       throw createSecurityError('MISSING_NBF', 'Token missing not-before claim', 400);
     }
 
     if (payload.nbf && payload.nbf > now + idpConfig.security.clockTolerance) {
+      console.error(`[JWT VALIDATOR] ✗ TOKEN NOT YET VALID: nbf=${payload.nbf}, now=${now}`);
       throw createSecurityError('TOKEN_NOT_YET_VALID', 'Token not yet valid', 401);
     }
 
     // Validate token age
     if (payload.iat && (now - payload.iat) > idpConfig.security.maxTokenAge) {
+      const age = now - payload.iat;
+      console.error(`[JWT VALIDATOR] ✗ TOKEN TOO OLD: age=${age}s, max=${idpConfig.security.maxTokenAge}s`);
       throw createSecurityError('TOKEN_TOO_OLD', 'Token exceeds maximum age', 401);
     }
 
     // Additional security checks
     if (payload.exp && payload.exp < now - idpConfig.security.clockTolerance) {
+      console.error(`[JWT VALIDATOR] ✗ TOKEN EXPIRED: exp=${payload.exp}, now=${now}`);
       throw createSecurityError('TOKEN_EXPIRED', 'Token has expired', 401);
     }
+
+    console.log(`[JWT VALIDATOR]   ✓ All temporal claims valid`);
+  }
+
+  private getNestedClaim(payload: JoseJWTPayload, path: string): any {
+    const parts = path.split('.');
+    let value: any = payload;
+
+    for (const part of parts) {
+      if (value && typeof value === 'object') {
+        value = value[part];
+      } else {
+        return undefined;
+      }
+    }
+
+    return value;
   }
 
   private createUserSession(payload: JoseJWTPayload, idpConfig: any): UserSession {
     const claimMappings = idpConfig.claimMappings;
 
-    // Extract mapped claims
-    const legacyUsername = payload[claimMappings.legacyUsername] as string;
-    const roles = payload[claimMappings.roles] as string | string[];
-    const scopes = payload[claimMappings.scopes] as string | string[];
-    const userId = payload[claimMappings.userId || 'sub'] as string;
-    const username = payload[claimMappings.username || 'preferred_username'] as string;
+    // Extract mapped claims (support nested paths like "realm_access.roles")
+    const legacyUsername = this.getNestedClaim(payload, claimMappings.legacyUsername) as string;
+    const roles = this.getNestedClaim(payload, claimMappings.roles) as string | string[];
+    const scopes = this.getNestedClaim(payload, claimMappings.scopes) as string | string[];
+    const userId = this.getNestedClaim(payload, claimMappings.userId || 'sub') as string;
+    const username = this.getNestedClaim(payload, claimMappings.username || 'preferred_username') as string;
 
     if (!legacyUsername) {
       throw createSecurityError(

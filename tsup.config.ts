@@ -1,11 +1,14 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: {
+    'index-simple': 'src/index-simple.ts',
+    'start-server': 'src/start-server.ts',
+  },
   format: ['esm'],
   target: 'node18',
   clean: true,
-  dts: true,
+  dts: false, // Temporarily disabled due to FastMCP type conflicts
   sourcemap: true,
   splitting: false,
   bundle: true,

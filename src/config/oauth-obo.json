@@ -1,0 +1,48 @@
+{
+  "trustedIDPs": [
+    {
+      "issuer": "http://localhost:8080",
+      "discoveryUrl": "http://localhost:8080/.well-known/oauth-authorization-server",
+      "jwksUri": "http://localhost:8080/.well-known/jwks.json",
+      "audience": "mcp-server-api",
+      "algorithms": ["RS256", "ES256"],
+      "claimMappings": {
+        "legacyUsername": "legacy_name",
+        "roles": "user_roles",
+        "scopes": "authorized_scopes",
+        "userId": "sub",
+        "username": "username"
+      },
+      "security": {
+        "clockTolerance": 60,
+        "maxTokenAge": 3600,
+        "requireNbf": true
+      }
+    }
+  ],
+  "rateLimiting": {
+    "maxRequests": 100,
+    "windowMs": 900000
+  },
+  "audit": {
+    "logAllAttempts": true,
+    "logFailedAttempts": true,
+    "retentionDays": 90
+  },
+  "kerberos": {
+    "serviceAccount": "svc-mcp-delegation@company.com",
+    "keytabPath": "/etc/mcp/delegation.keytab",
+    "realm": "COMPANY.COM",
+    "kdc": "dc01.company.com"
+  },
+  "sql": {
+    "server": "sql01.company.com",
+    "database": "legacy_app",
+    "options": {
+      "trustedConnection": true,
+      "enableArithAbort": true,
+      "encrypt": true,
+      "trustServerCertificate": false
+    }
+  }
+}

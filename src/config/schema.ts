@@ -16,14 +16,24 @@ export const SecurityConfigSchema = z.object({
 });
 
 export const IDPConfigSchema = z.object({
-  issuer: z.string().url().refine((url) => url.startsWith('https://'), {
-    message: 'Issuer must use HTTPS',
+  issuer: z.string().url().refine((url) => {
+    // Allow HTTP for development/testing environments
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    return isDev || url.startsWith('https://');
+  }, {
+    message: 'Issuer must use HTTPS (HTTP allowed in development/test)',
   }),
-  discoveryUrl: z.string().url().refine((url) => url.startsWith('https://'), {
-    message: 'Discovery URL must use HTTPS',
+  discoveryUrl: z.string().url().refine((url) => {
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    return isDev || url.startsWith('https://');
+  }, {
+    message: 'Discovery URL must use HTTPS (HTTP allowed in development/test)',
   }),
-  jwksUri: z.string().url().refine((url) => url.startsWith('https://'), {
-    message: 'JWKS URI must use HTTPS',
+  jwksUri: z.string().url().refine((url) => {
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    return isDev || url.startsWith('https://');
+  }, {
+    message: 'JWKS URI must use HTTPS (HTTP allowed in development/test)',
   }),
   audience: z.string().min(1),
   algorithms: z

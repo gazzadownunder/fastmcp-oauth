@@ -31,10 +31,7 @@ export class OAuthOBOServer {
     this.setupTools();
   }
 
-  private async authenticateRequest(
-    transport: any,
-    auth: string | undefined
-  ): Promise<UserSession | undefined> {
+  private async authenticateRequest(auth: string | undefined): Promise<UserSession | undefined> {
     if (!auth) {
       return undefined;
     }
@@ -94,7 +91,7 @@ export class OAuthOBOServer {
         resource: z.string().optional(),
       }),
       execute: async (args, context) => {
-        const session = context?.session;
+        const session = (context as any)?.session as UserSession | undefined;
         if (!session) {
           throw createSecurityError('AUTHENTICATION_REQUIRED', 'Authentication required', 401);
         }
@@ -136,12 +133,6 @@ export class OAuthOBOServer {
           timestamp: new Date().toISOString(),
         });
       },
-      canAccess: async (context) => {
-        const session = context?.session;
-        if (!session) return false;
-
-        return sqlDelegator.validateAccess(session);
-      },
     });
 
     // Health Check Tool
@@ -152,7 +143,7 @@ export class OAuthOBOServer {
         service: z.enum(['sql', 'kerberos', 'all']).default('all'),
       }),
       execute: async (args, context) => {
-        const session = context?.session;
+        const session = (context as any)?.session as UserSession | undefined;
         if (!session) {
           throw createSecurityError('AUTHENTICATION_REQUIRED', 'Authentication required', 401);
         }
@@ -187,7 +178,7 @@ export class OAuthOBOServer {
         success: z.boolean().optional(),
       }),
       execute: async (args, context) => {
-        const session = context?.session;
+        const session = (context as any)?.session as UserSession | undefined;
         if (!session) {
           throw createSecurityError('AUTHENTICATION_REQUIRED', 'Authentication required', 401);
         }
@@ -222,9 +213,6 @@ export class OAuthOBOServer {
           timestamp: new Date().toISOString(),
         });
       },
-      canAccess: async (context) => {
-        return context?.session?.role === 'admin';
-      },
     });
 
     // User Info Tool
@@ -233,7 +221,7 @@ export class OAuthOBOServer {
       description: 'Get current user session information',
       parameters: z.object({}),
       execute: async (args, context) => {
-        const session = context?.session;
+        const session = (context as any)?.session as UserSession | undefined;
         if (!session) {
           throw createSecurityError('AUTHENTICATION_REQUIRED', 'Authentication required', 401);
         }
@@ -253,7 +241,7 @@ export class OAuthOBOServer {
   }
 
   async start(options: {
-    transportType?: 'stdio' | 'http-stream' | 'sse';
+    transportType?: 'stdio' | 'sse';
     port?: number;
     configPath?: string;
   } = {}): Promise<void> {
@@ -269,7 +257,7 @@ export class OAuthOBOServer {
 
       // Start FastMCP server
       await this.server.start({
-        transportType: options.transportType || 'http-stream',
+        transportType: options.transportType || 'stdio',
         port: options.port || configManager.getServerPort(),
         stateless: false,
         logLevel: configManager.getLogLevel() as any,

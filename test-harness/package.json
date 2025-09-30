@@ -1,0 +1,28 @@
+{
+  "name": "fastmcp-oauth-obo-test-harness",
+  "version": "1.0.0",
+  "description": "Test harness for FastMCP OAuth OBO framework with Keycloak integration",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-specifier-resolution=node test-scenarios/scenario-4-azp-security.js",
+    "test:all": "bash scripts/run-all-tests.sh",
+    "verify": "bash scripts/verify-keycloak.sh",
+    "sql:start": "bash scripts/start-sql-server.sh",
+    "sql:stop": "bash scripts/stop-sql-server.sh"
+  },
+  "keywords": [
+    "oauth",
+    "testing",
+    "keycloak",
+    "token-exchange",
+    "jwt",
+    "mcp"
+  ],
+  "author": "FastMCP OAuth OBO Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0"
+  }
+}

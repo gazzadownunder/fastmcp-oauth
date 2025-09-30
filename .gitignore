@@ -1,1 +1,19 @@
 /node_modules
+node_modules
+
+# Test harness
+test-harness/config/test.env
+test-harness/.subject-token
+test-harness/.exchanged-token
+test-harness/dist-test/
+test-harness/node_modules/
+
+# Build artifacts
+dist/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+/node_modules
+/node_modules

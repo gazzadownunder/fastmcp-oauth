@@ -1,0 +1,32 @@
+{
+  "trustedIDPs": [
+    {
+      "issuer": "http://localhost:8080/realms/mcp_security",
+      "discoveryUrl": "http://localhost:8080/realms/mcp_security/.well-known/openid-configuration",
+      "jwksUri": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/certs",
+      "audience": "mcp-oauth",
+      "algorithms": ["RS256"],
+      "claimMappings": {
+        "legacyUsername": "legacy_name",
+        "roles": "realm_access.roles",
+        "scopes": "scope",
+        "userId": "sub",
+        "username": "preferred_username"
+      },
+      "security": {
+        "clockTolerance": 60,
+        "maxTokenAge": 3600,
+        "requireNbf": false
+      }
+    }
+  ],
+  "rateLimiting": {
+    "maxRequests": 1000,
+    "windowMs": 900000
+  },
+  "audit": {
+    "logAllAttempts": true,
+    "logFailedAttempts": true,
+    "retentionDays": 7
+  }
+}

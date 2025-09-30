@@ -1,0 +1,24 @@
+# Sensitive token files
+.subject-token
+.exchanged-token
+*.token
+
+# Environment configuration (contains secrets)
+config/test.env
+
+# Test output
+dist-test/
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
