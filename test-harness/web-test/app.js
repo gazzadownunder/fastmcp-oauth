@@ -5,6 +5,8 @@
 let keycloak;
 let exchangedToken = null;
 let mcpClient = null; // MCP SSE client instance
+let subjectToken = null; // Store subject token separately for direct use
+let manualJWT = null; // Manually imported JWT
 
 // Logging
 function log(message, type = 'info') {
@@ -120,6 +122,9 @@ function onLoginSuccess() {
 
     log('Processing authentication success...', 'info');
 
+    // Store subject token
+    subjectToken = keycloak.token;
+
     // Update UI
     document.getElementById('auth-status').textContent = 'Connected';
     document.getElementById('auth-status').className = 'status connected';
@@ -127,6 +132,7 @@ function onLoginSuccess() {
     document.getElementById('logout-btn').style.display = 'block';
     document.getElementById('user-info').style.display = 'block';
     document.getElementById('exchange-btn').disabled = false;
+    document.getElementById('skip-exchange-btn').disabled = false;
 
     // Display user info
     document.getElementById('username').textContent = keycloak.tokenParsed.preferred_username || 'N/A';
@@ -226,16 +232,53 @@ async function exchangeToken() {
     }
 }
 
+// Skip token exchange and use subject token directly
+async function skipExchange() {
+    try {
+        log('Skipping token exchange - using subject token directly', 'warning');
+        log('This allows testing JWT validation with the subject token', 'info');
+
+        // Update UI
+        document.getElementById('exchange-status').textContent = 'Skipped (Using Subject)';
+        document.getElementById('exchange-status').className = 'status exchanged';
+
+        // Use subject token instead of exchanged token
+        const tokenToUse = manualJWT || subjectToken;
+        if (!tokenToUse) {
+            log('✗ No token available (login or import JWT first)', 'error');
+            return;
+        }
+
+        log('Connecting to MCP with subject token...', 'info');
+
+        // Initialize MCP session with subject token
+        await initializeMcpSession(tokenToUse);
+
+    } catch (error) {
+        log(`✗ Skip exchange error: ${error.message}`, 'error');
+        console.error('Skip exchange error:', error);
+    }
+}
+
 // Initialize MCP Session using SSE client
-async function initializeMcpSession() {
+async function initializeMcpSession(tokenOverride = null) {
     try {
         log('Initializing MCP session with SSE client...', 'info');
 
         // Create MCP client instance
         mcpClient = new MCPClient(mcpConfig.url, mcpConfig.endpoint);
 
-        // Connect with exchanged token
-        const result = await mcpClient.connect(exchangedToken);
+        // Use provided token, or default to exchanged token
+        const token = tokenOverride || exchangedToken;
+        if (!token) {
+            throw new Error('No token available for MCP connection');
+        }
+
+        const tokenType = tokenOverride ? 'subject/manual token' : 'exchanged token';
+        log(`Connecting with ${tokenType}...`, 'info');
+
+        // Connect with token
+        const result = await mcpClient.connect(token);
 
         log(`✓ MCP session initialized!`, 'success');
         log(`  Protocol version: ${result.protocolVersion}`, 'info');
@@ -244,6 +287,11 @@ async function initializeMcpSession() {
         // Update MCP status
         document.getElementById('mcp-status').textContent = 'Connected';
         document.getElementById('mcp-status').className = 'status connected';
+
+        // Enable MCP tools
+        document.getElementById('user-info-btn').disabled = false;
+        document.getElementById('health-btn').disabled = false;
+        document.getElementById('sql-btn').disabled = false;
 
     } catch (error) {
         log(`✗ MCP initialization error: ${error.message}`, 'error');
@@ -323,6 +371,92 @@ async function callMcpTool(toolName) {
         document.getElementById('mcp-response').style.display = 'block';
         document.getElementById('mcp-response').textContent = `Error: ${error.message}`;
         console.error('MCP call error:', error);
+    }
+}
+
+// Toggle manual JWT input
+function toggleManualJWT() {
+    const input = document.getElementById('manual-jwt-input');
+    const btn = document.getElementById('manual-jwt-btn');
+
+    if (input.style.display === 'none') {
+        input.style.display = 'block';
+        btn.textContent = 'Hide Manual JWT Import';
+    } else {
+        input.style.display = 'none';
+        btn.textContent = 'Manual JWT Import';
+    }
+}
+
+// Import manual JWT
+function importManualJWT() {
+    try {
+        const jwtText = document.getElementById('jwt-textarea').value.trim();
+
+        if (!jwtText) {
+            log('✗ No JWT provided', 'error');
+            return;
+        }
+
+        log('Importing manual JWT...', 'info');
+
+        // Validate JWT format
+        const parts = jwtText.split('.');
+        if (parts.length !== 3) {
+            log('✗ Invalid JWT format (must have 3 parts separated by dots)', 'error');
+            return;
+        }
+
+        // Parse JWT claims
+        try {
+            const payload = JSON.parse(atob(parts[1]));
+
+            // Store manual JWT
+            manualJWT = jwtText;
+            subjectToken = jwtText; // Also set as subject token for consistency
+
+            // Update UI
+            document.getElementById('auth-status').textContent = 'Manual JWT';
+            document.getElementById('auth-status').className = 'status connected';
+            document.getElementById('login-btn').style.display = 'none';
+            document.getElementById('user-info').style.display = 'block';
+            document.getElementById('skip-exchange-btn').disabled = false;
+
+            // Display token info
+            document.getElementById('username').textContent = payload.preferred_username || payload.sub || 'N/A';
+            document.getElementById('email').textContent = payload.email || 'N/A';
+            document.getElementById('subject-token').textContent = jwtText.substring(0, 100) + '...';
+
+            // Display claims
+            displayClaims('subject-claims', payload);
+
+            log('✓ Manual JWT imported successfully', 'success');
+            log(`Token issuer: ${payload.iss}`, 'info');
+            log(`Token audience: ${Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud}`, 'info');
+            log(`Token azp: ${payload.azp || 'N/A'}`, 'info');
+
+            // Check expiration
+            if (payload.exp) {
+                const expDate = new Date(payload.exp * 1000);
+                const now = new Date();
+                if (expDate < now) {
+                    log(`⚠ WARNING: Token expired at ${expDate.toISOString()}`, 'warning');
+                } else {
+                    log(`Token expires at ${expDate.toISOString()}`, 'info');
+                }
+            }
+
+            // Hide the input
+            toggleManualJWT();
+
+        } catch (parseError) {
+            log('✗ Failed to parse JWT payload', 'error');
+            console.error('JWT parse error:', parseError);
+        }
+
+    } catch (error) {
+        log(`✗ JWT import error: ${error.message}`, 'error');
+        console.error('JWT import error:', error);
     }
 }
 

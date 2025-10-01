@@ -8,6 +8,37 @@ FastMCP OAuth On-Behalf-Of (OBO) Framework - A production-ready OAuth 2.1 and JW
 
 **Current Status:** Phase 1-4 completed (Core framework, JWT validation, SQL delegation, FastMCP integration).
 
+## Dependencies
+
+### Forked Libraries
+
+This project uses **forked versions** of critical MCP libraries to include OAuth authentication support:
+
+#### 1. FastMCP (Core Framework)
+
+- **Fork**: https://github.com/gazzadownunder/fastmcp
+- **Branch**: main
+- **Original**: https://github.com/modelcontextprotocol/fastmcp
+- **Package.json entry**: `"fastmcp": "github:gazzadownunder/fastmcp#main"`
+
+**Why forked?**
+- **OAuth Support on Tool Requests**: Added OAuth/JWT authentication context to tool execution
+- **Bearer Token Handling**: Support for extracting and validating Bearer tokens
+- **Session Context**: Tool handlers receive authenticated user session information
+
+#### 2. MCP-Proxy (HTTP Stream Transport)
+
+- **Fork**: https://github.com/gazzadownunder/mcp-proxy
+- **Branch**: main
+- **Original**: https://github.com/modelcontextprotocol/mcp-proxy
+- **Package.json entry**: `"mcp-proxy": "github:gazzadownunder/mcp-proxy#main"`
+
+**Why forked?**
+1. **CORS Fix**: Proper CORS headers for Authorization and Mcp-Session-Id
+2. **Stateless Session Fix**: Support for stateless OAuth sessions without session pinning
+
+See [Docs/FORKING-MCP-PROXY.md](Docs/FORKING-MCP-PROXY.md) for details on maintaining the forks.
+
 ## Common Commands
 
 ### Build and Development

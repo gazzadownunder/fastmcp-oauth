@@ -259,7 +259,7 @@ export class OAuthOBOServer {
             port: options.port || configManager.getServerPort(),
             endpoint: options.endpoint || '/mcp',
           },
-          stateless: true,
+          stateless: true,  // Stateless mode - JWT auth on every request
           logLevel: 'debug',
         });
       } else {

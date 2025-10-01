@@ -34,12 +34,12 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "fastmcp": "^1.0.0",
+    "fastmcp": "github:gazzadownunder/fastmcp#main",
     "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
     "kerberos": "^2.2.2",
-    "mcp-proxy": "^2.14.3",
+    "mcp-proxy": "github:gazzadownunder/mcp-proxy#main",
     "mssql": "^11.0.1",
     "undici": "^7.13.0",
     "zod": "^3.25.76"

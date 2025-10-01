@@ -13,7 +13,9 @@
       "Bash(npm test)",
       "Bash(dir)",
       "Bash(dir:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Read(//c/Users/gazza/Local Documents/GitHub/MCP Services/**)",
+      "Bash(git clone:*)"
     ],
     "deny": [],
     "ask": []

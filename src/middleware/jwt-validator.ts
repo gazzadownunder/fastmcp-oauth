@@ -1,7 +1,7 @@
 import { jwtVerify, createRemoteJWKSet, JWTPayload as JoseJWTPayload } from 'jose';
 import { configManager } from '../config/manager.js';
 import type { JWTPayload, ValidationContext, UserSession, SecurityError, AuditEntry } from '../types/index.js';
-import { createSecurityError } from '../utils/errors.js';
+import { createSecurityError, OAuthSecurityError } from '../utils/errors.js';
 
 export class JWTValidator {
   private jwksSets: Map<string, ReturnType<typeof createRemoteJWKSet>> = new Map();
@@ -120,7 +120,7 @@ export class JWTValidator {
     } catch (error) {
       auditEntry.error = error instanceof Error ? error.message : 'Unknown error';
 
-      if (error instanceof SecurityError || (error as any).code) {
+      if (error instanceof OAuthSecurityError || (error as any).code) {
         throw error;
       }
 
@@ -166,7 +166,7 @@ export class JWTValidator {
         audience: payload.aud,
       };
     } catch (error) {
-      if (error instanceof SecurityError) {
+      if (error instanceof OAuthSecurityError) {
         throw error;
       }
       throw createSecurityError('INVALID_TOKEN_PAYLOAD', 'Invalid JWT payload', 400);

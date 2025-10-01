@@ -257,6 +257,16 @@
                 <button id="login-btn" onclick="login()">Login with Keycloak SSO</button>
                 <button id="logout-btn" onclick="logout()" style="display:none;" class="danger">Logout</button>
 
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <button id="manual-jwt-btn" onclick="toggleManualJWT()" class="secondary">Manual JWT Import</button>
+                    <div id="manual-jwt-input" style="display:none; margin-top: 10px;">
+                        <textarea id="jwt-textarea"
+                                  placeholder="Paste JWT token here..."
+                                  style="width: 100%; min-height: 100px; font-family: monospace; font-size: 11px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px;"></textarea>
+                        <button onclick="importManualJWT()" style="margin-top: 8px;">Import JWT</button>
+                    </div>
+                </div>
+
                 <div id="user-info" style="display:none;">
                     <div class="info-item">
                         <div class="info-label">Username</div>
@@ -279,6 +289,7 @@
                 <span class="status disconnected" id="exchange-status">Not Exchanged</span>
 
                 <button id="exchange-btn" onclick="exchangeToken()" disabled>Exchange Token</button>
+                <button id="skip-exchange-btn" onclick="skipExchange()" disabled class="secondary">Skip Exchange (Use Subject Token)</button>
 
                 <div id="exchange-info" style="display:none;">
                     <div class="info-item">
