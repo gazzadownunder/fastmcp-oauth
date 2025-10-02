@@ -25,6 +25,8 @@ A production-ready, security-focused OAuth 2.1 and JWT implementation for the Fa
 - 🧪 **Security-Focused Testing** with SQL injection prevention
 - 🔒 **Zero-dependency Jose library** for reduced attack surface
 - 🛠️ **TypeScript First** with full type safety
+- 🎭 **Extensible Role Mapping** with custom role support and priority-based assignment
+- 📝 **Enhanced Role Logging** with detailed role determination tracing
 
 ### Planned 🔄
 - 🎫 **Kerberos Constrained Delegation** (S4U2Self/S4U2Proxy)
@@ -79,7 +81,17 @@ Create a configuration file based on the example:
       "claimMappings": {
         "legacyUsername": "legacy_sam_account",
         "roles": "user_roles",
-        "scopes": "authorized_scopes"
+        "scopes": "authorized_scopes",
+        "userId": "sub",
+        "username": "preferred_username"
+      },
+      "roleMappings": {
+        "admin": ["admin", "administrator", "realm-admin"],
+        "user": ["user", "authenticated"],
+        "write": ["app-write", "app-editor"],
+        "read": ["app-read", "app-viewer"],
+        "guest": ["guest", "anonymous"],
+        "defaultRole": "guest"
       },
       "security": {
         "clockTolerance": 60,
@@ -174,6 +186,16 @@ Retrieve audit log entries:
 - **Strict Claims Validation**: iss, aud, exp, nbf validation required
 - **Token Lifecycle Management**: 15-60 minute access token lifetime
 - **Algorithm Confusion Prevention**: Explicit algorithm validation
+- **AZP Claim Validation**: Prevents token substitution attacks (OAuth 2.1)
+
+### Role-Based Access Control (RBAC)
+
+- **Flexible Role Mapping**: Map JWT claims to application roles
+- **Custom Role Support**: Define custom roles beyond admin/user/guest
+- **Priority-Based Assignment**: admin → user → custom → guest hierarchy
+- **Multi-Role Support**: Users can have primary + additional custom roles
+- **Configurable Defaults**: Set fallback role when no matches found
+- **Nested Claim Support**: Extract roles from nested JWT paths (e.g., `realm_access.roles`)
 
 ### SQL Security
 
@@ -465,9 +487,18 @@ interface IDPConfig {
   audience: string;        // Expected audience claim
   algorithms: string[];    // ['RS256', 'ES256'] only
   claimMappings: {
-    legacyUsername: string;
-    roles: string;
-    scopes: string;
+    legacyUsername: string;  // JWT claim for legacy system username
+    roles: string;           // JWT claim path for roles (supports nested paths)
+    scopes: string;          // JWT claim for OAuth scopes
+    userId?: string;         // JWT claim for user ID (default: 'sub')
+    username?: string;       // JWT claim for username (default: 'preferred_username')
+  };
+  roleMappings?: {
+    admin?: string[];        // JWT roles that map to 'admin'
+    user?: string[];         // JWT roles that map to 'user'
+    guest?: string[];        // JWT roles that map to 'guest'
+    [key: string]: string[]; // Custom roles (e.g., 'write', 'read', 'auditor')
+    defaultRole?: 'admin' | 'user' | 'guest';
   };
   security: {
     clockTolerance: number;  // Max 300 seconds
@@ -484,11 +515,30 @@ interface UserSession {
   userId: string;
   username: string;
   legacyUsername?: string;    // For delegation
-  role: 'admin' | 'user' | 'guest';
-  permissions: string[];
-  scopes?: string[];
+  role: string;               // Primary role (standard or custom)
+  customRoles?: string[];     // Additional matched roles
+  permissions: string[];      // Mapped from scopes claim
+  scopes?: string[];          // OAuth scopes from token
   claims?: Record<string, unknown>;
 }
+```
+
+**Role Assignment Logic:**
+1. All role mappings are checked against JWT roles
+2. Matches are prioritized: admin (1) → user (2) → custom (3) → guest (4)
+3. Highest priority match becomes the primary `role`
+4. Lower priority matches populate `customRoles` array
+5. If no matches, uses configured `defaultRole` (default: 'guest')
+
+**Example:**
+```json
+// JWT contains: "roles": ["app-write", "app-admin"]
+// Config has:
+//   "admin": ["app-admin"]
+//   "write": ["app-write"]
+// Result:
+//   role: "admin"         // Highest priority
+//   customRoles: ["write"] // Additional match
 ```
 
 ## 🤝 Contributing
