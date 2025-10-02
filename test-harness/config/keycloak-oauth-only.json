@@ -13,6 +13,12 @@
         "userId": "sub",
         "username": "preferred_username"
       },
+      "roleMappings": {
+        "admin": ["admin", "administrator", "realm-admin"],
+        "user": ["user", "authenticated"],
+        "guest": ["guest", "anonymous"],
+        "defaultRole": "guest"
+      },
       "security": {
         "clockTolerance": 60,
         "maxTokenAge": 3600,

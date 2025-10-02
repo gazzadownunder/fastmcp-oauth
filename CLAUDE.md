@@ -10,34 +10,35 @@ FastMCP OAuth On-Behalf-Of (OBO) Framework - A production-ready OAuth 2.1 and JW
 
 ## Dependencies
 
-### Forked Libraries
+### NPM Packages (Official)
 
-This project uses **forked versions** of critical MCP libraries to include OAuth authentication support:
+This project uses **official npm packages** that include full OAuth stateless authentication support:
 
 #### 1. FastMCP (Core Framework)
 
-- **Fork**: https://github.com/gazzadownunder/fastmcp
-- **Branch**: main
+- **Package**: `fastmcp@^3.19.0` (npm registry)
 - **Original**: https://github.com/modelcontextprotocol/fastmcp
-- **Package.json entry**: `"fastmcp": "github:gazzadownunder/fastmcp#main"`
+- **Package.json entry**: `"fastmcp": "^3.19.0"`
 
-**Why forked?**
-- **OAuth Support on Tool Requests**: Added OAuth/JWT authentication context to tool execution
-- **Bearer Token Handling**: Support for extracting and validating Bearer tokens
-- **Session Context**: Tool handlers receive authenticated user session information
+**Built-in OAuth Features:**
+- OAuth Support on Tool Requests - OAuth/JWT authentication context on tool execution
+- Bearer Token Handling - Extracts and validates Bearer tokens from requests
+- Stateless Mode - Per-request authentication with no session persistence
+- Session Context - Tool handlers receive authenticated user session information
 
 #### 2. MCP-Proxy (HTTP Stream Transport)
 
-- **Fork**: https://github.com/gazzadownunder/mcp-proxy
-- **Branch**: main
+- **Package**: `mcp-proxy@^5.8.0` (npm registry)
 - **Original**: https://github.com/modelcontextprotocol/mcp-proxy
-- **Package.json entry**: `"mcp-proxy": "github:gazzadownunder/mcp-proxy#main"`
+- **Package.json entry**: `"mcp-proxy": "^5.8.0"`
 
-**Why forked?**
-1. **CORS Fix**: Proper CORS headers for Authorization and Mcp-Session-Id
-2. **Stateless Session Fix**: Support for stateless OAuth sessions without session pinning
+**Built-in OAuth Features:**
+1. CORS Headers - Proper CORS headers for Authorization and Mcp-Session-Id
+2. Per-Request Authentication - Validates JWT on every request in stateless mode
+3. Session ID Management - Creates and returns real UUID session IDs
+4. Stateless Support - Full support for stateless OAuth sessions
 
-See [Docs/FORKING-MCP-PROXY.md](Docs/FORKING-MCP-PROXY.md) for details on maintaining the forks.
+**Verification:** See [Docs/NPM-LIBRARY-VERIFICATION.md](Docs/NPM-LIBRARY-VERIFICATION.md) for code-level verification that npm packages contain all required OAuth features.
 
 ## Common Commands
 

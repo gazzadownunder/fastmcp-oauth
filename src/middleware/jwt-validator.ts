@@ -270,7 +270,7 @@ export class JWTValidator {
 
     // Determine user role from roles claim
     const roleArray = Array.isArray(roles) ? roles : [roles].filter(Boolean);
-    const primaryRole = this.determinePrimaryRole(roleArray);
+    const { primaryRole, customRoles } = this.determineRoles(roleArray, idpConfig.roleMappings);
 
     // Convert scopes to array
     const scopeArray = Array.isArray(scopes) ? scopes :
@@ -281,20 +281,97 @@ export class JWTValidator {
       username: username || userId,
       legacyUsername,
       role: primaryRole,
+      customRoles,
       permissions: scopeArray,
       scopes: scopeArray,
       claims: payload as Record<string, unknown>,
     };
   }
 
-  private determinePrimaryRole(roles: string[]): 'admin' | 'user' | 'guest' {
-    if (roles.includes('admin') || roles.includes('administrator')) {
-      return 'admin';
+  private determineRoles(roles: string[], roleMappings?: any): {
+    primaryRole: string;
+    customRoles: string[];
+  } {
+    // Use configured role mappings or defaults
+    const adminRoles = roleMappings?.admin || ['admin', 'administrator'];
+    const userRoles = roleMappings?.user || ['user'];
+    const guestRoles = roleMappings?.guest || [];
+    const defaultRole = roleMappings?.defaultRole || 'guest';
+
+    console.log(`[ROLE MAPPER] ========== Role Determination ==========`);
+    console.log(`[ROLE MAPPER] Input roles from JWT: ${JSON.stringify(roles)}`);
+    console.log(`[ROLE MAPPER] Role mappings configuration:`);
+    console.log(`[ROLE MAPPER]   - Admin roles: ${JSON.stringify(adminRoles)}`);
+    console.log(`[ROLE MAPPER]   - User roles: ${JSON.stringify(userRoles)}`);
+    console.log(`[ROLE MAPPER]   - Guest roles: ${JSON.stringify(guestRoles)}`);
+    console.log(`[ROLE MAPPER]   - Default role: ${defaultRole}`);
+
+    // Collect ALL role matches (standard + custom) with priority
+    const allMatches: { roleName: string; priority: number; matches: string[] }[] = [];
+
+    // Priority: admin=1, user=2, custom=3, guest=4
+
+    // Check admin roles (highest priority)
+    const adminMatch = roles.filter(role => adminRoles.includes(role));
+    if (adminMatch.length > 0) {
+      allMatches.push({ roleName: 'admin', priority: 1, matches: adminMatch });
+      console.log(`[ROLE MAPPER] ✓ MATCHED ADMIN - Found: ${JSON.stringify(adminMatch)}`);
+    } else {
+      console.log(`[ROLE MAPPER] ✗ No admin role match`);
     }
-    if (roles.includes('user') || roles.length > 0) {
-      return 'user';
+
+    // Check user roles
+    const userMatch = roles.filter(role => userRoles.includes(role));
+    if (userMatch.length > 0) {
+      allMatches.push({ roleName: 'user', priority: 2, matches: userMatch });
+      console.log(`[ROLE MAPPER] ✓ MATCHED USER - Found: ${JSON.stringify(userMatch)}`);
+    } else {
+      console.log(`[ROLE MAPPER] ✗ No user role match`);
     }
-    return 'guest';
+
+    // Check custom roles
+    if (roleMappings) {
+      for (const [roleName, roleValues] of Object.entries(roleMappings)) {
+        // Skip standard mappings and defaultRole
+        if (['admin', 'user', 'guest', 'defaultRole'].includes(roleName)) {
+          continue;
+        }
+
+        const matches = roles.filter(role => (roleValues as string[]).includes(role));
+        if (matches.length > 0) {
+          allMatches.push({ roleName, priority: 3, matches });
+          console.log(`[ROLE MAPPER] ✓ MATCHED CUSTOM ROLE '${roleName}' - Found: ${JSON.stringify(matches)}`);
+        }
+      }
+    }
+
+    // Check guest roles (lowest priority)
+    const guestMatch = roles.filter(role => guestRoles.includes(role));
+    if (guestMatch.length > 0) {
+      allMatches.push({ roleName: 'guest', priority: 4, matches: guestMatch });
+      console.log(`[ROLE MAPPER] ✓ MATCHED GUEST - Found: ${JSON.stringify(guestMatch)}`);
+    } else {
+      console.log(`[ROLE MAPPER] ✗ No guest role match`);
+    }
+
+    // Sort by priority and select primary role
+    if (allMatches.length > 0) {
+      allMatches.sort((a, b) => a.priority - b.priority);
+
+      const primaryRole = allMatches[0].roleName;
+      const customRoles = allMatches.slice(1).map(m => m.roleName);
+
+      console.log(`[ROLE MAPPER] ✓ PRIMARY ROLE: ${primaryRole}`);
+      console.log(`[ROLE MAPPER] Additional roles: ${JSON.stringify(customRoles)}`);
+      console.log(`[ROLE MAPPER] ==========================================`);
+
+      return { primaryRole, customRoles };
+    }
+
+    // No matching roles - use configured default
+    console.log(`[ROLE MAPPER] ⚠ NO MATCHES - Using default role: ${defaultRole}`);
+    console.log(`[ROLE MAPPER] ==========================================`);
+    return { primaryRole: defaultRole, customRoles: [] };
   }
 
   // Rate limiting and security monitoring

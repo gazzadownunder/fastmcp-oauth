@@ -65,6 +65,7 @@ class MCPClient {
             };
 
             // Add session ID only if we have one (don't send on first request)
+            // Server will create real session ID and return it in Mcp-Session-Id header
             if (this.sessionId) {
                 headers['Mcp-Session-Id'] = this.sessionId;
                 console.log('[MCP CLIENT] Using session ID:', this.sessionId);

@@ -8,10 +8,18 @@
       "algorithms": ["RS256"],
       "claimMappings": {
         "legacyUsername": "legacy_name",
-        "roles": "realm_access.roles",
+        "roles": "roles",
         "scopes": "scope",
         "userId": "sub",
         "username": "preferred_username"
+      },
+      "roleMappings": {
+        "admin": ["admin", "administrator", "realm-admin", "mcp-oauth-admin"],
+        "user": ["user", "authenticated"],
+        "write": ["mcp-oauth-write"],
+        "read": ["mcp-oauth-read"],
+        "guest": ["guest", "anonymous"],
+        "defaultRole": "guest"
       },
       "security": {
         "clockTolerance": 60,

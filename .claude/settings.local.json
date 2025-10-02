@@ -15,7 +15,11 @@
       "Bash(dir:*)",
       "Bash(npm run build:*)",
       "Read(//c/Users/gazza/Local Documents/GitHub/MCP Services/**)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "Bash(tee:*)",
+      "Bash(set NODE_ENV=development)",
+      "Bash(set CONFIG_PATH=./test-harness/config/keycloak-oauth-only.json)",
+      "Bash(set SERVER_PORT=3000)"
     ],
     "deny": [],
     "ask": []

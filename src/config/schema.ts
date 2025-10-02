@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+// Role mapping configuration for flexible role determination
+// Allows custom role keys (e.g., "write", "read", "auditor") in addition to standard roles
+export const RoleMappingSchema = z.object({
+  admin: z.array(z.string()).optional().default(['admin', 'administrator']),
+  user: z.array(z.string()).optional().default(['user']),
+  guest: z.array(z.string()).optional().default([]),
+  defaultRole: z.enum(['admin', 'user', 'guest']).optional().default('guest'),
+}).passthrough(); // Allow additional custom role mappings
+
 // Zod schemas for configuration validation
 export const ClaimMappingsSchema = z.object({
   legacyUsername: z.string().min(1),
@@ -43,6 +52,7 @@ export const IDPConfigSchema = z.object({
       message: 'Must include at least one secure algorithm (RS256 or ES256)',
     }),
   claimMappings: ClaimMappingsSchema,
+  roleMappings: RoleMappingSchema.optional(),
   security: SecurityConfigSchema,
 });
 

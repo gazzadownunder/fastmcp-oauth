@@ -2,7 +2,8 @@
 
 export interface UserSession {
   permissions: string[];
-  role: 'admin' | 'guest' | 'user';
+  role: string; // Primary role - can be standard ('admin'|'user'|'guest') or custom ('write'|'read'|'auditor')
+  customRoles?: string[]; // Additional custom roles when multiple roles match
   userId: string;
   username: string;
   legacyUsername?: string;
