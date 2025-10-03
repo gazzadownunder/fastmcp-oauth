@@ -1,0 +1,231 @@
+/**
+ * MCP Configuration Orchestrator
+ *
+ * Responsible for building CoreContext from configuration and creating
+ * all core services with proper dependency injection.
+ *
+ * CRITICAL (GAP #8, #11):
+ * - CoreContext built with `satisfies CoreContext` operator (GAP #11)
+ * - CoreContextValidator.validate() called in start() method (not constructor) (GAP #8)
+ *
+ * @see Phase 3.6 of refactor.md
+ */
+
+import type { CoreContext } from '../core/index.js';
+import { CoreContextValidator } from '../core/validators.js';
+import { AuditService } from '../core/audit-service.js';
+import { JWTValidator } from '../core/jwt-validator.js';
+import { RoleMapper } from '../core/role-mapper.js';
+import { SessionManager } from '../core/session-manager.js';
+import { AuthenticationService } from '../core/authentication-service.js';
+import { DelegationRegistry } from '../delegation/registry.js';
+import type { ConfigManager } from '../config/manager.js';
+import type { OAuthConfig } from '../config/schema.js';
+
+// ============================================================================
+// Orchestrator Configuration
+// ============================================================================
+
+/**
+ * Orchestrator options for customizing CoreContext creation
+ */
+export interface OrchestratorOptions {
+  /** Configuration manager instance */
+  configManager: ConfigManager;
+
+  /** Enable audit logging (default: true) */
+  enableAudit?: boolean;
+
+  /** Custom audit overflow handler */
+  onAuditOverflow?: (entries: any[]) => void;
+}
+
+// ============================================================================
+// Configuration Orchestrator
+// ============================================================================
+
+/**
+ * Configuration Orchestrator
+ *
+ * Builds CoreContext from configuration with proper dependency injection.
+ *
+ * Responsibilities:
+ * - Load and subset configuration for each layer
+ * - Create core services in correct order
+ * - Build CoreContext with `satisfies` operator (GAP #11)
+ * - Validate CoreContext before use (GAP #8)
+ *
+ * @example
+ * ```typescript
+ * const orchestrator = new ConfigOrchestrator({ configManager });
+ * const coreContext = await orchestrator.buildCoreContext();
+ *
+ * // Validate before use (GAP #8)
+ * CoreContextValidator.validate(coreContext);
+ *
+ * // Use in tools
+ * const toolReg = createSqlTool(coreContext);
+ * ```
+ */
+export class ConfigOrchestrator {
+  private configManager: ConfigManager;
+  private enableAudit: boolean;
+  private onAuditOverflow?: (entries: any[]) => void;
+
+  constructor(options: OrchestratorOptions) {
+    this.configManager = options.configManager;
+    this.enableAudit = options.enableAudit ?? true;
+    this.onAuditOverflow = options.onAuditOverflow;
+  }
+
+  /**
+   * Build CoreContext from configuration
+   *
+   * CRITICAL (GAP #11): Uses `satisfies CoreContext` operator to ensure
+   * type safety without losing literal types.
+   *
+   * @returns CoreContext with all services initialized
+   */
+  async buildCoreContext(): Promise<CoreContext> {
+    const config = this.configManager.getConfig();
+
+    if (!config) {
+      throw new Error('Configuration not loaded. Call configManager.loadConfig() first.');
+    }
+
+    // Create AuditService (Null Object Pattern if disabled)
+    const auditService = this.createAuditService(config);
+
+    // Create JWTValidator
+    const jwtValidator = this.createJWTValidator(config);
+    await jwtValidator.initialize(config.trustedIDPs);
+
+    // Create RoleMapper
+    const roleMapper = this.createRoleMapper(config);
+
+    // Create SessionManager
+    const sessionManager = this.createSessionManager();
+
+    // Create AuthenticationService
+    const authenticationService = this.createAuthenticationService(
+      jwtValidator,
+      roleMapper,
+      sessionManager,
+      auditService
+    );
+
+    // Create DelegationRegistry
+    const delegationRegistry = this.createDelegationRegistry(auditService);
+
+    // MANDATORY (GAP #11): Build CoreContext with satisfies operator
+    const coreContext = {
+      auditService,
+      jwtValidator,
+      roleMapper,
+      sessionManager,
+      authenticationService,
+      delegationRegistry,
+      configManager: this.configManager,
+    } satisfies CoreContext;
+
+    return coreContext;
+  }
+
+  /**
+   * Create AuditService from configuration
+   *
+   * Uses Null Object Pattern if audit is disabled.
+   */
+  private createAuditService(config: OAuthConfig): AuditService {
+    if (!this.enableAudit || !config.audit?.enabled) {
+      // Null Object Pattern - no audit logging
+      return new AuditService();
+    }
+
+    return new AuditService(
+      {
+        enabled: true,
+        logAllAttempts: config.audit.logAllAttempts ?? true,
+        retentionDays: config.audit.retentionDays ?? 90,
+      },
+      this.onAuditOverflow
+    );
+  }
+
+  /**
+   * Create JWTValidator
+   */
+  private createJWTValidator(config: OAuthConfig): JWTValidator {
+    return new JWTValidator();
+  }
+
+  /**
+   * Create RoleMapper from configuration
+   */
+  private createRoleMapper(config: OAuthConfig): RoleMapper {
+    // Extract role mappings from config
+    const roleMappings = {
+      admin: config.trustedIDPs[0]?.claimMappings?.roles
+        ? [config.trustedIDPs[0].claimMappings.roles]
+        : ['admin', 'administrator'],
+      user: ['user', 'member'],
+    };
+
+    return new RoleMapper(roleMappings);
+  }
+
+  /**
+   * Create SessionManager
+   */
+  private createSessionManager(): SessionManager {
+    return new SessionManager();
+  }
+
+  /**
+   * Create AuthenticationService
+   */
+  private createAuthenticationService(
+    jwtValidator: JWTValidator,
+    roleMapper: RoleMapper,
+    sessionManager: SessionManager,
+    auditService: AuditService
+  ): AuthenticationService {
+    return new AuthenticationService(jwtValidator, roleMapper, sessionManager, auditService);
+  }
+
+  /**
+   * Create DelegationRegistry
+   */
+  private createDelegationRegistry(auditService: AuditService): DelegationRegistry {
+    return new DelegationRegistry(auditService);
+  }
+
+  /**
+   * Validate CoreContext before use
+   *
+   * CRITICAL (GAP #8): This should be called in start() method, NOT constructor.
+   *
+   * @param coreContext - CoreContext to validate
+   * @throws {Error} If validation fails
+   */
+  static validateCoreContext(coreContext: CoreContext): void {
+    CoreContextValidator.validate(coreContext);
+  }
+
+  /**
+   * Destroy CoreContext and cleanup resources
+   *
+   * Calls destroy() on all services that have it.
+   */
+  static async destroyCoreContext(coreContext: CoreContext): Promise<void> {
+    // Destroy JWT validator
+    if (coreContext.jwtValidator?.destroy) {
+      coreContext.jwtValidator.destroy();
+    }
+
+    // Destroy delegation registry
+    if (coreContext.delegationRegistry?.destroyAll) {
+      await coreContext.delegationRegistry.destroyAll();
+    }
+  }
+}

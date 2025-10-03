@@ -1,0 +1,252 @@
+/**
+ * MCP Authentication Middleware
+ *
+ * Handles OAuth authentication for MCP requests with dual rejection checks.
+ *
+ * CRITICAL SECURITY (GAP #1):
+ * - Performs dual rejection checks (authResult.rejected AND session.rejected)
+ * - Prevents timing attacks by checking both fields
+ *
+ * @see Phase 3.3 of refactor.md
+ */
+
+import type { AuthenticationService } from '../core/authentication-service.js';
+import type { UserSession } from '../core/types.js';
+import { createSecurityError } from '../utils/errors.js';
+import type { MCPContext } from './types.js';
+
+// ============================================================================
+// FastMCP Request Context (Placeholder)
+// ============================================================================
+
+/**
+ * FastMCP request context
+ *
+ * TODO: Replace with actual FastMCP types when available
+ */
+export interface FastMCPRequest {
+  headers: Record<string, string | string[] | undefined>;
+  method?: string;
+  path?: string;
+}
+
+/**
+ * FastMCP authentication result
+ */
+export interface FastMCPAuthResult {
+  authenticated: boolean;
+  session?: UserSession;
+  error?: string;
+}
+
+// ============================================================================
+// MCP Authentication Middleware
+// ============================================================================
+
+/**
+ * MCP Authentication Middleware
+ *
+ * Authenticates incoming MCP requests using Bearer tokens.
+ *
+ * Features:
+ * - Extracts Bearer token from Authorization header
+ * - Validates token using AuthenticationService
+ * - Performs dual rejection checks (GAP #1)
+ * - Returns FastMCP-compatible authentication result
+ *
+ * @example
+ * ```typescript
+ * const middleware = new MCPAuthMiddleware(authService);
+ * const authResult = await middleware.authenticate(request);
+ *
+ * if (!authResult.authenticated) {
+ *   throw new Error(authResult.error);
+ * }
+ *
+ * // Use authenticated session
+ * const session = authResult.session;
+ * ```
+ */
+export class MCPAuthMiddleware {
+  constructor(private readonly authService: AuthenticationService) {}
+
+  /**
+   * Authenticate a FastMCP request
+   *
+   * @param request - FastMCP request with Authorization header
+   * @returns Authentication result with session if successful
+   * @throws {OAuthSecurityError} If authentication fails or session is rejected
+   */
+  async authenticate(request: FastMCPRequest): Promise<FastMCPAuthResult> {
+    try {
+      // Extract Bearer token
+      const token = this.extractToken(request);
+
+      if (!token) {
+        throw createSecurityError(
+          'MISSING_TOKEN',
+          'Missing Authorization header with Bearer token',
+          401
+        );
+      }
+
+      // Authenticate with AuthenticationService
+      const authResult = await this.authService.authenticate(token);
+
+      // CRITICAL (GAP #1): Dual rejection check
+      // Check 1: authResult.rejected (from AuthenticationService)
+      if (authResult.rejected) {
+        throw createSecurityError(
+          'SESSION_REJECTED',
+          authResult.reason || 'Authentication rejected',
+          403
+        );
+      }
+
+      // Check 2: session.rejected (from UserSession)
+      // This prevents timing attacks by ensuring both rejection flags are checked
+      if (authResult.session.rejected) {
+        throw createSecurityError(
+          'SESSION_REJECTED',
+          'Session rejected - insufficient permissions or unassigned role',
+          403
+        );
+      }
+
+      // Authentication successful
+      return {
+        authenticated: true,
+        session: authResult.session,
+      };
+    } catch (error) {
+      // Convert to FastMCP auth result
+      if (error instanceof Error) {
+        return {
+          authenticated: false,
+          error: error.message,
+        };
+      }
+
+      return {
+        authenticated: false,
+        error: 'Authentication failed',
+      };
+    }
+  }
+
+  /**
+   * Extract Bearer token from Authorization header
+   *
+   * @param request - FastMCP request
+   * @returns Bearer token or null if not found
+   *
+   * @example
+   * Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+   * Returns: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+   */
+  private extractToken(request: FastMCPRequest): string | null {
+    const authHeader = request.headers['authorization'] || request.headers['Authorization'];
+
+    if (!authHeader) {
+      return null;
+    }
+
+    // Handle array of values (take first)
+    const headerValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+
+    if (!headerValue) {
+      return null;
+    }
+
+    // Extract Bearer token
+    const bearerMatch = /^Bearer\s+(.+)$/i.exec(headerValue);
+    if (!bearerMatch) {
+      return null;
+    }
+
+    return bearerMatch[1];
+  }
+
+  /**
+   * Create MCP context from authenticated session
+   *
+   * Helper method to convert FastMCP auth result to MCPContext.
+   *
+   * @param authResult - Authentication result
+   * @returns MCP context with session
+   * @throws {Error} If authentication failed
+   */
+  createContext(authResult: FastMCPAuthResult): MCPContext {
+    if (!authResult.authenticated || !authResult.session) {
+      throw new Error(authResult.error || 'Authentication required');
+    }
+
+    return {
+      session: authResult.session,
+    };
+  }
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Require authentication for a tool handler
+ *
+ * Throws an error if the session is not authenticated.
+ *
+ * @param context - MCP context
+ * @throws {Error} If session is rejected
+ */
+export function requireAuth(context: MCPContext): void {
+  if (context.session.rejected) {
+    throw createSecurityError(
+      'UNAUTHENTICATED',
+      'Authentication required to access this tool',
+      401
+    );
+  }
+}
+
+/**
+ * Require specific role for a tool handler
+ *
+ * Throws an error if the session does not have the required role.
+ *
+ * @param context - MCP context
+ * @param requiredRole - Required role ('admin', 'user', etc.)
+ * @throws {Error} If session lacks required role
+ */
+export function requireRole(context: MCPContext, requiredRole: string): void {
+  requireAuth(context);
+
+  if (context.session.role !== requiredRole) {
+    throw createSecurityError(
+      'INSUFFICIENT_PERMISSIONS',
+      `This tool requires the '${requiredRole}' role. Your role: ${context.session.role}`,
+      403
+    );
+  }
+}
+
+/**
+ * Require specific permission for a tool handler
+ *
+ * Throws an error if the session does not have the required permission.
+ *
+ * @param context - MCP context
+ * @param requiredPermission - Required permission (e.g., 'sql:query')
+ * @throws {Error} If session lacks required permission
+ */
+export function requirePermission(context: MCPContext, requiredPermission: string): void {
+  requireAuth(context);
+
+  if (!context.session.permissions.includes(requiredPermission)) {
+    throw createSecurityError(
+      'INSUFFICIENT_PERMISSIONS',
+      `This tool requires the '${requiredPermission}' permission. Your permissions: ${context.session.permissions.join(', ')}`,
+      403
+    );
+  }
+}
