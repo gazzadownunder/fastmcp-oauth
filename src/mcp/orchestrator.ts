@@ -20,7 +20,7 @@ import { SessionManager } from '../core/session-manager.js';
 import { AuthenticationService } from '../core/authentication-service.js';
 import { DelegationRegistry } from '../delegation/registry.js';
 import type { ConfigManager } from '../config/manager.js';
-import type { OAuthConfig } from '../config/schema.js';
+import type { UnifiedConfig } from '../config/schemas/index.js';
 
 // ============================================================================
 // Orchestrator Configuration
@@ -98,7 +98,7 @@ export class ConfigOrchestrator {
 
     // Create JWTValidator
     const jwtValidator = this.createJWTValidator(config);
-    await jwtValidator.initialize(config.trustedIDPs);
+    await jwtValidator.initialize(config.auth.trustedIDPs);
 
     // Create RoleMapper
     const roleMapper = this.createRoleMapper(config);
@@ -119,11 +119,8 @@ export class ConfigOrchestrator {
 
     // MANDATORY (GAP #11): Build CoreContext with satisfies operator
     const coreContext = {
+      authService: authenticationService,
       auditService,
-      jwtValidator,
-      roleMapper,
-      sessionManager,
-      authenticationService,
       delegationRegistry,
       configManager: this.configManager,
     } satisfies CoreContext;
@@ -136,8 +133,8 @@ export class ConfigOrchestrator {
    *
    * Uses Null Object Pattern if audit is disabled.
    */
-  private createAuditService(config: OAuthConfig): AuditService {
-    if (!this.enableAudit || !config.audit?.enabled) {
+  private createAuditService(config: UnifiedConfig): AuditService {
+    if (!this.enableAudit || !config.auth.audit?.enabled) {
       // Null Object Pattern - no audit logging
       return new AuditService();
     }
@@ -145,8 +142,8 @@ export class ConfigOrchestrator {
     return new AuditService(
       {
         enabled: true,
-        logAllAttempts: config.audit.logAllAttempts ?? true,
-        retentionDays: config.audit.retentionDays ?? 90,
+        logAllAttempts: config.auth.audit.logAllAttempts ?? true,
+        retentionDays: config.auth.audit.retentionDays ?? 90,
       },
       this.onAuditOverflow
     );
@@ -155,19 +152,18 @@ export class ConfigOrchestrator {
   /**
    * Create JWTValidator
    */
-  private createJWTValidator(config: OAuthConfig): JWTValidator {
+  private createJWTValidator(config: UnifiedConfig): JWTValidator {
     return new JWTValidator();
   }
 
   /**
    * Create RoleMapper from configuration
    */
-  private createRoleMapper(config: OAuthConfig): RoleMapper {
-    // Extract role mappings from config
-    const roleMappings = {
-      admin: config.trustedIDPs[0]?.claimMappings?.roles
-        ? [config.trustedIDPs[0].claimMappings.roles]
-        : ['admin', 'administrator'],
+  private createRoleMapper(config: UnifiedConfig): RoleMapper {
+    // Extract role mappings from first IDP's configuration
+    const firstIDP = config.auth.trustedIDPs[0];
+    const roleMappings = firstIDP?.roleMappings || {
+      admin: ['admin', 'administrator'],
       user: ['user', 'member'],
     };
 
@@ -218,11 +214,6 @@ export class ConfigOrchestrator {
    * Calls destroy() on all services that have it.
    */
   static async destroyCoreContext(coreContext: CoreContext): Promise<void> {
-    // Destroy JWT validator
-    if (coreContext.jwtValidator?.destroy) {
-      coreContext.jwtValidator.destroy();
-    }
-
     // Destroy delegation registry
     if (coreContext.delegationRegistry?.destroyAll) {
       await coreContext.delegationRegistry.destroyAll();

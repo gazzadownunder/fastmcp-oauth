@@ -32,11 +32,10 @@ export type {
   // Configuration
   MCPOAuthConfig,
   MCPStartOptions,
-
-  // FastMCP Types (placeholder)
-  FastMCPRequest,
-  FastMCPAuthResult,
 } from './types.js';
+
+// FastMCP Types (re-export from middleware)
+export type { FastMCPRequest, FastMCPAuthResult } from './middleware.js';
 
 // ============================================================================
 // Middleware
