@@ -80,8 +80,10 @@ export function migrateConfig(oldConfig: LegacyConfig): UnifiedConfig {
     let delegationConfig: DelegationConfig | undefined;
     if (oldConfig.sql || oldConfig.kerberos) {
       delegationConfig = {
-        sql: oldConfig.sql,
-        kerberos: oldConfig.kerberos,
+        modules: {
+          ...(oldConfig.sql && { sql: oldConfig.sql }),
+          ...(oldConfig.kerberos && { kerberos: oldConfig.kerberos }),
+        },
       };
     }
 

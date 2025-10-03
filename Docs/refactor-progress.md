@@ -666,8 +666,15 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [x] Combines auth, delegation (optional), mcp (optional) ✅
   - [x] Export all schemas ✅
   - [x] Added type guards: isLegacyConfig(), isUnifiedConfig() ✅
-- [x] **Implementation**: Schema tests deferred (implicit validation via ConfigManager) ✅
-- [x] **Validation**: Schemas compile and integrate with ConfigManager ✅
+- [x] **Test**: Created `tests/unit/config/schemas.test.ts` (17 tests, all passing) ✅
+  - [x] Test CoreAuthConfigSchema validation ✅
+  - [x] Test HTTP URL rejection in production ✅
+  - [x] Test insecure algorithm rejection ✅
+  - [x] Test DelegationConfigSchema validation ✅
+  - [x] Test MCPConfigSchema defaults ✅
+  - [x] Test UnifiedConfigSchema validation ✅
+  - [x] Test type guards (isLegacyConfig, isUnifiedConfig) ✅
+- [x] **Validation**: All schema tests pass ✅
 
 #### 4.2 Update Config Manager (CLARIFIED) ✅
 - [x] Update `src/config/manager.ts` ✅
@@ -689,12 +696,20 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [x] Map trustedIDPs to auth.trustedIDPs ✅
   - [x] Map rateLimiting to auth.rateLimiting ✅
   - [x] Map audit to auth.audit ✅
-  - [x] Map sql to delegation.sql ✅
-  - [x] Map kerberos to delegation.kerberos ✅
+  - [x] Map sql to delegation.modules.sql ✅
+  - [x] Map kerberos to delegation.modules.kerberos ✅
   - [x] Add default MCP config ✅
   - [x] Validates migrated config with UnifiedConfigSchema.parse() ✅
-- [x] **Implementation**: Migration tests deferred (tested via ConfigManager.loadConfig) ✅
-- [x] **Validation**: Migration works correctly (automatic migration in ConfigManager) ✅
+- [x] **Test**: Created `tests/unit/config/migrate.test.ts` (8 tests, all passing) ✅
+  - [x] Test legacy config migration to unified format ✅
+  - [x] Test auth-only config migration ✅
+  - [x] Test SQL delegation migration ✅
+  - [x] Test Kerberos delegation migration ✅
+  - [x] Test rate limiting migration ✅
+  - [x] Test multiple IDP preservation ✅
+  - [x] Test default MCP config addition ✅
+  - [x] Test migrated config validation ✅
+- [x] **Validation**: All migration tests pass ✅
 
 #### 4.4 Update Config Exports ✅
 - [x] Config exports already present in `src/config/index.ts` ✅
@@ -906,8 +921,13 @@ This document tracks the progress of the modular architecture refactoring outlin
 
 #### 6.6 Test Suite Cleanup ✅
 - [x] Exclude legacy tests from vitest config ✅
-- [x] Document that 6 legacy tests are deprecated (v1.x architecture) ✅
-- [x] All 214 new architecture tests pass ✅
+- [x] Document that 2 legacy tests are deprecated (v1.x architecture) ✅
+- [x] All new architecture tests pass (255 tests) ✅
+- [x] **Deferred Phase 4 Tests Completed** (Post-Phase 6) ✅
+  - [x] Created tests/unit/config/schemas.test.ts (17 tests) ✅
+  - [x] Created tests/unit/config/migrate.test.ts (8 tests) ✅
+  - [x] Fixed migration function to use delegation.modules structure ✅
+  - [x] All 255 tests passing ✅
 
 ### Phase 6 Validation Checklist ✅
 
@@ -939,9 +959,10 @@ This document tracks the progress of the modular architecture refactoring outlin
 - Tool development patterns with CoreContext (examples/ directory provides this)
 
 **Test Status**:
-- ✅ 214 tests passing (new modular architecture)
-- ⚠️ 6 tests excluded (legacy v1.x code - deprecated)
-- **Total Coverage**: All new architecture code tested
+- ✅ 255 tests passing (new modular architecture)
+- ⚠️ 2 tests excluded (legacy v1.x code - deprecated)
+- **Phase 4 Tests Added**: 25 tests (17 schema + 8 migration)
+- **Total Coverage**: All new architecture code tested including config schemas and migration
 
 ---
 
