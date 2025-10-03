@@ -4,6 +4,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      // Exclude legacy tests (v1.x architecture - deprecated)
+      '**/tests/unit/jwt-validator.test.ts',
+      '**/tests/integration/basic-functionality.test.ts'
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

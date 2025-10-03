@@ -4,9 +4,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-FastMCP OAuth On-Behalf-Of (OBO) Framework - A production-ready OAuth 2.1 and JWT implementation for the FastMCP TypeScript framework, providing on-behalf-of authentication with SQL Server delegation and planned Kerberos constrained delegation.
+FastMCP OAuth On-Behalf-Of (OBO) Framework - A production-ready, modular OAuth 2.1 authentication and delegation framework for FastMCP. Provides on-behalf-of (OBO) authentication with pluggable delegation modules for SQL Server, Kerberos, and custom integrations.
 
-**Current Status:** Phase 1-4 completed (Core framework, JWT validation, SQL delegation, FastMCP integration).
+**Current Status:** Phases 1-6 completed - Modular architecture with Core, Delegation, and MCP layers fully implemented, tested, and documented.
+
+## Modular Architecture (v2.x)
+
+The framework follows a **layered modular architecture** with strict one-way dependencies:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     MCP Layer                            │
+│  src/mcp/ - FastMCP Integration                         │
+│  - MCPAuthMiddleware, ConfigOrchestrator                │
+│  - Tool factories with CoreContext injection            │
+│  - Imports from: Core, Delegation, Config               │
+└──────────────────┬──────────────────────────────────────┘
+                   │ depends on ↓
+┌─────────────────────────────────────────────────────────┐
+│                  Delegation Layer                        │
+│  src/delegation/ - Pluggable delegation modules         │
+│  - DelegationRegistry, SQLDelegationModule              │
+│  - Custom delegation module support                      │
+│  - Imports from: Core only                               │
+└──────────────────┬──────────────────────────────────────┘
+                   │ depends on ↓
+┌─────────────────────────────────────────────────────────┐
+│                    Core Layer                            │
+│  src/core/ - Standalone authentication framework        │
+│  - AuthenticationService, JWTValidator                   │
+│  - SessionManager, RoleMapper, AuditService             │
+│  - CoreContext, CoreContextValidator                     │
+│  - NO external layer dependencies                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Principles
+
+1. **One-way Dependencies**: Core ← Delegation ← MCP (never reverse!)
+2. **Core is Standalone**: Can be used without MCP or delegation
+3. **Pluggable Delegation**: Add custom modules in <50 LOC
+4. **CoreContext Injection**: All tools receive dependencies via single CoreContext object
+5. **Fail-Safe Design**: RoleMapper never crashes (returns Unassigned role), AuditService works without config (Null Object Pattern)
+
+### Critical Rules (DO NOT VIOLATE)
+
+- ❌ **NEVER** import from `src/mcp/` in Core layer
+- ❌ **NEVER** import from `src/delegation/` in Core layer
+- ❌ **NEVER** import from `src/mcp/` in Delegation layer
+- ✅ **ALWAYS** define CoreContext in `src/core/types.ts`
+- ✅ **ALWAYS** use `ConfigOrchestrator.buildCoreContext()` to create CoreContext
+- ✅ **ALWAYS** validate CoreContext with `CoreContextValidator.validate()`
 
 ## Dependencies
 

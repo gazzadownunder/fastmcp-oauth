@@ -1,9 +1,32 @@
 {
   "name": "fastmcp-oauth-obo",
-  "version": "1.0.0",
-  "description": "FastMCP OAuth On-Behalf-Of (OBO) authentication framework with Kerberos and SQL delegation",
+  "version": "2.0.0",
+  "description": "Modular OAuth 2.1 authentication and delegation framework for FastMCP with pluggable delegation modules",
   "type": "module",
-  "main": "dist/index-simple.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./delegation": {
+      "types": "./dist/delegation/index.d.ts",
+      "import": "./dist/delegation/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "import": "./dist/mcp/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js"
+    }
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
