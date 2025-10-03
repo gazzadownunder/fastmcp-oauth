@@ -601,6 +601,30 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] Add comment: "CoreContext is exported from src/core/index.ts (not re-exported here)"
 - [ ] **Validation**: All exports work, CoreContext not duplicated
 
+#### 3.X Deferred Items from Phase 2
+
+**Note**: These tasks were deferred from Phase 2 and should be completed at the end of Phase 3 or in a follow-up cleanup phase.
+
+##### 3.X.1 Kerberos Module Placeholder (Deferred from Phase 2.8)
+- [ ] Create `src/delegation/kerberos/kerberos-module.ts`
+- [ ] Implement `KerberosDelegationModule` class (stub)
+- [ ] Set `name = 'kerberos'`, `type = 'authentication'`
+- [ ] All methods throw "Not yet implemented"
+- [ ] Create `src/delegation/kerberos/types.ts`
+- [ ] Create `src/delegation/kerberos/index.ts`
+- [ ] Update `src/delegation/index.ts` to export KerberosDelegationModule
+- [ ] **Test**: Create `tests/unit/delegation/kerberos/kerberos-module.test.ts`
+  - [ ] Test module exists
+  - [ ] Test methods throw appropriately
+- [ ] **Validation**: Placeholder tests pass
+- [ ] **Note**: Full Kerberos implementation (S4U2Self/S4U2Proxy) remains future work
+
+##### 3.X.2 Legacy Code Cleanup (Deferred from Phase 2)
+- [ ] Mark `src/services/sql-delegator.ts` for deletion (replaced by `src/delegation/sql/sql-module.ts`)
+- [ ] Verify no code still imports from old `src/services/sql-delegator.ts`
+- [ ] Create migration guide documenting the change from old to new SQL delegator
+- [ ] **Validation**: Old file safely removed, all tests still passing
+
 ### Phase 3 Validation Checklist
 
 **Before proceeding to Phase 4, verify:**
@@ -624,6 +648,8 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] MCP server starts and stops cleanly
 - [ ] All tools work with new signature
 - [ ] Authorization helpers work correctly
+- [ ] **DEFERRED ITEMS**: Kerberos placeholder created (Phase 2.8)
+- [ ] **DEFERRED ITEMS**: Legacy sql-delegator.ts removed (Phase 2 cleanup)
 - [ ] **Git**: Commit Phase 3 changes to repository
 
 **Phase 3 Sign-off**: __________ Date: __________
