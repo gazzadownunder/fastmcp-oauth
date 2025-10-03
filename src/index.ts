@@ -21,6 +21,3 @@ export {
 
 // Utility exports
 export * from './utils/errors.js';
-
-// Legacy compatibility - OAuthOBOServer (deprecated, use new modular architecture)
-export { OAuthOBOServer } from './legacy/index-simple-adapter.js';

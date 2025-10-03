@@ -19,7 +19,12 @@
       "Bash(tee:*)",
       "Bash(set NODE_ENV=development)",
       "Bash(set CONFIG_PATH=./test-harness/config/keycloak-oauth-only.json)",
-      "Bash(set SERVER_PORT=3000)"
+      "Bash(set SERVER_PORT=3000)",
+      "Bash(npm test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx madge:*)"
     ],
     "deny": [],
     "ask": []
