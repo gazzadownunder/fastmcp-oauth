@@ -98,7 +98,7 @@ export class MCPAuthMiddleware {
       if (authResult.rejected) {
         throw createSecurityError(
           'SESSION_REJECTED',
-          authResult.reason || 'Authentication rejected',
+          authResult.rejectionReason || 'Authentication rejected',
           403
         );
       }

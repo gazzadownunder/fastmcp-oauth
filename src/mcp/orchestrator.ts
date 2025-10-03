@@ -97,20 +97,9 @@ export class ConfigOrchestrator {
     const auditService = this.createAuditService(config);
 
     // Create JWTValidator
-    const jwtValidator = this.createJWTValidator(config);
-    await jwtValidator.initialize(config.auth.trustedIDPs);
-
-    // Create RoleMapper
-    const roleMapper = this.createRoleMapper(config);
-
-    // Create SessionManager
-    const sessionManager = this.createSessionManager();
-
     // Create AuthenticationService
     const authenticationService = this.createAuthenticationService(
-      jwtValidator,
-      roleMapper,
-      sessionManager,
+      config,
       auditService
     );
 
@@ -139,54 +128,36 @@ export class ConfigOrchestrator {
       return new AuditService();
     }
 
-    return new AuditService(
-      {
-        enabled: true,
-        logAllAttempts: config.auth.audit.logAllAttempts ?? true,
-        retentionDays: config.auth.audit.retentionDays ?? 90,
-      },
-      this.onAuditOverflow
-    );
+    return new AuditService({
+      enabled: true,
+      logAllAttempts: config.auth.audit.logAllAttempts ?? true,
+      retentionDays: config.auth.audit.retentionDays ?? 90,
+      onOverflow: this.onAuditOverflow,
+    });
   }
 
-  /**
-   * Create JWTValidator
-   */
-  private createJWTValidator(config: UnifiedConfig): JWTValidator {
-    return new JWTValidator();
-  }
-
-  /**
-   * Create RoleMapper from configuration
-   */
-  private createRoleMapper(config: UnifiedConfig): RoleMapper {
-    // Extract role mappings from first IDP's configuration
-    const firstIDP = config.auth.trustedIDPs[0];
-    const roleMappings = firstIDP?.roleMappings || {
-      admin: ['admin', 'administrator'],
-      user: ['user', 'member'],
-    };
-
-    return new RoleMapper(roleMappings);
-  }
-
-  /**
-   * Create SessionManager
-   */
-  private createSessionManager(): SessionManager {
-    return new SessionManager();
-  }
 
   /**
    * Create AuthenticationService
    */
   private createAuthenticationService(
-    jwtValidator: JWTValidator,
-    roleMapper: RoleMapper,
-    sessionManager: SessionManager,
+    config: UnifiedConfig,
     auditService: AuditService
   ): AuthenticationService {
-    return new AuthenticationService(jwtValidator, roleMapper, sessionManager, auditService);
+    // Extract auth config for AuthenticationService
+    const authConfig = {
+      idpConfigs: config.auth.trustedIDPs,
+      roleMappings: config.auth.trustedIDPs[0]?.roleMappings
+        ? {
+            adminRoles: config.auth.trustedIDPs[0].roleMappings.admin,
+            userRoles: config.auth.trustedIDPs[0].roleMappings.user,
+            guestRoles: config.auth.trustedIDPs[0].roleMappings.guest,
+            defaultRole: config.auth.trustedIDPs[0].roleMappings.defaultRole,
+          }
+        : undefined,
+    };
+
+    return new AuthenticationService(authConfig, auditService);
   }
 
   /**

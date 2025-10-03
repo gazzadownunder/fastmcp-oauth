@@ -2,13 +2,11 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import {
   UnifiedConfigSchema,
-  EnvironmentSchema,
   isLegacyConfig,
   type UnifiedConfig,
   type CoreAuthConfig,
   type DelegationConfig,
   type MCPConfig,
-  type Environment,
 } from './schemas/index.js';
 import { migrateConfigData } from './migrate.js';
 
@@ -17,10 +15,11 @@ import { OAuthOBOConfigSchema, type OAuthOBOConfig } from './schema.js';
 
 export class ConfigManager {
   private config: UnifiedConfig | null = null;
-  private env: Environment;
+  private env: NodeJS.ProcessEnv;
 
   constructor() {
-    this.env = EnvironmentSchema.parse(process.env);
+    // Store environment variables
+    this.env = process.env;
   }
 
   async loadConfig(configPath?: string): Promise<UnifiedConfig> {
@@ -56,7 +55,7 @@ export class ConfigManager {
     }
   }
 
-  getEnvironment(): Environment {
+  getEnvironment(): NodeJS.ProcessEnv {
     return this.env;
   }
 
@@ -204,11 +203,11 @@ export class ConfigManager {
   }
 
   getLogLevel(): string {
-    return this.env.LOG_LEVEL;
+    return this.env.LOG_LEVEL || 'info';
   }
 
   getServerPort(): number {
-    return this.env.SERVER_PORT;
+    return parseInt(this.env.SERVER_PORT || '3000', 10);
   }
 }
 
