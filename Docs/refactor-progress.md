@@ -8,13 +8,18 @@
 
 ## Overview
 
-This document tracks the progress of the modular architecture refactoring outlined in [refactor.md](./refactor.md) and enhanced with feedback from [refactor-feedback v0.2.md](./refactor-feedback v0.2.md).
+This document tracks the progress of the modular architecture refactoring outlined in [refactor.md](./refactor.md) and enhanced with feedback from [refactor-feedback v0.2.md](./refactor-feedback v0.2.md) and [Mandatory Design Checklist.md](./Mandatory Design Checklist.md).
 
 ### Key Enhancements from Feedback v0.2
 - ✅ Session management with "Unassigned" role failure policy
 - ✅ Centralized AuditService with Null Object Pattern
 - ✅ Formalized configuration orchestrator pattern
 - ✅ CoreContext dependency injection for tools
+
+### Critical Architectural Fixes Applied
+- ✅ **CoreContext moved to Core layer** - Prevents circular dependency (Core must not import from MCP)
+- ✅ **14 Mandatory actions integrated** - All gaps from comprehensive review addressed
+- ✅ **One-way dependency flow enforced** - Core → Delegation → MCP
 
 ---
 
@@ -24,6 +29,61 @@ This document tracks the progress of the modular architecture refactoring outlin
 - 🟡 **IN PROGRESS** - Phase actively being worked on
 - 🟢 **COMPLETED** - Phase completed, all tests passing
 - ⏸️  **BLOCKED** - Phase blocked by dependency or issue
+
+---
+
+## Phase 0: Pre-Migration Discovery (NEW)
+
+**Status**: 🟢 COMPLETED
+**Started**: 2025-01-03
+**Completed**: 2025-01-03
+**Duration**: ~1 hour
+
+### Tasks
+
+#### 0.1 Verify FastMCP Contextual Access API
+- [x] Examine fastmcp source code or documentation for Contextual Access (CA) API
+- [x] Look for `canAccess`, `accessCheck`, or similar property on `addTool()`
+- [x] Document the exact CA API signature
+- [x] **API EXISTS**: `canAccess?: (auth: T) => boolean` property on Tool interface
+- [x] **Deliverable**: Created [Phase-0-Discovery-Report.md](./Phase-0-Discovery-Report.md)
+- [x] **Validation**: ✅ Proceed with full Contextual Access implementation using `canAccess`
+
+#### 0.2 Define Core Context Schema & Validation
+- [x] Create `src/core/types.ts` (initial version)
+- [x] Define `CoreContext` interface in Core layer:
+  - [x] `authService: AuthenticationService`
+  - [x] `auditService: AuditService`
+  - [x] `delegationRegistry: DelegationRegistry` (forward reference)
+  - [x] `configManager: ConfigManager`
+- [x] Create `src/core/validators.ts`
+- [x] Implement `CoreContextValidator.validate(context)` method
+- [x] Add runtime checks for all required CoreContext fields
+- [x] **CRITICAL**: Validator imports CoreContext from `'./types.js'` (NOT from MCP) ✅
+- [x] **Test**: Created `tests/unit/core/validators.test.ts` (16 tests, all passing)
+  - [x] Test validation succeeds with all fields present ✅
+  - [x] Test validation throws on missing authService ✅
+  - [x] Test validation throws on missing auditService ✅
+  - [x] Test validation throws on missing delegationRegistry ✅
+  - [x] Test validation throws on missing configManager ✅
+  - [x] Test validation throws on null/undefined context ✅
+  - [x] Test isValid() type guard method ✅
+  - [x] Test architectural integrity ✅
+- [x] **Validation**: CoreContextValidator enforces architectural integrity ✅
+
+### Phase 0 Validation Checklist
+
+**Before proceeding to Phase 1, verify:**
+
+- [x] FastMCP CA API documented (exists or fallback confirmed) ✅
+- [x] CoreContext defined in `src/core/types.ts` (NOT in MCP layer) ✅
+- [x] CoreContextValidator implemented in `src/core/validators.ts` ✅
+- [x] All validator tests pass (16/16 tests passing) ✅
+- [x] **CRITICAL**: No imports from `src/mcp/` or `src/delegation/` in Core layer ✅
+- [x] Discovery report created ([Phase-0-Discovery-Report.md](./Phase-0-Discovery-Report.md)) ✅
+- [ ] **Git**: Commit Phase 0 changes to repository
+
+**Phase 0 Sign-off**: ✅ Complete - 2025-01-03
 
 ---
 
@@ -41,33 +101,44 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] Create subdirectories as needed
 - [ ] **Validation**: Directory structure matches plan
 
-#### 1.2 Create Core Types with UNASSIGNED_ROLE
-- [ ] Create `src/core/types.ts`
+#### 1.2 Create Core Types with UNASSIGNED_ROLE and CoreContext
+- [ ] Update `src/core/types.ts` (already has CoreContext from Phase 0)
 - [ ] Define `UNASSIGNED_ROLE = 'unassigned'` constant
 - [ ] Define `ROLE_ADMIN`, `ROLE_USER`, `ROLE_GUEST` constants
 - [ ] Define `AuthConfig` interface
-- [ ] Define `UserSession` interface
+- [ ] Define `UserSession` interface:
+  - [ ] **MANDATORY (GAP #6)**: Add `_version: number` field for schema versioning
+  - [ ] **MANDATORY (GAP #1)**: Add `rejected?: boolean` field for rejection tracking
+  - [ ] Add `role: string` (can be UNASSIGNED_ROLE)
+  - [ ] Add `permissions: string[]` (MUST be empty if role is UNASSIGNED_ROLE)
 - [ ] Define `AuthenticationResult` interface (with `rejected` and `rejectionReason` fields)
 - [ ] Define `RoleMapperResult` interface (with `mappingFailed` and `failureReason` fields)
+- [ ] Define `AuditEntry` interface:
+  - [ ] **MANDATORY (GAP #3)**: Add `source: string` field for audit trail tracking
+- [ ] **CRITICAL**: Verify CoreContext is defined here (not in MCP layer)
 - [ ] **Test**: Run `npm run typecheck` - must pass
 - [ ] **Validation**: All types compile without errors
 
-#### 1.3 Create AuditService with Null Object Pattern (NEW)
+#### 1.3 Create AuditService with Null Object Pattern and Overflow Handling (ENHANCED)
 - [ ] Create `src/core/audit-service.ts`
 - [ ] Implement `AuditServiceConfig` interface
-- [ ] Implement `AuditStorage` interface
+- [ ] Implement `AuditStorage` interface (write-only, no query methods)
 - [ ] Implement `AuditService` class with Null Object Pattern
 - [ ] Constructor accepts optional config (defaults to disabled)
+- [ ] **MANDATORY (GAP #7)**: Constructor accepts `onOverflow?: (entries: AuditEntry[]) => void` callback
 - [ ] Implement `log(entry: AuditEntry)` method (no-op if disabled)
-- [ ] Implement `query(filter: AuditFilter)` method
-- [ ] Implement `clear()` method
-- [ ] In-memory storage with 10,000 entry limit
+- [ ] **REMOVE `query()` method** - prevents O(n) performance issues (write-only API)
+- [ ] Implement `InMemoryAuditStorage` class:
+  - [ ] In-memory storage with 10,000 entry limit
+  - [ ] **MANDATORY (GAP #7)**: Call `onOverflow()` before discarding old entries
+  - [ ] Pass copy of all entries to callback before shift
 - [ ] **Test**: Create `tests/unit/core/audit-service.test.ts`
   - [ ] Test Null Object Pattern (no config = no errors)
   - [ ] Test disabled audit (no logging)
   - [ ] Test enabled audit (logs entries)
   - [ ] Test in-memory storage limit
-  - [ ] Test query filtering
+  - [ ] **Test onOverflow callback is called before discard** (GAP #7)
+  - [ ] **Test onOverflow receives all entries before shift** (GAP #7)
 - [ ] **Validation**: All tests pass with `npm test audit-service`
 
 #### 1.4 Extract and Refactor JWT Validator
@@ -106,21 +177,35 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [ ] Test priority ordering with multiple matches
 - [ ] **Validation**: All role mapper tests pass, no exceptions thrown
 
-#### 1.6 Create Session Manager
+#### 1.6 Create Session Manager with Migration Support (ENHANCED)
 - [ ] Create `src/core/session-manager.ts`
 - [ ] Implement `SessionManager` class
-- [ ] Implement `createSession(jwtPayload, roleResult)` method
+- [ ] Define `SESSION_VERSION = 1` constant
+- [ ] Implement `createSession(jwtPayload, roleResult)` method:
+  - [ ] Set `_version` field to SESSION_VERSION
+  - [ ] Calculate permissions based on role
+  - [ ] **MANDATORY (GAP #2)**: Add runtime assertion - if role is UNASSIGNED_ROLE and permissions.length > 0, throw error
+  - [ ] Set `rejected: true` if role is UNASSIGNED_ROLE
 - [ ] Implement `validateSession(session)` method
 - [ ] Implement `refreshSession(session)` method
-- [ ] Validate session contract (throws if invalid)
+- [ ] **MANDATORY (GAP #6)**: Implement `migrateSession(rawSession)` method:
+  - [ ] Check session version
+  - [ ] If version < 1: add `_version`, `rejected` fields
+  - [ ] If role is UNASSIGNED_ROLE and no `rejected` field, set to true
+  - [ ] If role is UNASSIGNED_ROLE and no `permissions` field, set to []
+  - [ ] Support future version migrations
 - [ ] **Test**: Create `tests/unit/core/session-manager.test.ts`
-  - [ ] Test session creation
+  - [ ] Test session creation with _version field
+  - [ ] Test session creation sets rejected=true for UNASSIGNED_ROLE
+  - [ ] **Test UNASSIGNED_ROLE runtime assertion throws if permissions not empty** (GAP #2)
+  - [ ] **Test migrateSession upgrades v0 to v1** (GAP #6)
+  - [ ] **Test migrateSession adds rejected field** (GAP #6)
+  - [ ] **Test migrateSession adds empty permissions** (GAP #6)
   - [ ] Test session validation
   - [ ] Test session refresh
-  - [ ] Test contract validation throws on invalid session
 - [ ] **Validation**: All session manager tests pass
 
-#### 1.7 Create Authentication Service with Rejection Policy (ENHANCED)
+#### 1.7 Create Authentication Service with Rejection Policy and Source Tracking (ENHANCED)
 - [ ] Create `src/core/authentication-service.ts`
 - [ ] Implement `AuthenticationService` class
 - [ ] Constructor accepts `AuthConfig` and optional `AuditService`
@@ -132,6 +217,7 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [ ] **Check if role is UNASSIGNED_ROLE**
   - [ ] **If unassigned: set rejected=true, log audit, return result**
   - [ ] If assigned: set rejected=false, log audit, return result
+  - [ ] **MANDATORY (GAP #3)**: All audit entries must include `source: 'auth:service'` field
 - [ ] Log all authentication attempts to AuditService
 - [ ] **Test**: Create `tests/unit/core/authentication-service.test.ts`
   - [ ] Test successful authentication
@@ -139,23 +225,27 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [ ] **Test unassigned role rejection (doesn't throw, returns rejected=true)**
   - [ ] Test audit logging on success
   - [ ] Test audit logging on rejection
+  - [ ] **Test audit entries include source field** (GAP #3)
   - [ ] Test with null AuditService (Null Object Pattern)
 - [ ] **Validation**: All authentication service tests pass
 
-#### 1.8 Create Core Public API
+#### 1.8 Create Core Public API with CoreContext Export
 - [ ] Create `src/core/index.ts`
 - [ ] Export `AuthenticationService`
 - [ ] Export `SessionManager`
 - [ ] Export `JWTValidator`
 - [ ] Export `RoleMapper`
-- [ ] Export `AuditService` (NEW)
+- [ ] Export `AuditService`
+- [ ] Export `CoreContextValidator` (from validators.ts)
 - [ ] Export all types from `types.ts`
-- [ ] Export role constants (UNASSIGNED_ROLE, etc.)
+- [ ] **MANDATORY (GAP #Architecture)**: Export `CoreContext` type from types.ts
+- [ ] Export role constants (UNASSIGNED_ROLE, ROLE_ADMIN, ROLE_USER, ROLE_GUEST)
 - [ ] **Test**: Create `tests/integration/core/standalone.test.ts`
   - [ ] Test importing core module
+  - [ ] Test importing CoreContext type
   - [ ] Test using AuthenticationService standalone
   - [ ] Test full auth flow without MCP
-- [ ] **Validation**: Integration test passes
+- [ ] **Validation**: Integration test passes, CoreContext exported from Core layer
 
 ### Phase 1 Validation Checklist
 
@@ -169,8 +259,16 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] **CRITICAL**: RoleMapper never throws (verified in tests)
 - [ ] **CRITICAL**: AuthenticationService rejects UNASSIGNED sessions (verified in tests)
 - [ ] **CRITICAL**: AuditService works without config (Null Object verified in tests)
+- [ ] **MANDATORY (GAP #2)**: SessionManager assertion prevents UNASSIGNED_ROLE with non-empty permissions
+- [ ] **MANDATORY (GAP #3)**: All AuditEntry objects have source field
+- [ ] **MANDATORY (GAP #6)**: SessionManager.migrateSession() handles v0 to v1 migration
+- [ ] **MANDATORY (GAP #7)**: AuditService onOverflow callback tested
+- [ ] **MANDATORY (GAP #Architecture)**: CoreContext defined in Core layer (src/core/types.ts)
+- [ ] **MANDATORY (GAP #Architecture)**: CoreContextValidator imports from Core layer (not MCP)
+- [ ] **MANDATORY (GAP #Architecture)**: No imports from src/mcp/ or src/delegation/ in Core layer
 - [ ] Core module can be imported standalone (no MCP dependencies)
 - [ ] Documentation updated in refactor.md if needed
+- [ ] **Git**: Commit Phase 1 changes to repository
 
 **Phase 1 Sign-off**: __________ Date: __________
 
@@ -216,21 +314,23 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] Define delegation-specific types
 - [ ] **Validation**: Type checking passes
 
-#### 2.4 Create Delegation Registry with AuditService (ENHANCED)
+#### 2.4 Create Delegation Registry with AuditService and Source Tracking (ENHANCED)
 - [ ] Create `src/delegation/registry.ts`
 - [ ] Implement `DelegationRegistry` class
-- [ ] **Constructor accepts optional `AuditService`** (NEW)
-- [ ] Implement `register(module)` method
+- [ ] **Constructor accepts optional `AuditService`**
+- [ ] Implement `register(module)` method:
   - [ ] Add module to internal map
-  - [ ] **Log registration event to AuditService** (NEW)
+  - [ ] **Log registration event to AuditService**
+  - [ ] **MANDATORY (GAP #3)**: Audit entry must include `source: 'delegation:registry'`
 - [ ] Implement `unregister(name)` method
 - [ ] Implement `get(name)` method
 - [ ] Implement `list()` method
-- [ ] Implement `delegate<T>(moduleName, session, action, params)` method (NEW)
+- [ ] Implement `delegate<T>(moduleName, session, action, params)` method:
   - [ ] Get module by name
-  - [ ] If not found: create audit entry, log it, return error result
+  - [ ] If not found: create audit entry with `source: 'delegation:registry'`, log it, return error result
   - [ ] Call module.delegate()
-  - [ ] **Log returned auditTrail to AuditService** (NEW)
+  - [ ] **MANDATORY (GAP #3)**: Ensure module's auditTrail has source field (backfill if missing)
+  - [ ] **Log returned auditTrail to AuditService**
   - [ ] Return delegation result
 - [ ] Implement `initializeAll(configs)` method
 - [ ] Implement `destroyAll()` method
@@ -239,9 +339,10 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [ ] Test module unregistration
   - [ ] Test module retrieval
   - [ ] Test module listing
-  - [ ] **Test audit logging on registration** (NEW)
-  - [ ] **Test audit logging on delegation** (NEW)
-  - [ ] **Test audit logging on module not found** (NEW)
+  - [ ] **Test audit logging on registration with source field** (GAP #3)
+  - [ ] **Test audit logging on delegation with source field** (GAP #3)
+  - [ ] **Test audit logging on module not found with source field** (GAP #3)
+  - [ ] **Test source field backfill if module doesn't provide it** (GAP #3)
   - [ ] Test initializeAll
   - [ ] Test destroyAll
 - [ ] **Validation**: All registry tests pass
@@ -328,6 +429,7 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] SQL delegation works as pluggable module
 - [ ] Kerberos placeholder doesn't break anything
 - [ ] Old `src/services/sql-delegator.ts` can be safely deleted (marked for deletion)
+- [ ] **Git**: Commit Phase 2 changes to repository
 
 **Phase 2 Sign-off**: __________ Date: __________
 
@@ -348,34 +450,49 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] Create `src/mcp/tools/` directory
 - [ ] **Validation**: Directory structure created
 
-#### 3.2 Create MCP Types with CoreContext (NEW)
+#### 3.2 Create MCP Types with LLM Response Standards (ENHANCED)
 - [ ] Create `src/mcp/types.ts`
-- [ ] Define `CoreContext` type:
-  - [ ] `registry: DelegationRegistry`
-  - [ ] `auditService: AuditService`
-  - [ ] `authService: AuthenticationService`
-  - [ ] `configManager: ConfigManager`
-- [ ] Define `ToolFactory` type: `(context: CoreContext) => MCPTool`
+- [ ] **MANDATORY (GAP #Architecture)**: Import `CoreContext` from `'../core/index.js'` (NOT defined here)
+- [ ] **MANDATORY (GAP #5)**: Define `LLMSuccessResponse` interface:
+  - [ ] `status: 'success'`
+  - [ ] `data: any`
+- [ ] **MANDATORY (GAP #5)**: Define `LLMFailureResponse` interface:
+  - [ ] `status: 'failure'`
+  - [ ] `code: string` (INSUFFICIENT_PERMISSIONS, UNAUTHENTICATED, etc.)
+  - [ ] `message: string` (human-readable for LLM)
+- [ ] **MANDATORY (GAP #12)**: Define `MCPContext` interface:
+  - [ ] `session: UserSession`
+- [ ] **MANDATORY (GAP #12)**: Define `ToolHandler<P, R>` type:
+  - [ ] Generic handler: `(params: P, context: MCPContext) => Promise<R>`
+- [ ] Define `ToolRegistration` interface:
+  - [ ] `name: string`
+  - [ ] `schema: z.ZodObject<any>`
+  - [ ] `handler: ToolHandler`
+  - [ ] `accessCheck?: (context: FastMCPRequestContext) => boolean` (Contextual Access)
+- [ ] Define `ToolFactory` type: `(context: CoreContext) => ToolRegistration`
 - [ ] Define `MCPOAuthConfig` interface
 - [ ] Define `MCPStartOptions` interface
-- [ ] **Validation**: Types compile
+- [ ] **Validation**: Types compile, CoreContext imported (not defined)
 
-#### 3.3 Create MCP Middleware
+#### 3.3 Create MCP Middleware with Dual Rejection Checks (ENHANCED)
 - [ ] Create `src/mcp/middleware.ts`
 - [ ] Implement `MCPAuthMiddleware` class
 - [ ] Constructor accepts `AuthenticationService`
 - [ ] Implement `authenticate(request)` method:
   - [ ] Extract Bearer token from Authorization header
   - [ ] Call `authService.authenticate(token)`
-  - [ ] **Check if session is rejected** (NEW)
+  - [ ] **Check if `authResult.rejected` is true**
   - [ ] If rejected: throw 403 error with rejection reason
+  - [ ] **MANDATORY (GAP #1)**: ALSO check if `authResult.session.rejected` is true (dual check)
+  - [ ] If session.rejected: throw 403 error (prevents timing attacks)
   - [ ] If accepted: return FastMCP context with session
 - [ ] Implement `extractToken(request)` private method
 - [ ] **Test**: Create `tests/unit/mcp/middleware.test.ts`
   - [ ] Test successful authentication
   - [ ] Test missing token (401)
   - [ ] Test invalid token (401)
-  - [ ] **Test rejected session (403)** (NEW)
+  - [ ] **Test rejected session via authResult.rejected (403)**
+  - [ ] **Test rejected session via session.rejected (403)** (GAP #1)
   - [ ] Test token extraction
 - [ ] **Validation**: All middleware tests pass
 
@@ -397,28 +514,39 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [ ] Test with custom roles
 - [ ] **Validation**: All authorization tests pass
 
-#### 3.5 Refactor Tools to Use CoreContext (ENHANCED)
+#### 3.5 Refactor Tools with CoreContext and LLM Error Handling (ENHANCED)
 - [ ] Move `src/index-simple.ts` tools to `src/mcp/tools/`
-- [ ] Create `src/mcp/tools/health-check.ts`
+- [ ] Create `src/mcp/tools/health-check.ts`:
   - [ ] Update signature: `createHealthCheckTool(context: CoreContext)`
-  - [ ] Use `context.registry` for delegation health checks
-  - [ ] Use `Authorization` helpers for role checking
+  - [ ] Add `accessCheck` for Contextual Access (soft check with `hasAnyRole`)
+  - [ ] Use `context.delegationRegistry` for health checks
+  - [ ] Use `Authorization.requireAnyRole()` in handler (hard check)
+  - [ ] **MANDATORY (GAP #4)**: Catch ALL OAuthSecurityError types, convert to LLMFailureResponse
+  - [ ] **MANDATORY (GAP #5)**: Return LLMSuccessResponse on success
   - [ ] **Test**: Create `tests/unit/mcp/tools/health-check.test.ts`
-- [ ] Create `src/mcp/tools/user-info.ts`
+    - [ ] Test LLMSuccessResponse format
+    - [ ] Test LLMFailureResponse for all error codes
+- [ ] Create `src/mcp/tools/user-info.ts`:
   - [ ] Update signature: `createUserInfoTool(context: CoreContext)`
+  - [ ] Add `accessCheck` for Contextual Access
   - [ ] Use `Authorization` helpers
+  - [ ] **MANDATORY (GAP #4)**: Full error handling with LLMFailureResponse
+  - [ ] **MANDATORY (GAP #5)**: Return LLMSuccessResponse
   - [ ] **Test**: Create `tests/unit/mcp/tools/user-info.test.ts`
-- [ ] Create `src/mcp/tools/audit-log.ts`
+- [ ] Create `src/mcp/tools/audit-log.ts`:
   - [ ] Update signature: `createAuditLogTool(context: CoreContext)`
-  - [ ] Use `context.auditService.query()` instead of direct access
+  - [ ] **NOTE**: AuditService no longer has query() - must use external indexed storage
   - [ ] Use `ROLE_ADMIN` constant
+  - [ ] **MANDATORY (GAP #4)**: Full error handling
+  - [ ] **MANDATORY (GAP #5)**: Standardized responses
   - [ ] **Test**: Create `tests/unit/mcp/tools/audit-log.test.ts`
-- [ ] Create `src/mcp/tools/index.ts`
+- [ ] Create `src/mcp/tools/index.ts`:
   - [ ] Export all tool factory functions
-- [ ] **Validation**: All tool tests pass
+- [ ] **Validation**: All tool tests pass, LLM response format verified
 
-#### 3.6 Create MCP Server Orchestration (ENHANCED)
+#### 3.6 Create MCP Server Orchestration with satisfies and Validation (ENHANCED)
 - [ ] Create `src/mcp/server.ts`
+- [ ] **MANDATORY**: Import `CoreContext` and `CoreContextValidator` from `'../core/index.js'`
 - [ ] Implement `MCPOAuthServer` class
 - [ ] **Constructor:**
   - [ ] Accept `configPath: string`
@@ -427,18 +555,20 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [ ] Initialize `AuthenticationService` with config and AuditService
   - [ ] Initialize `DelegationRegistry` with AuditService
   - [ ] Initialize `MCPAuthMiddleware` with AuthenticationService
-  - [ ] **Build `CoreContext` object** (NEW)
+  - [ ] **MANDATORY (GAP #11)**: Build `CoreContext` object using `satisfies CoreContext` operator
   - [ ] Initialize `FastMCP` server
+  - [ ] **REMOVE validation call** - moved to start() method (GAP #8)
 - [ ] Implement `registerDelegationModule(module, config?)` method:
   - [ ] Get config from ConfigManager if not provided
   - [ ] Initialize module
   - [ ] Register with registry
 - [ ] Implement `start(options)` method:
+  - [ ] **MANDATORY (GAP #8)**: Call `CoreContextValidator.validate(this.coreContext)` FIRST
   - [ ] Set FastMCP auth handler (uses middleware)
-  - [ ] **Register all tools using CoreContext** (NEW):
+  - [ ] **Register all tools using CoreContext**:
     - [ ] Iterate through tool factories
     - [ ] Call each factory with `coreContext`
-    - [ ] Add tool to FastMCP server
+    - [ ] Add tool to FastMCP server with Contextual Access integration
   - [ ] Start FastMCP server
 - [ ] Implement `stop()` method:
   - [ ] Destroy all delegation modules
@@ -447,19 +577,22 @@ This document tracks the progress of the modular architecture refactoring outlin
   - [ ] Test server initialization
   - [ ] Test module registration
   - [ ] Test server start/stop
-  - [ ] Test CoreContext creation
+  - [ ] **Test CoreContext uses satisfies operator** (GAP #11)
+  - [ ] **Test validation called in start() not constructor** (GAP #8)
+  - [ ] **Test validation throws on missing CoreContext fields** (GAP #8)
   - [ ] Test tool registration with context
   - [ ] Test config subsetting (orchestrator pattern)
 - [ ] **Validation**: All server tests pass
 
-#### 3.7 Create MCP Public API
+#### 3.7 Create MCP Public API (WITHOUT CoreContext Re-export)
 - [ ] Create `src/mcp/index.ts`
 - [ ] Export `MCPOAuthServer`
 - [ ] Export `MCPAuthMiddleware`
 - [ ] Export `Authorization`
-- [ ] Export MCP types
-- [ ] Export `CoreContext` type
-- [ ] **Validation**: All exports work
+- [ ] Export MCP types (LLMSuccessResponse, LLMFailureResponse, MCPContext, ToolHandler, etc.)
+- [ ] **MANDATORY (GAP #Architecture)**: DO NOT re-export `CoreContext` (enforces architectural rule)
+- [ ] Add comment: "CoreContext is exported from src/core/index.ts (not re-exported here)"
+- [ ] **Validation**: All exports work, CoreContext not duplicated
 
 ### Phase 3 Validation Checklist
 
@@ -473,9 +606,18 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] **CRITICAL**: Tools receive CoreContext (verified in tests)
 - [ ] **CRITICAL**: Rejected sessions return 403 (verified in tests)
 - [ ] **CRITICAL**: Config subsetting works in orchestrator (verified in tests)
+- [ ] **MANDATORY (GAP #1)**: Middleware performs dual rejection checks (authResult.rejected AND session.rejected)
+- [ ] **MANDATORY (GAP #4)**: All tools catch ALL OAuthSecurityError types and convert to LLMFailureResponse
+- [ ] **MANDATORY (GAP #5)**: All tools return LLMSuccessResponse on success
+- [ ] **MANDATORY (GAP #8)**: CoreContextValidator.validate() called in start() method (not constructor)
+- [ ] **MANDATORY (GAP #11)**: CoreContext built with `satisfies CoreContext` operator
+- [ ] **MANDATORY (GAP #12)**: All tools use ToolHandler<P,R> and MCPContext types
+- [ ] **MANDATORY (GAP #Architecture)**: CoreContext imported from core (not defined in MCP)
+- [ ] **MANDATORY (GAP #Architecture)**: MCP does NOT re-export CoreContext
 - [ ] MCP server starts and stops cleanly
 - [ ] All tools work with new signature
 - [ ] Authorization helpers work correctly
+- [ ] **Git**: Commit Phase 3 changes to repository
 
 **Phase 3 Sign-off**: __________ Date: __________
 
@@ -565,6 +707,7 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] Config migration utility works
 - [ ] Old configs can be migrated to new format
 - [ ] ConfigManager orchestrator pattern verified
+- [ ] **Git**: Commit Phase 4 changes to repository
 
 **Phase 4 Sign-off**: __________ Date: __________
 
@@ -636,6 +779,7 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] All examples run successfully
 - [ ] Tree-shaking works (verify bundle size)
 - [ ] No circular dependencies
+- [ ] **Git**: Commit Phase 5 changes to repository
 
 **Phase 5 Sign-off**: __________ Date: __________
 
@@ -706,6 +850,7 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] All public APIs have JSDoc
 - [ ] Package exports are correct
 - [ ] Documentation is user-friendly
+- [ ] **Git**: Commit Phase 6 changes to repository
 
 **Phase 6 Sign-off**: __________ Date: __________
 
@@ -762,6 +907,22 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [ ] ✅ All existing tests pass
 - [ ] ✅ Backward compatibility maintained
 
+#### Mandatory Actions Validation (14 Items)
+- [ ] **GAP #1**: Dual session rejection checks in middleware (authResult.rejected AND session.rejected)
+- [ ] **GAP #2**: SessionManager runtime assertion (UNASSIGNED_ROLE → empty permissions)
+- [ ] **GAP #3**: All AuditEntry objects have source field (auth:service, delegation:registry, etc.)
+- [ ] **GAP #4**: All tools catch ALL OAuthSecurityError types (not just INSUFFICIENT_PERMISSIONS)
+- [ ] **GAP #5**: All tools return standardized LLMSuccessResponse and LLMFailureResponse
+- [ ] **GAP #6**: SessionManager.migrateSession() handles v0→v1 migration
+- [ ] **GAP #7**: AuditService onOverflow callback tested and functional
+- [ ] **GAP #8**: CoreContextValidator.validate() called in start() method (not constructor)
+- [ ] **GAP #11**: CoreContext built with `satisfies CoreContext` operator
+- [ ] **GAP #12**: All tools use ToolHandler<P,R> and MCPContext types
+- [ ] **GAP #Architecture (CoreContext location)**: CoreContext defined in src/core/types.ts
+- [ ] **GAP #Architecture (Validator import)**: CoreContextValidator imports from './types.js'
+- [ ] **GAP #Architecture (One-way flow)**: No imports from src/mcp/ or src/delegation/ in Core
+- [ ] **GAP #Architecture (MCP import)**: MCP imports CoreContext from '../core/index.js'
+
 ### Release Tasks
 - [ ] Create release branch
 - [ ] Update version in package.json
@@ -815,29 +976,44 @@ This document tracks the progress of the modular architecture refactoring outlin
 
 | Phase | Estimated | Actual | Status |
 |-------|-----------|--------|--------|
-| Phase 1: Core Framework | 4-6 hours | - | 🔴 |
+| Phase 0: Pre-Migration Discovery | 1-2 hours | 1 hour | 🟢 |
+| Phase 1: Core Framework | 5-7 hours | - | 🔴 |
 | Phase 2: Delegation System | 3-4 hours | - | 🔴 |
-| Phase 3: MCP Integration | 3-4 hours | - | 🔴 |
+| Phase 3: MCP Integration | 4-5 hours | - | 🔴 |
 | Phase 4: Configuration | 2-3 hours | - | 🔴 |
 | Phase 5: Entry Points | 2-3 hours | - | 🔴 |
 | Phase 6: Documentation | 3-4 hours | - | 🔴 |
-| **Total** | **17-24 hours** | **-** | **🔴** |
+| **Total** | **20-28 hours** | **-** | **🔴** |
+
+**Note**: Estimated time increased by 3-4 hours to account for:
+- Phase 0 discovery tasks (FastMCP CA API verification, CoreContext validation setup)
+- Enhanced Phase 1 (session versioning, migration, overflow handling, validators)
+- Enhanced Phase 3 (LLM response standardization, dual rejection checks, satisfies operator)
 
 ---
 
 ## Daily Progress Log
 
-### [Date] - Day 1
-- **Time**: -
-- **Phase**: -
+### 2025-01-03 - Day 1
+- **Time**: 1 hour
+- **Phase**: Phase 0 (Pre-Migration Discovery)
 - **Tasks Completed**:
-  - -
+  - ✅ Verified FastMCP Contextual Access API (`canAccess` property confirmed)
+  - ✅ Created src/core directory structure
+  - ✅ Implemented CoreContext interface in src/core/types.ts
+  - ✅ Implemented CoreContextValidator in src/core/validators.ts
+  - ✅ Created 16 comprehensive validator tests (all passing)
+  - ✅ Created Phase-0-Discovery-Report.md
+  - ✅ Updated refactor-progress.md with Phase 0 completion
 - **Blockers**:
-  - -
+  - None
 - **Notes**:
-  - -
+  - FastMCP `canAccess` API enables full Contextual Access (CA) implementation
+  - CoreContext successfully placed in Core layer (architectural integrity maintained)
+  - One-way dependency flow enforced: Core → Delegation → MCP
+  - All tests pass, ready to proceed to Phase 1
 
 ---
 
-*Last Updated*: [To be filled]
-*Next Review Date*: [To be filled]
+*Last Updated*: 2025-01-03
+*Next Review Date*: 2025-01-04 (Phase 1 kickoff)
