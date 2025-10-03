@@ -900,16 +900,16 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [x] **Validation**: CLAUDE.md reflects new architecture ✅
 
 #### 6.4 Add JSDoc Comments
-- [ ] Add JSDoc to all `src/core/` public APIs (Deferred - Phase 7)
-- [ ] Add JSDoc to all `src/delegation/` public APIs (Deferred - Phase 7)
-- [ ] Add JSDoc to all `src/mcp/` public APIs (Deferred - Phase 7)
-- [ ] Add JSDoc to all `src/config/` public APIs (Deferred - Phase 7)
-- [ ] Include @example tags where appropriate (Deferred - Phase 7)
-- [ ] Include @throws tags for errors (Deferred - Phase 7)
-- [ ] **Test**: Generate API docs with TypeDoc (if configured) (Deferred - Phase 7)
-- [ ] **Validation**: All public APIs have comprehensive JSDoc (Deferred - Phase 7)
+- [ ] Add JSDoc to all `src/core/` public APIs (Deferred - Final Validation)
+- [ ] Add JSDoc to all `src/delegation/` public APIs (Deferred - Final Validation)
+- [ ] Add JSDoc to all `src/mcp/` public APIs (Deferred - Final Validation)
+- [ ] Add JSDoc to all `src/config/` public APIs (Deferred - Final Validation)
+- [ ] Include @example tags where appropriate (Deferred - Final Validation)
+- [ ] Include @throws tags for errors (Deferred - Final Validation)
+- [ ] **Test**: Generate API docs with TypeDoc (if configured) (Deferred - Final Validation)
+- [ ] **Validation**: All public APIs have comprehensive JSDoc (Deferred - Final Validation)
 
-**Note:** JSDoc deferred to Phase 7 to keep Phase 6 focused on user-facing documentation.
+**Note:** JSDoc deferred to "Final Validation & Release" section to keep Phase 6 focused on user-facing documentation (README, MIGRATION guide).
 
 #### 6.5 Update Package Configuration ✅
 - [x] Update `package.json` exports field ✅
@@ -936,11 +936,11 @@ This document tracks the progress of the modular architecture refactoring outlin
 - [x] README.md is complete and accurate (629 lines, comprehensive) ✅
 - [x] MIGRATION.md provides clear migration path (full migration guide) ✅
 - [x] CLAUDE.md reflects new architecture (updated with layered diagram) ✅
-- [ ] All public APIs have JSDoc (Deferred to Phase 7)
+- [ ] All public APIs have JSDoc (Deferred to Final Validation & Release)
 - [x] Package exports are correct (subpath exports added) ✅
 - [x] Documentation is user-friendly ✅
 - [x] Legacy tests excluded from test suite ✅
-- [ ] **Git**: Commit Phase 6 changes to repository (Pending)
+- [x] **Git**: Commit Phase 6 changes to repository ✅
 
 **Phase 6 Sign-off**: ✅ Complete - Date: 2025-10-03
 
@@ -954,7 +954,7 @@ This document tracks the progress of the modular architecture refactoring outlin
 - Modified: `vitest.config.ts` (Exclude legacy tests)
 
 **Deferred Items**:
-- JSDoc comments for all public APIs (Phase 7 - API documentation polish)
+- JSDoc comments for all public APIs (See "Final Validation & Release" → Documentation)
 - Detailed common patterns for each layer in CLAUDE.md (examples/ directory provides this)
 - Tool development patterns with CoreContext (examples/ directory provides this)
 
