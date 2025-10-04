@@ -62,6 +62,17 @@ export const createSqlDelegateTool: ToolFactory = (context: CoreContext) => ({
     'Execute SQL operations (query, stored procedure, or function) on behalf of the authenticated user using their legacy Windows credentials. Requires sql:query, sql:procedure, or sql:function permission.',
   schema: sqlDelegateSchema,
 
+  // Visibility filtering using canAccess (two-tier security)
+  canAccess: (mcpContext: MCPContext) => {
+    // Only show to authenticated users with sql permissions
+    if (!mcpContext.session || mcpContext.session.rejected) {
+      return false;
+    }
+
+    // Check if user has ANY sql permission (sql:query, sql:procedure, or sql:function)
+    return mcpContext.session.permissions.some(p => p.startsWith('sql:'));
+  },
+
   handler: async (params: SqlDelegateParams, mcpContext: MCPContext): Promise<LLMResponse> => {
     try {
       // Require appropriate permission based on action

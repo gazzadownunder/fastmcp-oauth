@@ -82,8 +82,7 @@ src/
 │   ├── tools/                # MCP Tools (refactored with factories)
 │   │   ├── health-check.ts
 │   │   ├── user-info.ts
-│   │   ├── audit-log.ts
-│   │   └── index.ts
+│   │   └── index.ts          # (audit-log removed - security decision)
 │   └── index.ts              # MCP exports
 │
 ├── config/                   # Updated Config Management
@@ -956,6 +955,15 @@ export class Authorization {
 This prevents unauthorized users from seeing tools they can't use, while also enforcing permissions at execution time.
 
 #### 3.4 Refactor Tools with CoreContext and LLM Support (Enhancement v0.2)
+
+**Planned Tools**: health-check, user-info ~~, audit-log~~
+
+**Security Note**: The `audit-log` tool has been **removed from scope** based on security analysis:
+- **Segregation of Administrative Duties**: Audit review should be performed through dedicated admin interfaces (SIEM, database query tools, admin dashboards) rather than exposed via MCP client
+- **Low Value-to-Risk Ratio**: Exposing audit data creates reconnaissance vectors with limited operational value
+- **Write-Only API Design**: AuditService intentionally implements write-only API to prevent O(n) performance issues
+- **Alternative Access**: Administrators access audit data directly through persistent storage backend with proper indexing and access controls
+
 **File**: `src/mcp/tools/health-check.ts`
 
 **Purpose**: Tools use CoreContext pattern and provide LLM-friendly error responses.
@@ -1141,8 +1149,8 @@ export class MCPOAuthServer {
     // Enhancement v0.2: Register tools using CoreContext and Contextual Access
     const factories: ToolFactory[] = [
       toolFactories.createHealthCheckTool,
-      toolFactories.createUserInfoTool,
-      toolFactories.createAuditLogTool
+      toolFactories.createUserInfoTool
+      // NOTE: audit-log tool removed (security decision - use dedicated admin tools)
       // Add more tool factories here
     ];
 

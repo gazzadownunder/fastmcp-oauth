@@ -91,9 +91,19 @@ export class RoleMapper {
    * @returns Result with primary role, custom roles, and failure info
    */
   determineRoles(roles: string[]): RoleMapperResult {
+    console.log('[RoleMapper] determineRoles called with:', roles);
+    console.log('[RoleMapper] Config:', {
+      adminRoles: this.config.adminRoles,
+      userRoles: this.config.userRoles,
+      guestRoles: this.config.guestRoles,
+      customRoles: this.config.customRoles,
+      defaultRole: this.config.defaultRole
+    });
+
     try {
       // Validate input
       if (!Array.isArray(roles)) {
+        console.log('[RoleMapper] Invalid input: not an array');
         return {
           primaryRole: UNASSIGNED_ROLE,
           customRoles: [],
@@ -104,8 +114,10 @@ export class RoleMapper {
 
       // Filter out null/undefined values
       const validRoles = roles.filter(r => typeof r === 'string' && r.length > 0);
+      console.log('[RoleMapper] Valid roles after filtering:', validRoles);
 
       if (validRoles.length === 0) {
+        console.log('[RoleMapper] No valid roles, using default:', this.config.defaultRole);
         // No valid roles - use default
         return {
           primaryRole: this.config.defaultRole || ROLE_GUEST,
@@ -116,7 +128,10 @@ export class RoleMapper {
 
       // Check priority order
       const primaryRole = this.determinePrimaryRole(validRoles);
+      console.log('[RoleMapper] Primary role determined:', primaryRole);
+
       const customRoles = this.determineCustomRoles(validRoles, primaryRole);
+      console.log('[RoleMapper] Custom roles determined:', customRoles);
 
       return {
         primaryRole,
@@ -125,6 +140,7 @@ export class RoleMapper {
       };
     } catch (error) {
       // CRITICAL: Catch ALL errors and return UNASSIGNED_ROLE
+      console.log('[RoleMapper] Error during role mapping:', error);
       return {
         primaryRole: UNASSIGNED_ROLE,
         customRoles: [],

@@ -24,7 +24,19 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx madge:*)"
+      "Bash(npx madge:*)",
+      "Bash(mkdir:*)",
+      "Bash(timeout 30 npm test -- --run)",
+      "Bash(sed:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(start-test-server.bat)",
+      "Bash(cmd:*)",
+      "Bash(set CONFIG_PATH=./test-harness/config/v2-keycloak-oauth-only.json)",
+      "Bash($env:NODE_ENV=\"development\")",
+      "Bash($env:CONFIG_PATH=\"./test-harness/config/v2-keycloak-oauth-only.json\")",
+      "Bash($env:SERVER_PORT=\"3000\")",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

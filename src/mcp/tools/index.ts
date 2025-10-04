@@ -7,9 +7,17 @@
  */
 
 import { createSqlDelegateTool } from './sql-delegate.js';
+import { createHealthCheckTool } from './health-check.js';
+import { createUserInfoTool } from './user-info.js';
+import { createSQLWriteTool } from './sql-write.js';
+import { createSQLReadTool } from './sql-read.js';
 import type { ToolFactory } from '../types.js';
 
 export { createSqlDelegateTool } from './sql-delegate.js';
+export { createHealthCheckTool } from './health-check.js';
+export { createUserInfoTool } from './user-info.js';
+export { createSQLWriteTool } from './sql-write.js';
+export { createSQLReadTool } from './sql-read.js';
 
 /**
  * Get all available tool factories
@@ -30,7 +38,10 @@ export { createSqlDelegateTool } from './sql-delegate.js';
 export function getAllToolFactories(): ToolFactory[] {
   return [
     createSqlDelegateTool,
-    // Add more tool factories here as they are created
+    createHealthCheckTool,
+    createUserInfoTool,
+    createSQLWriteTool,
+    createSQLReadTool,
   ];
 }
 

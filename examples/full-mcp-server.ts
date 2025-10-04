@@ -76,15 +76,11 @@ async function main() {
       name: toolRegistration.name,
       description: toolRegistration.schema.description || `Tool: ${toolRegistration.name}`,
       parameters: toolRegistration.schema,
+      canAccess: toolRegistration.canAccess,  // FastMCP's native canAccess API
       execute: async (args, context) => {
         const mcpContext: MCPContext = {
           session: (context as any).session
         };
-
-        // Access check (Contextual Access)
-        if (toolRegistration.accessCheck && !toolRegistration.accessCheck(mcpContext)) {
-          throw new Error('Access denied');
-        }
 
         return toolRegistration.handler(args, mcpContext);
       }

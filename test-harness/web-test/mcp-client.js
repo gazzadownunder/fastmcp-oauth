@@ -249,6 +249,10 @@ class MCPClient {
         return data;
     }
 
+    async listTools() {
+        return await this.sendRequest('tools/list', {});
+    }
+
     async callTool(toolName, args) {
         return await this.sendRequest('tools/call', {
             name: toolName,

@@ -31,3 +31,10 @@ export { DelegationRegistry } from './registry.js';
 
 export { SQLDelegationModule } from './sql/sql-module.js';
 export type { SQLConfig } from './sql/sql-module.js';
+
+// ============================================================================
+// Kerberos Delegation Module (Placeholder)
+// ============================================================================
+
+export { KerberosDelegationModule } from "./kerberos/kerberos-module.js";
+export type { KerberosConfig, KerberosAction, KerberosParams } from "./kerberos/types.js";

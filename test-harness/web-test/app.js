@@ -202,6 +202,7 @@ async function exchangeToken() {
         document.getElementById('exchanged-token').textContent = exchangedToken.substring(0, 100) + '...';
 
         // Enable MCP tools
+        document.getElementById('list-tools-btn').disabled = false;
         document.getElementById('user-info-btn').disabled = false;
         document.getElementById('health-btn').disabled = false;
         document.getElementById('sql-btn').disabled = false;
@@ -289,6 +290,7 @@ async function initializeMcpSession(tokenOverride = null) {
         document.getElementById('mcp-status').className = 'status connected';
 
         // Enable MCP tools
+        document.getElementById('list-tools-btn').disabled = false;
         document.getElementById('user-info-btn').disabled = false;
         document.getElementById('health-btn').disabled = false;
         document.getElementById('sql-btn').disabled = false;
@@ -296,6 +298,57 @@ async function initializeMcpSession(tokenOverride = null) {
     } catch (error) {
         log(`✗ MCP initialization error: ${error.message}`, 'error');
         console.error('MCP initialization error:', error);
+    }
+}
+
+// List available tools from MCP server
+async function listAvailableTools() {
+    if (!mcpClient) {
+        log('✗ MCP client not connected', 'error');
+        return;
+    }
+
+    try {
+        log('Listing available tools from MCP server...', 'info');
+        document.getElementById('mcp-status').textContent = 'Listing tools...';
+        document.getElementById('mcp-status').className = 'status exchanged';
+
+        // Call tools/list via MCP client
+        const response = await mcpClient.listTools();
+
+        console.log('List tools response:', response);
+
+        // Update status
+        if (response.error) {
+            document.getElementById('mcp-status').textContent = 'Error';
+            document.getElementById('mcp-status').className = 'status disconnected';
+            log(`✗ List tools failed: ${response.error.message}`, 'error');
+        } else {
+            document.getElementById('mcp-status').textContent = 'Connected';
+            document.getElementById('mcp-status').className = 'status connected';
+
+            const toolCount = response.result?.tools?.length || 0;
+            log(`✓ Found ${toolCount} available tools!`, 'success');
+
+            // Log each tool name
+            if (response.result?.tools) {
+                response.result.tools.forEach((tool, idx) => {
+                    log(`  ${idx + 1}. ${tool.name} - ${tool.description}`, 'info');
+                });
+            }
+        }
+
+        // Display response
+        document.getElementById('mcp-response').style.display = 'block';
+        document.getElementById('mcp-response').textContent = JSON.stringify(response, null, 2);
+
+    } catch (error) {
+        log(`✗ List tools error: ${error.message}`, 'error');
+        document.getElementById('mcp-status').textContent = 'Error';
+        document.getElementById('mcp-status').className = 'status disconnected';
+        document.getElementById('mcp-response').style.display = 'block';
+        document.getElementById('mcp-response').textContent = `Error: ${error.message}`;
+        console.error('List tools error:', error);
     }
 }
 

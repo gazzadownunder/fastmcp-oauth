@@ -139,18 +139,23 @@ export interface ToolRegistration<P = any, R = LLMResponse> {
   /**
    * Optional contextual access check
    *
-   * Allows tools to perform fine-grained authorization based on the request context.
-   * Return false to deny access before handler execution.
+   * Maps to FastMCP's `canAccess` property for tool visibility control.
+   * Return false to hide tool from client before handler execution.
+   *
+   * This implements the visibility tier of two-tier security (defense-in-depth).
+   * The handler should still perform authorization checks (execution tier).
+   *
+   * @see Phase-0-Discovery-Report.md for FastMCP API verification
    *
    * @example
    * ```typescript
-   * accessCheck: (context) => {
-   *   // Only allow admins to access this tool
+   * canAccess: (context) => {
+   *   // Only show this tool to admins
    *   return context.session.role === 'admin';
    * }
    * ```
    */
-  accessCheck?: (context: MCPContext) => boolean;
+  canAccess?: (context: MCPContext) => boolean;
 }
 
 /**

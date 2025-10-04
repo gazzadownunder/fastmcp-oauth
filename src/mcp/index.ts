@@ -51,6 +51,12 @@ export { ConfigOrchestrator } from './orchestrator.js';
 export type { OrchestratorOptions } from './orchestrator.js';
 
 // ============================================================================
+// MCP OAuth Server (High-Level API)
+// ============================================================================
+
+export { MCPOAuthServer } from './server.js';
+
+// ============================================================================
 // Tool Factories
 // ============================================================================
 

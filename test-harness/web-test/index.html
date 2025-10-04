@@ -321,6 +321,10 @@
             <span class="status disconnected" id="mcp-status">Not Connected</span>
 
             <div class="mcp-tools">
+                <button onclick="listAvailableTools()" id="list-tools-btn" disabled style="background: #17a2b8; margin-bottom: 15px;">
+                    📋 List Available Tools
+                </button>
+
                 <button class="tool-button" onclick="callMcpTool('user-info')" id="user-info-btn" disabled>
                     Call: user-info
                 </button>

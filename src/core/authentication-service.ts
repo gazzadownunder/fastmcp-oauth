@@ -151,15 +151,27 @@ export class AuthenticationService {
       const rolesClaimPath = idpConfig.claimMappings.roles;
       const rolesFromClaims = validationResult.claims[rolesClaimPath];
 
+      console.log('[AuthenticationService] Role extraction:', {
+        rolesClaimPath,
+        rolesFromClaims,
+        rolesType: typeof rolesFromClaims,
+        isArray: Array.isArray(rolesFromClaims),
+        allClaimsKeys: Object.keys(validationResult.claims)
+      });
+
       // Let RoleMapper handle validation - pass raw value
       // If it's a string, convert to array; otherwise pass as-is for validation
       const rolesInput = typeof rolesFromClaims === 'string'
         ? [rolesFromClaims] // String -> single-element array
         : rolesFromClaims; // Pass as-is (array, undefined, null, number, etc.)
 
+      console.log('[AuthenticationService] Roles input to RoleMapper:', rolesInput);
+
       const roleResult: RoleMapperResult = this.roleMapper.determineRoles(
         rolesInput as string[] // Type assertion - RoleMapper will validate
       );
+
+      console.log('[AuthenticationService] RoleMapper result:', roleResult);
 
       // Step 3: Create session
       const session = this.sessionManager.createSession(

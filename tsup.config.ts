@@ -1,19 +1,20 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: {
-    'index-simple': 'src/index-simple.ts',
-    'start-server': 'src/start-server.ts',
-  },
+  entry: [
+    'src/**/*.ts',
+    'test-harness/v2-test-server.ts' // Include v2 test server
+  ],
   format: ['esm'],
   target: 'node18',
   clean: true,
   dts: false, // Temporarily disabled due to FastMCP type conflicts
   sourcemap: true,
   splitting: false,
-  bundle: true,
+  bundle: false, // Don't bundle - preserve module structure
   external: ['fastmcp', 'jose', 'mssql', 'kerberos'],
   esbuildOptions: (options) => {
     options.conditions = ['module'];
   },
+  outDir: 'dist',
 });

@@ -1,14 +1,18 @@
 @echo off
-echo Starting MCP OAuth OBO Server for testing...
+echo ═══════════════════════════════════════════════════════════
+echo   MCP OAuth v2 Test Server - New Modular Framework
+echo ═══════════════════════════════════════════════════════════
 echo.
-echo Configuration: config/oauth-obo-test.json
-echo Port: 3000
-echo Endpoint: /mcp
+echo Configuration: test-harness\config\v2-keycloak-oauth-only.json
+echo Port:          3000
+echo Transport:     http-stream
+echo Framework:     v2.0.0 (Modular Architecture)
+echo.
+echo ═══════════════════════════════════════════════════════════
 echo.
 
 set NODE_ENV=development
-set CONFIG_PATH=config\oauth-obo-test.json
+set CONFIG_PATH=./test-harness/config/v2-keycloak-oauth-only.json
 set SERVER_PORT=3000
-set MCP_ENDPOINT=/mcp
 
-node dist\start-server.js
+node dist/test-harness/v2-test-server.js

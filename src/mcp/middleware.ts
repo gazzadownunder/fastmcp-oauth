@@ -78,11 +78,18 @@ export class MCPAuthMiddleware {
    * @throws {OAuthSecurityError} If authentication fails or session is rejected
    */
   async authenticate(request: FastMCPRequest): Promise<FastMCPAuthResult> {
+    console.log('[MCPAuthMiddleware] Authenticating request:', {
+      method: request.method,
+      path: request.path,
+      hasAuthHeader: !!(request.headers['authorization'] || request.headers['Authorization'])
+    });
+
     try {
       // Extract Bearer token
       const token = this.extractToken(request);
 
       if (!token) {
+        console.log('[MCPAuthMiddleware] ❌ No Bearer token found');
         throw createSecurityError(
           'MISSING_TOKEN',
           'Missing Authorization header with Bearer token',
@@ -90,12 +97,23 @@ export class MCPAuthMiddleware {
         );
       }
 
+      console.log('[MCPAuthMiddleware] ✓ Token extracted, validating...');
+
       // Authenticate with AuthenticationService
       const authResult = await this.authService.authenticate(token);
+
+      console.log('[MCPAuthMiddleware] Auth result:', {
+        rejected: authResult.rejected,
+        sessionRejected: authResult.session.rejected,
+        role: authResult.session.role,
+        customRoles: authResult.session.customRoles,
+        userId: authResult.session.userId
+      });
 
       // CRITICAL (GAP #1): Dual rejection check
       // Check 1: authResult.rejected (from AuthenticationService)
       if (authResult.rejected) {
+        console.log('[MCPAuthMiddleware] ❌ Auth result rejected:', authResult.rejectionReason);
         throw createSecurityError(
           'SESSION_REJECTED',
           authResult.rejectionReason || 'Authentication rejected',
@@ -106,6 +124,7 @@ export class MCPAuthMiddleware {
       // Check 2: session.rejected (from UserSession)
       // This prevents timing attacks by ensuring both rejection flags are checked
       if (authResult.session.rejected) {
+        console.log('[MCPAuthMiddleware] ❌ Session rejected');
         throw createSecurityError(
           'SESSION_REJECTED',
           'Session rejected - insufficient permissions or unassigned role',
@@ -114,12 +133,14 @@ export class MCPAuthMiddleware {
       }
 
       // Authentication successful
+      console.log('[MCPAuthMiddleware] ✓ Authentication successful');
       return {
         authenticated: true,
         session: authResult.session,
       };
     } catch (error) {
       // Convert to FastMCP auth result
+      console.log('[MCPAuthMiddleware] ❌ Authentication error:', error);
       if (error instanceof Error) {
         return {
           authenticated: false,
@@ -200,7 +221,7 @@ export class MCPAuthMiddleware {
  * @throws {Error} If session is rejected
  */
 export function requireAuth(context: MCPContext): void {
-  if (context.session.rejected) {
+  if (!context.session || context.session.rejected) {
     throw createSecurityError(
       'UNAUTHENTICATED',
       'Authentication required to access this tool',

@@ -96,8 +96,7 @@ export class ConfigOrchestrator {
     // Create AuditService (Null Object Pattern if disabled)
     const auditService = this.createAuditService(config);
 
-    // Create JWTValidator
-    // Create AuthenticationService
+    // Create AuthenticationService (NOT initialized yet - MCPOAuthServer.start() will initialize)
     const authenticationService = this.createAuthenticationService(
       config,
       auditService
@@ -139,24 +138,47 @@ export class ConfigOrchestrator {
 
   /**
    * Create AuthenticationService
+   *
+   * NOTE: Does NOT initialize - MCPOAuthServer.start() will call initialize()
+   * This follows the pattern from refactor.md Phase 3.5:
+   * - Constructor creates services
+   * - start() initializes services (before validation)
    */
   private createAuthenticationService(
     config: UnifiedConfig,
     auditService: AuditService
   ): AuthenticationService {
     // Extract auth config for AuthenticationService
+    const roleMappings = config.auth.trustedIDPs[0]?.roleMappings;
+
+    console.log('[ConfigOrchestrator] Raw roleMappings from config:', roleMappings);
+
+    // Build role mapping config with support for custom roles
+    const customRolesExtracted = roleMappings ? Object.keys(roleMappings)
+      .filter(key => !['admin', 'user', 'guest', 'defaultRole'].includes(key))
+      .reduce((acc, key) => {
+        acc[key] = roleMappings[key as keyof typeof roleMappings] as string[];
+        return acc;
+      }, {} as Record<string, string[]>) : {};
+
+    console.log('[ConfigOrchestrator] Extracted custom roles:', customRolesExtracted);
+
+    const roleMappingConfig = roleMappings ? {
+      adminRoles: roleMappings.admin,
+      userRoles: roleMappings.user,
+      guestRoles: roleMappings.guest,
+      defaultRole: roleMappings.defaultRole,
+      customRoles: customRolesExtracted
+    } : undefined;
+
+    console.log('[ConfigOrchestrator] Final role mapping config:', roleMappingConfig);
+
     const authConfig = {
       idpConfigs: config.auth.trustedIDPs,
-      roleMappings: config.auth.trustedIDPs[0]?.roleMappings
-        ? {
-            adminRoles: config.auth.trustedIDPs[0].roleMappings.admin,
-            userRoles: config.auth.trustedIDPs[0].roleMappings.user,
-            guestRoles: config.auth.trustedIDPs[0].roleMappings.guest,
-            defaultRole: config.auth.trustedIDPs[0].roleMappings.defaultRole,
-          }
-        : undefined,
+      roleMappings: roleMappingConfig,
     };
 
+    // Return uninitialized service (caller must call initialize() before use)
     return new AuthenticationService(authConfig, auditService);
   }
 
