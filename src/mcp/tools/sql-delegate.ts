@@ -17,6 +17,7 @@ import type { CoreContext } from '../../core/index.js';
 import type { ToolFactory, LLMResponse, MCPContext } from '../types.js';
 import { requirePermission } from '../middleware.js';
 import { OAuthSecurityError } from '../../utils/errors.js';
+import { handleToolError } from '../utils/error-helpers.js';
 
 // ============================================================================
 // Tool Schema
@@ -133,8 +134,9 @@ export const createSqlDelegateTool: ToolFactory = (context: CoreContext) => ({
         data: result.data,
       };
     } catch (error) {
-      // MANDATORY (GAP #4): Catch ALL OAuthSecurityError and convert to LLMFailureResponse
+      // SECURITY (SEC-3): Handle security and non-security errors differently
       if (error instanceof OAuthSecurityError || (error as any).code) {
+        // Security error: Return specific error code for user guidance
         const secError = error as OAuthSecurityError;
         return {
           status: 'failure',
@@ -143,12 +145,16 @@ export const createSqlDelegateTool: ToolFactory = (context: CoreContext) => ({
         };
       }
 
-      // Handle unexpected errors
-      return {
-        status: 'failure',
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
-      };
+      // SECURITY (SEC-3): Non-security error - mask technical details
+      // Logs full error to audit, returns generic message to client
+      const errorResponse = await handleToolError(
+        error,
+        'sql-delegate',
+        mcpContext,
+        context.auditService,
+        params
+      );
+      return errorResponse;
     }
   },
 });
