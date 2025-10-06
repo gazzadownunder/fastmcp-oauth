@@ -120,6 +120,7 @@ export const LegacyConfigSchema = z.object({
   trustedIDPs: z.array(z.any()).min(1),
   rateLimiting: z.any().optional(),
   audit: z.any().optional(),
+  permissions: z.any().optional(), // Permissions may exist in legacy format
   sql: z.any().optional(),
   kerberos: z.any().optional(),
 });

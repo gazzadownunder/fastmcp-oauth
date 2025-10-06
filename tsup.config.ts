@@ -3,6 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: [
     'src/**/*.ts',
+    'examples/**/*.ts', // Application examples for framework users
     'test-harness/v2-test-server.ts' // Include v2 test server
   ],
   format: ['esm'],

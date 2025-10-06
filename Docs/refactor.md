@@ -378,14 +378,36 @@ export class RoleMapper {
 #### 1.5 Create Session Manager with Migration Support (Enhancement v0.2)
 **File**: `src/core/session-manager.ts`
 
+**SECURITY PRINCIPLE**: Zero-Default Permissions Policy
+
+> **Framework MUST NOT assign permissions by default. All permissions MUST be explicitly configured by framework users.**
+
 ```typescript
+export interface PermissionConfig {
+  adminPermissions?: string[];
+  userPermissions?: string[];
+  guestPermissions?: string[];
+  customPermissions?: Record<string, string[]>;
+}
+
 export class SessionManager {
   private readonly SESSION_VERSION = 1; // Current schema version
+  private config: PermissionConfig;
+
+  // SECURITY: Constructor accepts optional config, defaults to EMPTY permissions
+  constructor(config?: PermissionConfig) {
+    // CRITICAL: No default permissions - users MUST explicitly configure
+    this.config = {
+      adminPermissions: config?.adminPermissions || [],  // ✅ Empty by default
+      userPermissions: config?.userPermissions || [],    // ✅ Empty by default
+      guestPermissions: config?.guestPermissions || [],  // ✅ Empty by default
+      customPermissions: config?.customPermissions || {},
+    };
+  }
 
   createSession(jwtPayload: JWTPayload, roleResult: RoleMapperResult): UserSession {
-    const permissions = roleResult.primaryRole === UNASSIGNED_ROLE
-      ? []
-      : this.getPermissions(roleResult.primaryRole);
+    // Get permissions from config (returns [] if not configured)
+    const permissions = this.getPermissions(roleResult.primaryRole);
 
     // MANDATORY (GAP #2): Runtime assertion for UNASSIGNED_ROLE
     if (roleResult.primaryRole === UNASSIGNED_ROLE && permissions.length > 0) {
@@ -441,13 +463,35 @@ export class SessionManager {
     return rawSession as UserSession;
   }
 
+  // SECURITY: Map roles to permissions from CONFIG (not hardcoded)
   private getPermissions(role: string): string[] {
-    // Map roles to permissions
+    // Standard roles - use configured permissions
+    if (role === ROLE_ADMIN) {
+      return this.config.adminPermissions || [];
+    }
+    if (role === ROLE_USER) {
+      return this.config.userPermissions || [];
+    }
+    if (role === ROLE_GUEST) {
+      return this.config.guestPermissions || [];
+    }
+
+    // UNASSIGNED_ROLE - always empty
+    if (role === UNASSIGNED_ROLE) {
+      return [];
+    }
+
+    // Custom roles - look up in customPermissions map
+    return this.config.customPermissions?.[role] || [];
   }
 }
 ```
 
-**Critical Feature**: `migrateSession()` ensures backward compatibility with existing sessions in production, preventing crashes during deployment.
+**Critical Security Features**:
+- **Zero-Default Policy**: Framework assigns NO permissions unless explicitly configured
+- **Configuration Required**: Users must provide PermissionConfig to grant any permissions
+- **Fail-Safe Design**: Missing config = empty permissions = tools not visible/executable
+- **Explicit Consent**: Users must consciously grant each permission in configuration
 
 #### 1.6 Create Authentication Service with Rejection Policy (Enhancement v0.2)
 **File**: `src/core/authentication-service.ts`
@@ -1214,12 +1258,38 @@ export type {
 
 **Core Auth Schema** (`src/config/schemas/core.ts`):
 ```typescript
+// SECURITY: Permission configuration with zero-default policy
+export const PermissionConfigSchema = z.object({
+  adminPermissions: z
+    .array(z.string())
+    .min(0)
+    .describe('Permissions granted to admin role'),
+  userPermissions: z
+    .array(z.string())
+    .min(0)
+    .describe('Permissions granted to user role'),
+  guestPermissions: z
+    .array(z.string())
+    .min(0)
+    .describe('Permissions granted to guest role'),
+  customPermissions: z
+    .record(z.array(z.string()))
+    .optional()
+    .default({})
+    .describe('Custom role to permissions mapping'),
+});
+
 export const CoreAuthConfigSchema = z.object({
   trustedIDPs: z.array(IDPConfigSchema).min(1),
   rateLimiting: RateLimitConfigSchema.optional(),
-  audit: AuditConfigSchema.optional()
+  audit: AuditConfigSchema.optional(),
+  permissions: PermissionConfigSchema.describe(
+    'Role to permission mappings (REQUIRED - no framework defaults)'
+  )
 });
 ```
+
+**SECURITY NOTE**: The `permissions` field is **REQUIRED** in the schema. Framework does NOT provide default permissions - users MUST explicitly configure all permissions in their JSON config file. This prevents unintended privilege escalation and ensures explicit consent for all access grants.
 
 **Delegation Schema** (`src/config/schemas/delegation.ts`):
 ```typescript
@@ -1302,7 +1372,8 @@ export function migrateOldConfig(oldConfig: OAuthOBOConfig): UnifiedConfig {
     auth: {
       trustedIDPs: oldConfig.trustedIDPs,
       rateLimiting: oldConfig.rateLimiting,
-      audit: oldConfig.audit
+      audit: oldConfig.audit,
+      permissions: oldConfig.permissions // Migrate permissions if present
     },
     delegation: {
       sql: oldConfig.sql,
@@ -1316,6 +1387,99 @@ export function migrateOldConfig(oldConfig: OAuthOBOConfig): UnifiedConfig {
   };
 }
 ```
+
+#### 4.4 Example Configuration with Permissions (SECURITY)
+
+**Example: Unified Configuration** (`config/unified-config.json`):
+```json
+{
+  "auth": {
+    "trustedIDPs": [
+      {
+        "issuer": "https://auth.example.com",
+        "discoveryUrl": "https://auth.example.com/.well-known/oauth-authorization-server",
+        "jwksUri": "https://auth.example.com/.well-known/jwks.json",
+        "audience": "mcp-server",
+        "algorithms": ["RS256", "ES256"],
+        "claimMappings": {
+          "legacyUsername": "legacy_sam_account",
+          "roles": "user_roles",
+          "scopes": "scopes"
+        },
+        "roleMappings": {
+          "admin": ["admin", "administrator"],
+          "user": ["user", "member"],
+          "guest": ["guest"],
+          "defaultRole": "guest"
+        },
+        "security": {
+          "clockTolerance": 60,
+          "maxTokenAge": 3600,
+          "requireNbf": true
+        }
+      }
+    ],
+    "rateLimiting": {
+      "maxRequests": 100,
+      "windowMs": 900000
+    },
+    "audit": {
+      "enabled": true,
+      "logAllAttempts": true,
+      "retentionDays": 90
+    },
+    "permissions": {
+      "adminPermissions": [
+        "read",
+        "write",
+        "delete",
+        "admin",
+        "sql:query",
+        "sql:procedure",
+        "sql:function"
+      ],
+      "userPermissions": [
+        "read",
+        "write",
+        "sql:query"
+      ],
+      "guestPermissions": [
+        "read"
+      ],
+      "customPermissions": {
+        "write": ["sql:query", "sql:procedure"],
+        "read": ["sql:query"]
+      }
+    }
+  },
+  "delegation": {
+    "modules": {
+      "sql": {
+        "server": "sql01.company.com",
+        "database": "legacy_app",
+        "options": {
+          "trustedConnection": true,
+          "encrypt": true
+        }
+      }
+    }
+  },
+  "mcp": {
+    "serverName": "MCP OAuth Server",
+    "version": "2.0.0",
+    "transport": "httpStream",
+    "port": 3000
+  }
+}
+```
+
+**CRITICAL SECURITY NOTES**:
+1. **Permissions MUST be explicitly configured** - No framework defaults
+2. **Missing permissions = Empty array** - Tools will not be visible or executable
+3. **Principle of Least Privilege** - Grant only the minimum permissions required
+4. **SQL-specific permissions** - Use namespaced permissions like `sql:query`, `sql:procedure`, `sql:function`
+5. **Custom role permissions** - Map custom roles (e.g., `write`, `read`) to specific permissions
+6. **Audit all permission grants** - Review and document why each permission is needed
 
 ---
 

@@ -151,6 +151,32 @@ export const AuditConfigSchema = z.object({
     .describe('Audit log retention period in days'),
 });
 
+/**
+ * Permission configuration
+ *
+ * Maps roles to their assigned permissions.
+ * SECURITY: Framework does NOT provide defaults - users MUST explicitly configure permissions.
+ */
+export const PermissionConfigSchema = z.object({
+  adminPermissions: z
+    .array(z.string())
+    .min(0)
+    .describe('Permissions granted to admin role'),
+  userPermissions: z
+    .array(z.string())
+    .min(0)
+    .describe('Permissions granted to user role'),
+  guestPermissions: z
+    .array(z.string())
+    .min(0)
+    .describe('Permissions granted to guest role'),
+  customPermissions: z
+    .record(z.array(z.string()))
+    .optional()
+    .default({})
+    .describe('Custom role to permissions mapping'),
+});
+
 // ============================================================================
 // Core Authentication Configuration
 // ============================================================================
@@ -168,6 +194,7 @@ export const CoreAuthConfigSchema = z.object({
     .describe('List of trusted identity providers'),
   rateLimiting: RateLimitConfigSchema.optional().describe('Rate limiting settings'),
   audit: AuditConfigSchema.optional().describe('Audit logging settings'),
+  permissions: PermissionConfigSchema.describe('Role to permission mappings (REQUIRED - no framework defaults)'),
 });
 
 // ============================================================================
@@ -180,4 +207,5 @@ export type SecurityConfig = z.infer<typeof SecurityConfigSchema>;
 export type IDPConfig = z.infer<typeof IDPConfigSchema>;
 export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
 export type AuditConfig = z.infer<typeof AuditConfigSchema>;
+export type PermissionConfig = z.infer<typeof PermissionConfigSchema>;
 export type CoreAuthConfig = z.infer<typeof CoreAuthConfigSchema>;

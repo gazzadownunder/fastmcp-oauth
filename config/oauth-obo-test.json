@@ -36,5 +36,14 @@
     "logAllAttempts": true,
     "logFailedAttempts": true,
     "retentionDays": 7
+  },
+  "permissions": {
+    "adminPermissions": ["read", "write", "delete", "admin", "sql:query", "sql:procedure", "sql:function"],
+    "userPermissions": ["read", "write", "sql:query"],
+    "guestPermissions": ["read"],
+    "customPermissions": {
+      "write": ["sql:query", "sql:procedure"],
+      "read": ["sql:query"]
+    }
   }
 }

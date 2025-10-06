@@ -78,15 +78,12 @@ export class SessionManager {
   private config: PermissionConfig;
 
   constructor(config?: PermissionConfig) {
+    // SECURITY: No default permissions - users MUST explicitly configure
+    // Framework will not assign ANY permissions unless explicitly configured
     this.config = {
-      adminPermissions: config?.adminPermissions || [
-        'read',
-        'write',
-        'delete',
-        'admin',
-      ],
-      userPermissions: config?.userPermissions || ['read', 'write'],
-      guestPermissions: config?.guestPermissions || ['read'],
+      adminPermissions: config?.adminPermissions || [],
+      userPermissions: config?.userPermissions || [],
+      guestPermissions: config?.guestPermissions || [],
       customPermissions: config?.customPermissions || {},
     };
   }
