@@ -20,7 +20,12 @@ import type { RoleMapperResult } from '../../../src/core/types.js';
 describe('SessionManager', () => {
   describe('Session Creation', () => {
     it('should create session with admin role and permissions', () => {
-      const manager = new SessionManager();
+      // SECURITY: Must provide explicit permissions (zero-default policy)
+      const manager = new SessionManager({
+        adminPermissions: ['admin', 'read', 'write'],
+        userPermissions: ['read', 'write'],
+        guestPermissions: ['read'],
+      });
 
       const jwtPayload: JWTPayload = {
         sub: 'user123',
@@ -51,7 +56,12 @@ describe('SessionManager', () => {
     });
 
     it('should create session with user role and permissions', () => {
-      const manager = new SessionManager();
+      // SECURITY: Must provide explicit permissions (zero-default policy)
+      const manager = new SessionManager({
+        adminPermissions: ['admin'],
+        userPermissions: ['read', 'write'],
+        guestPermissions: ['read'],
+      });
 
       const jwtPayload: JWTPayload = {
         sub: 'user456',
@@ -72,7 +82,12 @@ describe('SessionManager', () => {
     });
 
     it('should create session with guest role and permissions', () => {
-      const manager = new SessionManager();
+      // SECURITY: Must provide explicit permissions (zero-default policy)
+      const manager = new SessionManager({
+        adminPermissions: ['admin'],
+        userPermissions: ['read', 'write'],
+        guestPermissions: ['read'],
+      });
 
       const jwtPayload: JWTPayload = {
         sub: 'guest789',
@@ -114,16 +129,18 @@ describe('SessionManager', () => {
       expect(session.rejected).toBe(true); // MUST be rejected
     });
 
-    it('should throw if UNASSIGNED_ROLE has non-empty permissions (safety check)', () => {
-      // This test simulates a configuration bug where UNASSIGNED_ROLE is mapped to permissions
+    it('should NOT throw even if config has UNASSIGNED_ROLE with permissions (SEC-2 defense-in-depth)', () => {
+      // SECURITY (SEC-2): This test validates the early-return defense
+      // Even if configuration is malformed (should be rejected by schema),
+      // getPermissions() early-returns [] for UNASSIGNED_ROLE, preventing runtime errors
       const manager = new SessionManager({
         customPermissions: {
-          [UNASSIGNED_ROLE]: ['read'], // BUG: UNASSIGNED with permissions
+          [UNASSIGNED_ROLE]: ['read'], // ❌ Invalid config (schema should reject)
         },
       });
 
       const jwtPayload: JWTPayload = {
-        sub: 'hacker',
+        sub: 'user123',
       };
 
       const roleResult: RoleMapperResult = {
@@ -132,9 +149,12 @@ describe('SessionManager', () => {
         mappingFailed: true,
       };
 
-      expect(() => manager.createSession(jwtPayload, roleResult)).toThrow(
-        'CRITICAL: UNASSIGNED_ROLE must have empty permissions array'
-      );
+      // SEC-2: Should NOT throw - early return ensures [] permissions
+      const session = manager.createSession(jwtPayload, roleResult);
+
+      expect(session.permissions).toEqual([]);
+      expect(session.rejected).toBe(true);
+      // No exception thrown - fail-safe behavior
     });
   });
 
@@ -240,8 +260,13 @@ describe('SessionManager', () => {
       expect(migrated.permissions).toEqual([]);
     });
 
-    it('should add default permissions for v0 sessions missing permissions', () => {
-      const manager = new SessionManager();
+    it('should add configured permissions for v0 sessions missing permissions', () => {
+      // SECURITY: Must provide explicit permissions (zero-default policy)
+      const manager = new SessionManager({
+        adminPermissions: ['admin'],
+        userPermissions: ['read', 'write'],
+        guestPermissions: ['read'],
+      });
 
       const v0Session = {
         userId: 'user',
@@ -523,6 +548,190 @@ describe('SessionManager', () => {
       expect(session.claims).toEqual(jwtPayload);
       expect(session.claims?.email).toBe('user@example.com');
       expect(session.claims?.custom_claim).toBe('custom_value');
+    });
+  });
+
+  // ============================================================================
+  // SECURITY (SEC-2): UNASSIGNED_ROLE Configuration Guard Tests
+  // ============================================================================
+
+  describe('UNASSIGNED_ROLE Configuration Guard (SEC-2)', () => {
+    describe('Early return protection', () => {
+      it('should return empty permissions for UNASSIGNED_ROLE without checking config', () => {
+        // Even with a config that has customPermissions, UNASSIGNED_ROLE gets []
+        const manager = new SessionManager({
+          adminPermissions: ['admin'],
+          userPermissions: ['read', 'write'],
+          customPermissions: {
+            'custom-role': ['custom-perm'],
+          },
+        });
+
+        const jwtPayload: JWTPayload = { sub: 'user123' };
+        const roleResult: RoleMapperResult = {
+          primaryRole: UNASSIGNED_ROLE,
+          customRoles: [],
+          mappingFailed: true,
+        };
+
+        const session = manager.createSession(jwtPayload, roleResult);
+
+        expect(session.permissions).toEqual([]);
+        expect(session.role).toBe(UNASSIGNED_ROLE);
+        expect(session.rejected).toBe(true);
+      });
+
+      it('should not throw even if config theoretically had customPermissions.unassigned (defensive)', () => {
+        // This test validates defense-in-depth: even if schema validation failed
+        // and config has "unassigned" key, getPermissions() early-returns safely
+        const malformedConfig = {
+          adminPermissions: ['admin'],
+          userPermissions: ['read'],
+          customPermissions: {
+            'unassigned': ['some-permission'], // ❌ Invalid (schema should reject this)
+          },
+        };
+
+        const manager = new SessionManager(malformedConfig);
+
+        const jwtPayload: JWTPayload = { sub: 'user123' };
+        const roleResult: RoleMapperResult = {
+          primaryRole: UNASSIGNED_ROLE,
+          customRoles: [],
+          mappingFailed: true,
+        };
+
+        // Should NOT throw - early return bypasses config lookup
+        const session = manager.createSession(jwtPayload, roleResult);
+
+        expect(session.permissions).toEqual([]);
+        expect(session.role).toBe(UNASSIGNED_ROLE);
+      });
+
+      it('should return empty permissions even if UNASSIGNED_ROLE somehow in customPermissions', () => {
+        // This validates the fail-safe behavior
+        const manager = new SessionManager({
+          adminPermissions: [],
+          userPermissions: [],
+          customPermissions: {
+            'unassigned': ['bad-permission'], // Should be ignored
+          },
+        });
+
+        const jwtPayload: JWTPayload = { sub: 'user123' };
+        const roleResult: RoleMapperResult = {
+          primaryRole: UNASSIGNED_ROLE,
+          customRoles: [],
+          mappingFailed: true,
+        };
+
+        const session = manager.createSession(jwtPayload, roleResult);
+
+        // Early return ensures [] regardless of config
+        expect(session.permissions).toEqual([]);
+      });
+    });
+
+    describe('Standard role behavior', () => {
+      it('should still return admin permissions for ROLE_ADMIN', () => {
+        const manager = new SessionManager({
+          adminPermissions: ['admin', 'superuser'],
+          userPermissions: ['read'],
+        });
+
+        const jwtPayload: JWTPayload = { sub: 'admin123' };
+        const roleResult: RoleMapperResult = {
+          primaryRole: ROLE_ADMIN,
+          customRoles: [],
+          mappingFailed: false,
+        };
+
+        const session = manager.createSession(jwtPayload, roleResult);
+
+        expect(session.permissions).toEqual(['admin', 'superuser']);
+      });
+
+      it('should still return user permissions for ROLE_USER', () => {
+        const manager = new SessionManager({
+          adminPermissions: [],
+          userPermissions: ['read', 'write'],
+        });
+
+        const jwtPayload: JWTPayload = { sub: 'user123' };
+        const roleResult: RoleMapperResult = {
+          primaryRole: ROLE_USER,
+          customRoles: [],
+          mappingFailed: false,
+        };
+
+        const session = manager.createSession(jwtPayload, roleResult);
+
+        expect(session.permissions).toEqual(['read', 'write']);
+      });
+
+      it('should still return guest permissions for ROLE_GUEST', () => {
+        const manager = new SessionManager({
+          adminPermissions: [],
+          userPermissions: [],
+          guestPermissions: ['read-public'],
+        });
+
+        const jwtPayload: JWTPayload = { sub: 'guest123' };
+        const roleResult: RoleMapperResult = {
+          primaryRole: ROLE_GUEST,
+          customRoles: [],
+          mappingFailed: false,
+        };
+
+        const session = manager.createSession(jwtPayload, roleResult);
+
+        expect(session.permissions).toEqual(['read-public']);
+      });
+    });
+
+    describe('Custom role behavior', () => {
+      it('should still return custom role permissions for valid custom roles', () => {
+        const manager = new SessionManager({
+          adminPermissions: [],
+          userPermissions: [],
+          customPermissions: {
+            'developer': ['code', 'deploy'],
+            'analyst': ['read-reports'],
+          },
+        });
+
+        const jwtPayload: JWTPayload = { sub: 'dev123' };
+        const roleResult: RoleMapperResult = {
+          primaryRole: 'developer',
+          customRoles: [],
+          mappingFailed: false,
+        };
+
+        const session = manager.createSession(jwtPayload, roleResult);
+
+        expect(session.permissions).toEqual(['code', 'deploy']);
+      });
+
+      it('should return empty permissions for unknown custom role', () => {
+        const manager = new SessionManager({
+          adminPermissions: [],
+          userPermissions: [],
+          customPermissions: {
+            'known-role': ['permission1'],
+          },
+        });
+
+        const jwtPayload: JWTPayload = { sub: 'user123' };
+        const roleResult: RoleMapperResult = {
+          primaryRole: 'unknown-role', // Not in config
+          customRoles: [],
+          mappingFailed: false,
+        };
+
+        const session = manager.createSession(jwtPayload, roleResult);
+
+        expect(session.permissions).toEqual([]);
+      });
     });
   });
 });

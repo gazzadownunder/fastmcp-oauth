@@ -156,6 +156,7 @@ export const AuditConfigSchema = z.object({
  *
  * Maps roles to their assigned permissions.
  * SECURITY: Framework does NOT provide defaults - users MUST explicitly configure permissions.
+ * SECURITY (SEC-2): Rejects 'unassigned' in customPermissions to prevent config errors.
  */
 export const PermissionConfigSchema = z.object({
   adminPermissions: z
@@ -174,6 +175,17 @@ export const PermissionConfigSchema = z.object({
     .record(z.array(z.string()))
     .optional()
     .default({})
+    .refine(
+      (customPerms) => {
+        // SECURITY (SEC-2): Prevent 'unassigned' in custom permissions
+        // UNASSIGNED_ROLE is a reserved role that must ALWAYS have empty permissions
+        // Allowing it in customPermissions could cause runtime assertion failures
+        return !Object.keys(customPerms || {}).includes('unassigned');
+      },
+      {
+        message: 'customPermissions must not include "unassigned" key - this is a reserved role with no permissions'
+      }
+    )
     .describe('Custom role to permissions mapping'),
 });
 

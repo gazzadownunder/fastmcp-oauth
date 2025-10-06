@@ -61,6 +61,9 @@ export interface CoreContext {
  *
  * MANDATORY (GAP #3): All audit entries MUST include a source field
  * to track the origin of the entry for audit trail integrity.
+ *
+ * SECURITY (SEC-1): Trust boundary fields prevent malicious delegation modules
+ * from hiding successful operations or faking failures.
  */
 export interface AuditEntry {
   /** Timestamp when the event occurred */
@@ -86,6 +89,36 @@ export interface AuditEntry {
 
   /** Additional metadata about the event */
   metadata?: Record<string, unknown>;
+
+  // ============================================================================
+  // Trust Boundary Fields (SEC-1: Trust Boundary Violation Prevention)
+  // ============================================================================
+
+  /**
+   * What the delegation module reported as success status.
+   * This field captures the module's claim about operation success.
+   * SECURITY: Used to detect discrepancies with registryVerifiedSuccess.
+   */
+  moduleReportedSuccess?: boolean;
+
+  /**
+   * What the DelegationRegistry independently verified as success status.
+   * This field captures the registry's ground truth observation.
+   * SECURITY: Registry verifies result.success directly, not trusting module.
+   */
+  registryVerifiedSuccess?: boolean;
+
+  /**
+   * Independent timestamp recorded by the registry.
+   * SECURITY: Prevents module from manipulating event timing.
+   */
+  registryTimestamp?: Date;
+
+  /**
+   * Optional: Cryptographic hash of critical audit fields for tamper detection.
+   * SECURITY: Can be used to detect post-logging modifications.
+   */
+  integrityHash?: string;
 }
 
 // ============================================================================

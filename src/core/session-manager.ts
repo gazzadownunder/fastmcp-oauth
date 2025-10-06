@@ -222,11 +222,23 @@ export class SessionManager {
   /**
    * Get permissions for a given role
    *
+   * SECURITY (SEC-2): UNASSIGNED_ROLE protection with early return
+   * - Returns [] immediately for UNASSIGNED_ROLE (config-independent)
+   * - Prevents configuration errors from causing authentication failures
+   * - Enforces fail-safe behavior: if role is UNASSIGNED, permissions are ALWAYS empty
+   *
    * @param role - Role name
    * @returns Array of permissions
    */
   private getPermissions(role: string): string[] {
-    // Standard roles
+    // SECURITY (SEC-2): UNASSIGNED_ROLE always gets empty permissions
+    // This is a fail-safe that bypasses configuration lookup
+    // Prevents configuration errors from causing authentication failures
+    if (role === UNASSIGNED_ROLE) {
+      return []; // ✅ Early return, config-independent
+    }
+
+    // Standard roles - use configured permissions
     if (role === ROLE_ADMIN) {
       return this.config.adminPermissions || [];
     }
@@ -237,15 +249,9 @@ export class SessionManager {
       return this.config.guestPermissions || [];
     }
 
-    // Custom roles (checked BEFORE UNASSIGNED_ROLE to allow safety assertion to catch config bugs)
+    // Custom roles - look up in customPermissions map
     if (this.config.customPermissions?.[role]) {
       return this.config.customPermissions[role];
-    }
-
-    // UNASSIGNED_ROLE must always return empty array
-    // This should never be reached if createSession() properly enforces the invariant
-    if (role === UNASSIGNED_ROLE) {
-      return [];
     }
 
     // Unknown role - return empty permissions

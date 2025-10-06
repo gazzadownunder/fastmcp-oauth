@@ -398,4 +398,513 @@ describe('DelegationRegistry', () => {
       await registry.delegate('test', session, 'action', {});
     });
   });
+
+  // ============================================================================
+  // SECURITY (SEC-1): Trust Boundary Enforcement Tests
+  // ============================================================================
+
+  describe('Trust Boundary Enforcement (SEC-1)', () => {
+    describe('Trust verification fields', () => {
+      it('should inject registryVerifiedSuccess field', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+        const module = createMockModule('test');
+        const session = createMockSession();
+
+        registry.register(module);
+        await registry.delegate('test', session, 'query', {});
+
+        // Find the delegation audit log (not registration)
+        const delegationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'delegate'
+        );
+        expect(delegationLog).toBeDefined();
+        expect(delegationLog![0]).toHaveProperty('registryVerifiedSuccess', true);
+      });
+
+      it('should inject registryTimestamp field', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+        const module = createMockModule('test');
+        const session = createMockSession();
+
+        registry.register(module);
+        const before = new Date();
+        await registry.delegate('test', session, 'query', {});
+        const after = new Date();
+
+        const delegationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'delegate'
+        );
+        expect(delegationLog).toBeDefined();
+        expect(delegationLog![0]).toHaveProperty('registryTimestamp');
+        const timestamp = delegationLog![0].registryTimestamp as Date;
+        expect(timestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
+        expect(timestamp.getTime()).toBeLessThanOrEqual(after.getTime());
+      });
+
+      it('should inject userId if module omits it', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        // Module that doesn't include userId in audit trail
+        const badModule: DelegationModule = {
+          name: 'bad-module',
+          type: 'test',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: true,
+            data: { result: 'test' },
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:bad-module',
+              action: 'delegate',
+              success: true,
+              // userId deliberately omitted
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(badModule);
+        await registry.delegate('bad-module', session, 'query', {});
+
+        const delegationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'delegate'
+        );
+        expect(delegationLog).toBeDefined();
+        expect(delegationLog![0].userId).toBe('user123');
+      });
+
+      it('should record moduleReportedSuccess from module audit trail', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+        const module = createMockModule('test');
+        const session = createMockSession();
+
+        registry.register(module);
+        await registry.delegate('test', session, 'query', {});
+
+        const delegationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'delegate'
+        );
+        expect(delegationLog).toBeDefined();
+        expect(delegationLog![0]).toHaveProperty('moduleReportedSuccess', true);
+      });
+    });
+
+    describe('Trust boundary violations', () => {
+      it('should detect when module reports success=true but result.success=false', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        // Malicious module: reports success in audit but returns failure
+        const maliciousModule: DelegationModule = {
+          name: 'malicious',
+          type: 'test',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: false, // Registry sees failure
+            error: 'Operation failed',
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:malicious',
+              action: 'query',
+              success: true, // But module claims success!
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(maliciousModule);
+        await registry.delegate('malicious', session, 'query', {});
+
+        // Should log trust_boundary_violation
+        const violationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'trust_boundary_violation'
+        );
+        expect(violationLog).toBeDefined();
+        expect(violationLog![0].success).toBe(false);
+        expect(violationLog![0].source).toBe('delegation:registry:security');
+      });
+
+      it('should detect when module reports success=false but result.success=true', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        // Malicious module: reports failure in audit but returns success
+        const maliciousModule: DelegationModule = {
+          name: 'malicious',
+          type: 'test',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: true, // Registry sees success
+            data: { result: 'hidden' },
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:malicious',
+              action: 'query',
+              success: false, // But module hides it!
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(maliciousModule);
+        await registry.delegate('malicious', session, 'query', {});
+
+        // Should log trust_boundary_violation
+        const violationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'trust_boundary_violation'
+        );
+        expect(violationLog).toBeDefined();
+      });
+
+      it('should log trust_boundary_violation event when discrepancy detected', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        const maliciousModule: DelegationModule = {
+          name: 'malicious',
+          type: 'database',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: true,
+            data: { result: 'data' },
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:malicious',
+              action: 'query',
+              success: false, // Discrepancy
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(maliciousModule);
+        await registry.delegate('malicious', session, 'query', {});
+
+        const violationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'trust_boundary_violation'
+        );
+        expect(violationLog).toBeDefined();
+        expect(violationLog![0]).toMatchObject({
+          source: 'delegation:registry:security',
+          action: 'trust_boundary_violation',
+          success: false,
+          userId: 'user123',
+        });
+        expect(violationLog![0].reason).toContain('malicious');
+        expect(violationLog![0].reason).toContain('reported success=false');
+        expect(violationLog![0].reason).toContain('observed success=true');
+      });
+
+      it('should include module name in violation metadata', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        const maliciousModule: DelegationModule = {
+          name: 'evil-module',
+          type: 'database',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: true,
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:evil-module',
+              action: 'query',
+              success: false,
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(maliciousModule);
+        await registry.delegate('evil-module', session, 'query', {});
+
+        const violationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'trust_boundary_violation'
+        );
+        expect(violationLog).toBeDefined();
+        expect(violationLog![0].metadata).toMatchObject({
+          moduleName: 'evil-module',
+          moduleType: 'database',
+          delegationAction: 'query',
+        });
+      });
+
+      it('should include both success values in violation metadata', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        const maliciousModule: DelegationModule = {
+          name: 'malicious',
+          type: 'test',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: false,
+            error: 'failed',
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:malicious',
+              action: 'query',
+              success: true,
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(maliciousModule);
+        await registry.delegate('malicious', session, 'query', {});
+
+        const violationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'trust_boundary_violation'
+        );
+        expect(violationLog).toBeDefined();
+        expect(violationLog![0].metadata).toMatchObject({
+          moduleReportedSuccess: true,
+          registryVerifiedSuccess: false,
+        });
+      });
+    });
+
+    describe('Honest module behavior', () => {
+      it('should not log violation when module and registry agree on success=true', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        const honestModule: DelegationModule = {
+          name: 'honest',
+          type: 'test',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: true,
+            data: { result: 'data' },
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:honest',
+              action: 'query',
+              success: true, // Matches result.success
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(honestModule);
+        await registry.delegate('honest', session, 'query', {});
+
+        // Should NOT log trust_boundary_violation
+        const violationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'trust_boundary_violation'
+        );
+        expect(violationLog).toBeUndefined();
+      });
+
+      it('should not log violation when module and registry agree on success=false', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        const honestModule: DelegationModule = {
+          name: 'honest',
+          type: 'test',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: false,
+            error: 'Legitimate error',
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:honest',
+              action: 'query',
+              success: false, // Matches result.success
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(honestModule);
+        await registry.delegate('honest', session, 'query', {});
+
+        // Should NOT log trust_boundary_violation
+        const violationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'trust_boundary_violation'
+        );
+        expect(violationLog).toBeUndefined();
+      });
+    });
+
+    describe('Audit trail enhancement', () => {
+      it('should preserve all original audit trail fields', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        const module: DelegationModule = {
+          name: 'test',
+          type: 'database',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: true,
+            data: { rows: [] },
+            auditTrail: {
+              timestamp: new Date('2025-01-01'),
+              source: 'delegation:test',
+              action: 'custom-query',
+              success: true,
+              reason: 'User requested data',
+              metadata: { queryType: 'SELECT', rowCount: 42 },
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(module);
+        await registry.delegate('test', session, 'custom-query', {});
+
+        const delegationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'custom-query'
+        );
+        expect(delegationLog).toBeDefined();
+        expect(delegationLog![0]).toMatchObject({
+          source: 'delegation:test',
+          action: 'custom-query',
+          success: true,
+          reason: 'User requested data',
+          metadata: { queryType: 'SELECT', rowCount: 42 },
+        });
+      });
+
+      it('should add integrity fields without breaking existing metadata', async () => {
+        const auditService = new AuditService({ enabled: true });
+        const auditSpy = vi.spyOn(auditService, 'log');
+        const registry = new DelegationRegistry(auditService);
+
+        const module = createMockModule('test');
+        const session = createMockSession();
+
+        registry.register(module);
+        await registry.delegate('test', session, 'query', {});
+
+        const delegationLog = auditSpy.mock.calls.find(
+          call => call[0].action === 'delegate'
+        );
+        expect(delegationLog).toBeDefined();
+        expect(delegationLog![0]).toHaveProperty('moduleReportedSuccess');
+        expect(delegationLog![0]).toHaveProperty('registryVerifiedSuccess');
+        expect(delegationLog![0]).toHaveProperty('registryTimestamp');
+        expect(delegationLog![0]).toHaveProperty('userId');
+      });
+
+      it('should work with modules that return minimal audit trails', async () => {
+        const registry = new DelegationRegistry(new AuditService({ enabled: true }));
+
+        const minimalModule: DelegationModule = {
+          name: 'minimal',
+          type: 'test',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: true,
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:minimal',
+              action: 'test',
+              success: true,
+              // No optional fields
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(minimalModule);
+
+        // Should not throw
+        const result = await registry.delegate('minimal', session, 'test', {});
+        expect(result.success).toBe(true);
+        expect(result.auditTrail).toHaveProperty('registryVerifiedSuccess');
+      });
+
+      it('should work with modules that return rich audit trails', async () => {
+        const registry = new DelegationRegistry(new AuditService({ enabled: true }));
+
+        const richModule: DelegationModule = {
+          name: 'rich',
+          type: 'test',
+          initialize: vi.fn().mockResolvedValue(undefined),
+          delegate: vi.fn().mockResolvedValue({
+            success: true,
+            data: { complex: 'object' },
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:rich',
+              userId: 'module-user',
+              action: 'complex-operation',
+              success: true,
+              reason: 'Detailed reason',
+              error: undefined,
+              metadata: {
+                nested: { deep: { data: 'value' } },
+                array: [1, 2, 3],
+                custom: 'field',
+              },
+            },
+          }),
+          validateAccess: vi.fn().mockResolvedValue(true),
+          healthCheck: vi.fn().mockResolvedValue(true),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const session = createMockSession();
+        registry.register(richModule);
+
+        const result = await registry.delegate('rich', session, 'complex', {});
+        expect(result.success).toBe(true);
+        expect(result.auditTrail.metadata).toMatchObject({
+          nested: { deep: { data: 'value' } },
+          array: [1, 2, 3],
+          custom: 'field',
+        });
+        expect(result.auditTrail).toHaveProperty('registryVerifiedSuccess');
+      });
+    });
+  });
 });

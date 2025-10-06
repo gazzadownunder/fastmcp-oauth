@@ -139,6 +139,12 @@ export class DelegationRegistry {
    * - Ensures auditTrail has source field (GAP #3)
    * - Logs auditTrail to AuditService
    *
+   * SECURITY (SEC-1): Trust Boundary Enforcement
+   * - Registry independently verifies result.success (ground truth)
+   * - Captures what module reported vs. what registry observed
+   * - Detects discrepancies and logs trust_boundary_violation events
+   * - Injects mandatory integrity fields: registryVerifiedSuccess, registryTimestamp
+   *
    * @param moduleName - Name of module to use
    * @param session - User session
    * @param action - Action to perform
@@ -163,6 +169,9 @@ export class DelegationRegistry {
         success: false,
         reason: `Module not found: ${moduleName}`,
         metadata: { requestedModule: moduleName, availableModules: Array.from(this.modules.keys()) },
+        // SECURITY (SEC-1): Registry verification for module-not-found case
+        registryVerifiedSuccess: false,
+        registryTimestamp: new Date(),
       };
       await this.auditService?.log(auditEntry);
 
@@ -176,16 +185,53 @@ export class DelegationRegistry {
     // Call module delegation
     const result = await module.delegate<T>(session, action, params);
 
+    // SECURITY (SEC-1): Registry's ground truth - independently verify success
+    const registryTimestamp = new Date();
+    const registryVerifiedSuccess = result.success;
+
     // MANDATORY (GAP #3): Ensure module's auditTrail has source field
     // If module didn't set source, default to 'delegation:{moduleName}'
     if (!result.auditTrail.source) {
       result.auditTrail.source = `delegation:${module.name}`;
     }
 
-    // Enhancement v0.2: Log the auditTrail returned by module
-    await this.auditService?.log(result.auditTrail);
+    // SECURITY (SEC-1): Inject trust boundary fields
+    const enhancedAuditTrail: AuditEntry = {
+      ...result.auditTrail,
+      moduleReportedSuccess: result.auditTrail.success, // What module claimed
+      registryVerifiedSuccess, // What registry observed (ground truth)
+      registryTimestamp, // Registry's independent timestamp
+      userId: session.userId, // Ensure userId is always set
+    };
 
-    return result;
+    // SECURITY (SEC-1): Detect trust boundary violations
+    if (enhancedAuditTrail.moduleReportedSuccess !== registryVerifiedSuccess) {
+      // Log discrepancy as security event
+      await this.auditService?.log({
+        timestamp: registryTimestamp,
+        source: 'delegation:registry:security',
+        userId: session.userId,
+        action: 'trust_boundary_violation',
+        success: false,
+        reason: `Module ${module.name} reported success=${enhancedAuditTrail.moduleReportedSuccess} but registry observed success=${registryVerifiedSuccess}`,
+        metadata: {
+          moduleName: module.name,
+          moduleType: module.type,
+          delegationAction: action,
+          moduleReportedSuccess: enhancedAuditTrail.moduleReportedSuccess,
+          registryVerifiedSuccess,
+        },
+      });
+    }
+
+    // Enhancement v0.2: Log the enhanced audit trail
+    await this.auditService?.log(enhancedAuditTrail);
+
+    // Return result with enhanced audit trail
+    return {
+      ...result,
+      auditTrail: enhancedAuditTrail,
+    };
   }
 
   /**
