@@ -131,7 +131,12 @@ describe('Config Schemas', () => {
             maxTokenAge: 3600,
             requireNbf: true
           }
-        }]
+        }],
+        permissions: {
+          adminPermissions: ['admin'],
+          userPermissions: ['read'],
+          guestPermissions: []
+        }
       };
 
       const result = CoreAuthConfigSchema.parse(minimalConfig);
@@ -243,7 +248,12 @@ describe('Config Schemas', () => {
               maxTokenAge: 3600,
               requireNbf: true
             }
-          }]
+          }],
+          permissions: {
+            adminPermissions: ['admin'],
+            userPermissions: ['read', 'write'],
+            guestPermissions: ['read']
+          }
         },
         delegation: {
           modules: {
@@ -288,7 +298,12 @@ describe('Config Schemas', () => {
               maxTokenAge: 3600,
               requireNbf: true
             }
-          }]
+          }],
+          permissions: {
+            adminPermissions: ['admin'],
+            userPermissions: ['read'],
+            guestPermissions: []
+          }
         }
       };
 
@@ -412,9 +427,11 @@ describe('Config Schemas', () => {
         }
       };
 
-      expect(() => PermissionConfigSchema.parse(invalidConfig)).toThrow(
-        /must not include "unassigned" key/
-      );
+      const result = PermissionConfigSchema.safeParse(invalidConfig);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.errors[0].message).toContain('must not include "unassigned" key');
+      }
     });
 
     it('should accept config without unassigned in customPermissions', () => {
