@@ -6,7 +6,7 @@
  * and MCP tools.
  */
 
-import { FastMCP } from 'fastmcp';
+import { FastMCP } from '@gazzadownunder/fastmcp';
 import {
   ConfigManager,
   type UnifiedConfig

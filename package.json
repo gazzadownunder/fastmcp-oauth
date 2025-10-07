@@ -57,12 +57,12 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "fastmcp": "git+https://github.com/gazzadownunder/fastmcp.git#test-auth-issues",
+    "@gazzadownunder/fastmcp": "github:gazzadownunder/fastmcp#test-auth-issues",
     "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
     "kerberos": "^2.2.2",
-    "mcp-proxy": "git+https://github.com/gazzadownunder/mcp-proxy.git#auth-issue",
+    "@gazzadownunder/mcp-proxy": "github:gazzadownunder/mcp-proxy#chore/scope-package-name",
     "mssql": "^11.0.1",
     "undici": "^7.13.0",
     "zod": "^3.25.76"

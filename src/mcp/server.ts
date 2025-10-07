@@ -17,7 +17,7 @@
  * ```
  */
 
-import { FastMCP } from 'fastmcp';
+import { FastMCP } from '@gazzadownunder/fastmcp';
 import { ConfigManager } from '../config/manager.js';
 import { ConfigOrchestrator } from './orchestrator.js';
 import { MCPAuthMiddleware } from './middleware.js';

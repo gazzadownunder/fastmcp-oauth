@@ -73,13 +73,9 @@ export class MCPAuthMiddleware {
   /**
    * Authenticate a FastMCP request
    *
-   * WORKAROUND NOTE: This method now throws errors instead of returning { authenticated: false }
-   * because FastMCP/mcp-proxy HTTP stream transport doesn't properly propagate soft auth failures
-   * to the client. By throwing, we force the transport to return HTTP error responses.
-   *
    * @param request - FastMCP request with Authorization header
    * @returns Authentication result with session if successful
-   * @throws {OAuthSecurityError} If authentication fails or session is rejected (ALWAYS throws on auth failure)
+   * @throws {OAuthSecurityError} If authentication fails or session is rejected
    */
   async authenticate(request: FastMCPRequest): Promise<FastMCPAuthResult> {
     console.log('[MCPAuthMiddleware] Authenticating request:', {
@@ -143,15 +139,8 @@ export class MCPAuthMiddleware {
         session: authResult.session,
       };
     } catch (error) {
-      // WORKAROUND: Re-throw authentication errors instead of returning soft failure
-      // FastMCP/mcp-proxy HTTP stream transport doesn't properly handle { authenticated: false }
-      // By re-throwing, we force the transport layer to return HTTP error to client
-      console.log('[MCPAuthMiddleware] ❌ Authentication error, re-throwing to force HTTP error response:', error);
-
-      // Re-throw the error to force HTTP error response
-      throw error;
-
-      /* ORIGINAL CODE (doesn't work with HTTP stream transport):
+      // Convert to FastMCP auth result
+      console.log('[MCPAuthMiddleware] ❌ Authentication error:', error);
       if (error instanceof Error) {
         return {
           authenticated: false,
@@ -163,7 +152,6 @@ export class MCPAuthMiddleware {
         authenticated: false,
         error: 'Authentication failed',
       };
-      */
     }
   }
 

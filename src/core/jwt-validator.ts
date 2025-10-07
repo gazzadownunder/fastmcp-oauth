@@ -270,7 +270,7 @@ export class JWTValidator {
     if (azp && azp !== idpConfig.audience) {
       throw createSecurityError(
         'AZP_MISMATCH',
-        `Token authorized party '${azp}' does not match expected audience '${idpConfig.audience}'`,
+        'Token authorized party claim is invalid',
         403
       );
     }
