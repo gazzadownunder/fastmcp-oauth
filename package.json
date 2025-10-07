@@ -1,5 +1,5 @@
 {
-  "name": "fastmcp-oauth-obo",
+  "name": "mcp-oauth-framework",
   "version": "2.0.0",
   "description": "Modular OAuth 2.1 authentication and delegation framework for FastMCP with pluggable delegation modules",
   "type": "module",
@@ -57,12 +57,12 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "fastmcp": "^3.19.0",
+    "fastmcp": "git+https://github.com/gazzadownunder/fastmcp.git#test-auth-issues",
     "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
     "kerberos": "^2.2.2",
-    "mcp-proxy": "^5.8.0",
+    "mcp-proxy": "git+https://github.com/gazzadownunder/mcp-proxy.git#auth-issue",
     "mssql": "^11.0.1",
     "undici": "^7.13.0",
     "zod": "^3.25.76"
@@ -79,5 +79,8 @@
     "tsup": "^8.0.0",
     "typescript": "^5.6.0",
     "vitest": "^2.0.0"
+  },
+  "overrides": {
+    "mcp-proxy": "git+https://github.com/gazzadownunder/mcp-proxy.git#auth-issue"
   }
 }
