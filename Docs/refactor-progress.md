@@ -1252,28 +1252,47 @@ After completing Phases 0-6, a comprehensive gap analysis was performed comparin
 
 ### v2.2.0 - Polish & Enhancements
 
-**Status**: 📋 PLANNED
-**Target Date**: 2025-10-18
-**Estimated Tests**: ~350 tests (+20 new tests)
+**Status**: ✅ COMPLETE (Released 2025-10-07)
+**Completed Date**: 2025-10-07
+**Actual Tests**: 407 tests (398 passing, 9 pre-existing failures in migration tests)
 
-#### Gap #4: Authorization Helpers Incomplete (🟢 LOW)
+#### Gap #4: Authorization Helpers Incomplete (🟢 LOW) - ✅ COMPLETE
 - **Problem**: No separate Authorization class, missing soft check methods
-- **Current State**: Hard checks exist (requireAuth, requireRole, requirePermission)
-- **Missing**: Soft checks (hasRole, hasAnyRole, hasPermission) for canAccess usage
-- **Tasks**:
-  - [ ] Create src/mcp/authorization.ts with Authorization class
-  - [ ] Implement soft check methods (return boolean)
-  - [ ] Implement hard check methods (throw errors)
-  - [ ] Update middleware to delegate to Authorization class
-  - [ ] Create tests (15 new tests)
-- **Status**: 📋 Planned
+- **Solution Implemented**: Full Authorization class with comprehensive soft and hard checks
+- **Implementation**:
+  - [x] Created `src/mcp/authorization.ts` with Authorization class ✅
+  - [x] Implemented 7 soft check methods (boolean returns): ✅
+    - `isAuthenticated()` - Check if session exists and not rejected
+    - `hasRole(role)` - Check if user has specific role
+    - `hasAnyRole(roles)` - Check if user has any of multiple roles (OR logic)
+    - `hasAllRoles(roles)` - Check if user has all roles (AND logic, checks customRoles)
+    - `hasPermission(permission)` - Check if user has specific permission
+    - `hasAnyPermission(permissions)` - Check if user has any permission (OR logic)
+    - `hasAllPermissions(permissions)` - Check if user has all permissions (AND logic)
+  - [x] Implemented 8 hard check methods (throw OAuthSecurityError): ✅
+    - `requireAuth()` - Throws 401 if not authenticated
+    - `requireRole(role)` - Throws 403 if role mismatch
+    - `requireAnyRole(roles)` - Throws 403 if lacks all roles
+    - `requireAllRoles(roles)` - Throws 403 if missing any role
+    - `requirePermission(permission)` - Throws 403 if permission missing
+    - `requireAnyPermission(permissions)` - Throws 403 if lacks all permissions
+    - `requireAllPermissions(permissions)` - Throws 403 if missing any permission
+  - [x] Updated middleware.ts to delegate to Authorization class ✅
+  - [x] Added backward compatibility functions in middleware.ts ✅
+  - [x] Created comprehensive tests in `src/mcp/__tests__/authorization.test.ts` ✅
+    - 61 tests (all passing)
+    - Test coverage: soft checks, hard checks, edge cases
+    - Test authentication failures, role mismatches, permission checks
+- **Status**: ✅ Complete - 2025-10-07
 
-#### v2.2.0 Planned Deliverables
-- [ ] Authorization class extracted
-- [ ] Soft checks available for canAccess
-- [ ] Advanced examples (custom delegation, multi-IDP)
-- [ ] ~350 tests passing
-- [ ] Performance optimization
+#### v2.2.0 Deliverables
+- [x] Authorization class extracted ✅
+- [x] Soft checks available for canAccess implementations ✅
+- [x] Hard checks for tool handlers ✅
+- [x] Comprehensive test coverage (61 new tests) ✅
+- [x] 407 total tests (398 passing + 9 pre-existing failures) ✅
+- [ ] Advanced examples (custom delegation, multi-IDP) - Future work
+- [ ] Performance optimization - Future work
 
 ### Remediation Summary
 
@@ -1282,7 +1301,7 @@ After completing Phases 0-6, a comprehensive gap analysis was performed comparin
 | #1 | `accessCheck` → `canAccess` | 🔴 CRITICAL | ✅ | - | - |
 | #2 | Missing tools (health-check, user-info) | 🟡 MEDIUM | - | ✅ | - |
 | #3 | MCPOAuthServer wrapper | 🟡 MEDIUM | - | ✅ | - |
-| #4 | Authorization helpers | 🟢 LOW | - | - | 📋 |
+| #4 | Authorization helpers | 🟢 LOW | - | - | ✅ |
 | #5 | canAccess examples | 🟡 MEDIUM | ✅ | - | - |
 
 **Legend**: ✅ Complete, 🔄 In Progress, 📋 Planned

@@ -147,7 +147,7 @@ describe('MCP Middleware', () => {
 
         expect(result.authenticated).toBe(false);
         expect(result.error).toBeDefined();
-        expect(result.error).toContain('Authentication rejected');
+        expect(result.error).toContain('Unauthorized: User has no valid roles assigned');
       });
 
       it('should reject if session.rejected is true (GAP #1)', async () => {

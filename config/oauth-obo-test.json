@@ -19,7 +19,7 @@
         "write": ["mcp-oauth-write"],
         "read": ["mcp-oauth-read"],
         "guest": ["guest", "anonymous"],
-        "defaultRole": "guest"
+        "rejectUnmappedRoles": true
       },
       "security": {
         "clockTolerance": 60,

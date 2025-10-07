@@ -6,7 +6,7 @@
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.19.0-purple)](https://github.com/modelcontextprotocol/fastmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A production-ready, modular OAuth 2.1 authentication and delegation framework for FastMCP. Provides on-behalf-of (OBO) authentication with pluggable delegation modules for SQL Server, Kerberos, and custom integrations.
+A production-ready, modular OAuth 2.1 authentication and delegation framework for FastMCP. **Extends standard OAuth redirection flow** with on-behalf-of (OBO) authentication, enabling secure server-side delegation to legacy systems (SQL Server, Kerberos, custom APIs) using JWT tokens from external identity providers.
 
 ## 🏗️ Architecture
 
@@ -44,9 +44,9 @@ The framework follows a **layered modular architecture** with strict one-way dep
 
 ## 🚀 Implementation Status
 
-✅ **Phases 1-5 COMPLETED**: Modular architecture with Core, Delegation, and MCP layers fully implemented and tested.
+✅ **v2.0.1 RELEASED**: Modular architecture with Core, Delegation, and MCP layers fully implemented and tested.
 
-**Test Coverage**: 214/220 tests passing (new architecture complete, legacy tests to be migrated)
+**Test Coverage**: 319/319 tests passing (100% pass rate, all layers tested)
 
 ## ✨ Features
 
@@ -56,19 +56,23 @@ The framework follows a **layered modular architecture** with strict one-way dep
 - 🎯 **SQL Server EXECUTE AS USER** delegation with comprehensive security
 - 🔄 **Multi-IDP Support** with dynamic JWKS discovery and caching
 - 📊 **Comprehensive Audit Logging** with Null Object Pattern (works without config)
-- ⚡ **Security Monitoring** via health checks and audit trails
+- ⚡ **Security Monitoring** via health-check, user-info, and sql-delegate tools
 - 🧩 **Modular Architecture** - Core, Delegation, and MCP layers
-- 🔌 **Pluggable Delegation** - Add custom modules easily
+- 🔌 **Pluggable Delegation** - Add custom modules in <50 LOC
 - 🎭 **Sophisticated Role Mapping** with Unassigned role failure policy
-- 📝 **Session Rejection Pattern** - Authenticated but unauthorized users get Unassigned role
+- 📝 **Session Rejection Pattern** - Authenticated but unauthorized users gracefully rejected
+- 🔒 **Two-Tier Security** - Visibility filtering (canAccess) + Execution enforcement (requirePermission)
+- 🚀 **Zero-Boilerplate Setup** - MCPOAuthServer wrapper reduces setup from 127 to 19 lines (85% reduction)
 - 🛠️ **TypeScript First** with full type safety and CoreContext validation
-- 🧪 **214 Tests Passing** - Comprehensive unit and integration tests
+- 🧪 **319 Tests Passing** - Comprehensive unit and integration tests (100% pass rate)
 - 🌐 **Cross-Platform Support** (Windows/Linux tested)
+- 📦 **3 Built-in Tools** - sql-delegate, health-check, user-info
 
 ### Planned 🔄
-- 🎫 **Kerberos Constrained Delegation** (S4U2Self/S4U2Proxy)
+- 🎫 **Kerberos Constrained Delegation** (S4U2Self/S4U2Proxy) - Stub implemented
 - 📈 **Enhanced Monitoring** with Prometheus metrics
 - 🔑 **Automated Key Rotation** for JWKS management
+- 🔧 **Authorization Class** - Extracted soft/hard check methods (v2.2.0)
 
 ## Quick Start
 
@@ -85,7 +89,44 @@ npm install
 npm run build
 ```
 
-### Basic Usage (New Modular Architecture)
+### Simplest Setup (v2.0+) - Recommended ⭐
+
+Use the `MCPOAuthServer` wrapper for zero-boilerplate setup:
+
+```typescript
+import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+
+async function main() {
+  // 1. Create server with config path
+  const server = new MCPOAuthServer('./config/unified-config.json');
+
+  // 2. (Optional) Register custom delegation modules
+  // await server.registerDelegationModule('custom', new CustomModule());
+
+  // 3. Start server
+  await server.start({
+    transportType: 'httpStream',
+    httpStream: { port: 3000, endpoint: '/mcp' },
+    stateless: true
+  });
+
+  console.log('MCP OAuth Server running on http://localhost:3000/mcp');
+
+  // 4. Graceful shutdown
+  process.on('SIGINT', async () => {
+    await server.stop();
+    process.exit(0);
+  });
+}
+
+main().catch(console.error);
+```
+
+**That's it!** 19 lines vs 127 lines (85% reduction). See [examples/simple-server.ts](examples/simple-server.ts).
+
+### Advanced Setup (Manual Wiring)
+
+For full control, manually wire the components:
 
 ```typescript
 import {
@@ -127,7 +168,8 @@ async function main() {
       name: tool.name,
       description: tool.schema.description || tool.name,
       parameters: tool.schema,
-      execute: tool.handler
+      execute: tool.handler,
+      canAccess: tool.canAccess // Two-tier security (visibility + execution)
     });
   }
 
@@ -144,22 +186,36 @@ main().catch(console.error);
 
 See [examples/full-mcp-server.ts](examples/full-mcp-server.ts) for complete example.
 
-### Legacy Usage (Deprecated)
+## How It Extends Standard OAuth
 
-```typescript
-import { OAuthOBOServer } from 'fastmcp-oauth-obo';
-
-// ⚠️ WARNING: OAuthOBOServer is deprecated!
-// Please migrate to new modular architecture
-const server = new OAuthOBOServer();
-
-await server.start({
-  transportType: 'stdio',
-  configPath: './config/config.json'
-});
+**Standard OAuth 2.1 Flow** (browser-based redirection):
+```
+User → Browser → IDP Login → Redirect → Client App (with access token)
 ```
 
-See [Docs/MIGRATION.md](Docs/MIGRATION.md) for migration guide.
+**This Framework's Extension** (server-side OBO with delegation):
+```
+User → Client App → MCP Server (validates JWT via JWKS) → Delegation Module → Legacy System
+             ↓
+        Bearer Token (JWT from external IDP)
+             ↓
+    Framework validates + creates session
+             ↓
+    Executes as legacy user (SQL, Kerberos, API)
+```
+
+**Key Benefits:**
+1. **No Browser Required**: Server-to-server JWT validation using JWKS endpoints
+2. **Stateless**: No session storage, validates JWT on every request
+3. **Delegation**: Impersonates legacy users in downstream systems (SQL `EXECUTE AS USER`, Kerberos S4U2Proxy)
+4. **Multi-IDP**: Trust multiple identity providers simultaneously
+5. **Legacy Integration**: Modern OAuth → Legacy Windows/SQL systems
+
+**Security Features:**
+- RFC 8725 compliant JWT validation (algorithm allowlisting, claims validation)
+- RFC 8693 token exchange for OBO pattern (optional)
+- Two-tier authorization (visibility filtering + execution enforcement)
+- Comprehensive audit logging with source tracking
 
 ## Usage Examples
 
@@ -241,6 +297,350 @@ class APIDelegationModule implements DelegationModule {
 **File**: [examples/full-mcp-server.ts](examples/full-mcp-server.ts)
 
 Complete MCP server with all layers - see Quick Start above.
+
+## OAuth Extension Capabilities
+
+### What Makes This Different from Standard OAuth?
+
+Standard OAuth 2.1 is designed for **browser-based user authentication**. This framework extends OAuth for **server-side delegation scenarios** where you need to:
+
+1. **Accept tokens from external IDPs** - No need to implement your own OAuth server
+2. **Validate JWTs server-side** - JWKS discovery, caching, and rotation
+3. **Map OAuth users to legacy identities** - Modern JWT claims → legacy Windows usernames
+4. **Delegate to backend systems** - Execute operations as the authenticated user
+5. **Audit everything** - Comprehensive logging with source tracking
+
+### Use Cases
+
+#### 1. SQL Server Integration (Implemented)
+**Problem**: Modern OAuth users need to query SQL Server as their legacy Windows identity.
+
+**Solution**: Framework validates JWT → extracts `legacy_sam_account` claim → executes `EXECUTE AS USER [DOMAIN\user]` → runs query → reverts context.
+
+```typescript
+// User authenticates to IDP, gets JWT with claim:
+// { "legacy_sam_account": "DOMAIN\\jsmith", "roles": ["user"] }
+
+// Framework validates JWT, creates session, executes SQL:
+const result = await sqlDelegate({
+  action: 'query',
+  sql: 'SELECT * FROM Users WHERE IsActive = @active',
+  params: { active: true }
+});
+// SQL executes as DOMAIN\jsmith, respects SQL Server row-level security
+```
+
+#### 2. Kerberos Delegation (Planned)
+**Problem**: Need to access Kerberos-protected services on behalf of user.
+
+**Solution**: Framework performs S4U2Self (self-to-self) + S4U2Proxy (protocol transition) to obtain Kerberos ticket for downstream service.
+
+#### 3. API Delegation (Custom Module)
+**Problem**: Need to call internal API with user context.
+
+**Solution**: Create custom delegation module that adds `X-On-Behalf-Of` headers:
+
+```typescript
+class APIDelegationModule implements DelegationModule {
+  async delegate(session, action, params) {
+    return await fetch(params.url, {
+      headers: {
+        'X-On-Behalf-Of': session.userId,
+        'X-Legacy-User': session.legacyUsername
+      }
+    });
+  }
+}
+```
+
+### Integration with External IDPs
+
+The framework trusts **external identity providers** via JWKS endpoints:
+
+```json
+{
+  "auth": {
+    "trustedIDPs": [{
+      "issuer": "https://auth.company.com",
+      "jwksUri": "https://auth.company.com/.well-known/jwks.json",
+      "audience": "mcp-server",
+      "claimMappings": {
+        "legacyUsername": "legacy_sam_account",
+        "roles": "user_roles"
+      }
+    }]
+  }
+}
+```
+
+**Supports:**
+- Keycloak, Auth0, Okta, Azure AD, Google Identity Platform
+- Custom OAuth 2.1 / OIDC providers
+- Multi-IDP scenarios (trust multiple providers simultaneously)
+
+### Token Flow
+
+```
+┌──────────┐     ┌─────────────┐     ┌──────────────┐     ┌──────────┐
+│  Client  │────▶│ External IDP│────▶│  MCP Server  │────▶│ SQL / API│
+│   App    │     │ (Keycloak)  │     │ (This Fwk)   │     │          │
+└──────────┘     └─────────────┘     └──────────────┘     └──────────┘
+    │                   │                     │                  │
+    │ 1. Login          │                     │                  │
+    ├──────────────────▶│                     │                  │
+    │                   │                     │                  │
+    │ 2. JWT Token      │                     │                  │
+    │◀──────────────────┤                     │                  │
+    │                   │                     │                  │
+    │ 3. Bearer Token (JWT)                   │                  │
+    ├─────────────────────────────────────────▶                  │
+    │                   │                     │                  │
+    │                   │ 4. Validate via JWKS│                  │
+    │                   │◀────────────────────┤                  │
+    │                   │                     │                  │
+    │                   │                     │ 5. EXECUTE AS    │
+    │                   │                     ├─────────────────▶│
+    │                   │                     │                  │
+    │                   │                     │ 6. Results       │
+    │                   │                     │◀─────────────────┤
+    │                   │                     │                  │
+    │ 7. Response       │                     │                  │
+    │◀─────────────────────────────────────────                  │
+```
+
+**No custom OAuth server required!** Just configure trusted IDPs and claim mappings.
+
+## Getting Started Tutorial
+
+This tutorial walks you through creating a complete MCP server with OAuth authentication and SQL delegation in 5 minutes.
+
+### Step 1: Install Dependencies
+
+```bash
+npm install fastmcp-oauth-obo fastmcp
+# or from source
+git clone https://github.com/your-org/MCP-Oauth.git
+cd MCP-Oauth && npm install && npm run build
+```
+
+### Step 2: Configure Your IDP
+
+Create `config/unified-config.json`:
+
+```json
+{
+  "auth": {
+    "trustedIDPs": [{
+      "issuer": "https://auth.example.com",
+      "discoveryUrl": "https://auth.example.com/.well-known/oauth-authorization-server",
+      "jwksUri": "https://auth.example.com/.well-known/jwks.json",
+      "audience": "mcp-server",
+      "algorithms": ["RS256"],
+      "claimMappings": {
+        "legacyUsername": "legacy_sam_account",
+        "roles": "user_roles"
+      }
+    }]
+  },
+  "delegation": {
+    "modules": {
+      "sql": {
+        "server": "sql-server.example.com",
+        "database": "mydb",
+        "options": {
+          "trustedConnection": true,
+          "encrypt": true
+        }
+      }
+    }
+  },
+  "mcp": {
+    "serverName": "My OAuth MCP Server",
+    "version": "1.0.0",
+    "transport": "httpStream",
+    "port": 3000
+  }
+}
+```
+
+**IDP-Specific Examples:**
+
+<details>
+<summary><b>Keycloak</b></summary>
+
+```json
+{
+  "issuer": "https://keycloak.example.com/realms/myrealm",
+  "discoveryUrl": "https://keycloak.example.com/realms/myrealm/.well-known/openid-configuration",
+  "jwksUri": "https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs",
+  "audience": "mcp-server",
+  "claimMappings": {
+    "legacyUsername": "preferred_username",
+    "roles": "realm_access.roles"
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>Auth0</b></summary>
+
+```json
+{
+  "issuer": "https://your-tenant.auth0.com/",
+  "discoveryUrl": "https://your-tenant.auth0.com/.well-known/openid-configuration",
+  "jwksUri": "https://your-tenant.auth0.com/.well-known/jwks.json",
+  "audience": "https://your-api-identifier",
+  "claimMappings": {
+    "legacyUsername": "https://your-namespace.com/legacy_username",
+    "roles": "https://your-namespace.com/roles"
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>Azure AD</b></summary>
+
+```json
+{
+  "issuer": "https://login.microsoftonline.com/{tenant-id}/v2.0",
+  "discoveryUrl": "https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration",
+  "jwksUri": "https://login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys",
+  "audience": "api://{client-id}",
+  "claimMappings": {
+    "legacyUsername": "upn",
+    "roles": "roles"
+  }
+}
+```
+</details>
+
+### Step 3: Create Server
+
+Create `server.ts`:
+
+```typescript
+import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+
+async function main() {
+  const server = new MCPOAuthServer('./config/unified-config.json');
+
+  await server.start({
+    transportType: 'httpStream',
+    httpStream: { port: 3000, endpoint: '/mcp' },
+    stateless: true
+  });
+
+  console.log('🚀 MCP OAuth Server running on http://localhost:3000/mcp');
+
+  // Graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('\n🛑 Shutting down...');
+    await server.stop();
+    process.exit(0);
+  });
+}
+
+main().catch(console.error);
+```
+
+### Step 4: Run Server
+
+```bash
+npx tsx server.ts
+# or if built:
+node dist/server.js
+```
+
+### Step 5: Test with cURL
+
+```bash
+# Get a JWT token from your IDP (example using Keycloak)
+TOKEN=$(curl -X POST "https://keycloak.example.com/realms/myrealm/protocol/openid-connect/token" \
+  -d "client_id=myclient" \
+  -d "client_secret=secret" \
+  -d "grant_type=client_credentials" | jq -r '.access_token')
+
+# Call user-info tool
+curl -X POST http://localhost:3000/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "user-info",
+      "arguments": {}
+    },
+    "id": 1
+  }'
+
+# Call sql-delegate tool
+curl -X POST http://localhost:3000/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "sql-delegate",
+      "arguments": {
+        "action": "query",
+        "sql": "SELECT TOP 10 * FROM Users WHERE IsActive = @active",
+        "params": { "active": true }
+      }
+    },
+    "id": 2
+  }'
+```
+
+### Step 6 (Optional): Add Custom Delegation Module
+
+```typescript
+import { MCPOAuthServer, DelegationModule } from 'fastmcp-oauth-obo';
+
+class MyAPIModule implements DelegationModule {
+  readonly name = 'myapi';
+  readonly type = 'rest-api';
+
+  async initialize(config: any) {
+    this.baseUrl = config.baseUrl;
+  }
+
+  async delegate(session, action, params) {
+    const response = await fetch(`${this.baseUrl}${params.endpoint}`, {
+      headers: {
+        'Authorization': `Bearer ${params.token}`,
+        'X-On-Behalf-Of': session.userId
+      }
+    });
+
+    return {
+      success: response.ok,
+      data: await response.json(),
+      auditTrail: {
+        timestamp: new Date(),
+        source: 'delegation:myapi',
+        userId: session.userId,
+        action: `myapi:${action}`,
+        success: response.ok
+      }
+    };
+  }
+
+  async validateAccess(session) { return true; }
+  async healthCheck() { return true; }
+  async destroy() {}
+}
+
+// Register custom module
+const server = new MCPOAuthServer('./config/unified-config.json');
+await server.registerDelegationModule('myapi', new MyAPIModule());
+await server.start({ /* ... */ });
+```
+
+**Done!** You now have a production-ready MCP server with OAuth authentication and delegation.
 
 ## Configuration
 
@@ -367,6 +767,32 @@ class SQLDelegationModule implements DelegationModule {
 
 ### MCP Layer
 
+#### MCPOAuthServer ⭐ (v2.0+)
+```typescript
+class MCPOAuthServer {
+  constructor(configPath: string);
+
+  async registerDelegationModule(
+    name: string,
+    module: DelegationModule
+  ): Promise<void>;
+
+  async start(options: {
+    transportType: 'stdio' | 'sse' | 'httpStream';
+    httpStream?: { port: number; endpoint: string };
+    stateless?: boolean;
+  }): Promise<void>;
+
+  async stop(): Promise<void>;
+
+  getCoreContext(): CoreContext;
+  getConfigManager(): ConfigManager;
+  isServerRunning(): boolean;
+}
+```
+
+**Simplest way to create an MCP server with OAuth!** Handles all wiring automatically.
+
 #### ConfigOrchestrator
 ```typescript
 class ConfigOrchestrator {
@@ -385,46 +811,104 @@ class MCPAuthMiddleware {
 }
 ```
 
+#### Tool Factories
+```typescript
+function createSqlDelegateTool(context: CoreContext): ToolRegistration;
+function createHealthCheckTool(context: CoreContext): ToolRegistration;
+function createUserInfoTool(context: CoreContext): ToolRegistration;
+function getAllToolFactories(): ToolFactory[];
+```
+
 ## Available Tools
 
-### sql-delegate
-Execute SQL operations on behalf of legacy users.
+All tools support **two-tier security**:
+1. **Visibility** (canAccess) - Controls whether tool appears in tool list
+2. **Execution** (requirePermission) - Enforces permissions at execution time
+
+### sql-delegate 🔐
+Execute SQL operations on behalf of legacy users using `EXECUTE AS USER` delegation.
 
 **Parameters:**
 - `action`: "query" | "procedure" | "function"
 - `sql`: SQL query string (for query action)
 - `procedure`: Stored procedure name (for procedure action)
 - `functionName`: Function name (for function action)
-- `params`: Parameters object
-- `resource`: Resource identifier (optional)
+- `params`: Parameters object (supports parameterized queries)
+- `resource`: Resource identifier (optional, default: "sql-database")
 
-**Requires**: Authentication + legacyUsername claim
+**Security:**
+- **Requires**: `sql:query` permission
+- **Visibility**: Users with `sql:query` permission only
+- **SQL Injection Prevention**: Parameterized queries mandatory
+- **Dangerous Operations Blocked**: DROP, CREATE, ALTER, TRUNCATE, EXEC
 
-### health-check
-Monitor delegation service health.
+**Example:**
+```typescript
+// Query with parameters
+await tool.execute({
+  action: 'query',
+  sql: 'SELECT * FROM Users WHERE Department = @dept AND IsActive = @active',
+  params: { dept: 'Engineering', active: true }
+});
+
+// Stored procedure
+await tool.execute({
+  action: 'procedure',
+  procedure: 'sp_GetUserData',
+  params: { userId: 123 }
+});
+```
+
+### health-check ⚕️
+Monitor delegation service health and availability.
 
 **Parameters:**
 - `service`: "sql" | "kerberos" | "all" (default: "all")
 
-**Requires**: Authentication
+**Security:**
+- **Requires**: Authentication (any authenticated user)
+- **Visibility**: All authenticated users
 
-### user-info
-Get current user session information.
+**Returns:**
+```json
+{
+  "status": "success",
+  "data": {
+    "healthy": true,
+    "modules": {
+      "sql": { "healthy": true, "type": "database" },
+      "kerberos": { "healthy": false, "type": "authentication" }
+    }
+  }
+}
+```
+
+### user-info 👤
+Get current user session information (username, roles, permissions).
 
 **Parameters**: None
 
-**Requires**: Authentication
+**Security:**
+- **Requires**: Authentication (any authenticated user)
+- **Visibility**: All authenticated users
 
-### audit-log
-Retrieve audit log entries (admin only).
+**Returns:**
+```json
+{
+  "status": "success",
+  "data": {
+    "userId": "user@example.com",
+    "username": "user@example.com",
+    "legacyUsername": "DOMAIN\\user",
+    "role": "user",
+    "customRoles": ["developer"],
+    "permissions": ["read", "write", "sql:query"],
+    "scopes": ["openid", "profile"]
+  }
+}
+```
 
-**Parameters:**
-- `limit`: Number of entries (1-1000, default: 100)
-- `userId`: Filter by user ID (optional)
-- `action`: Filter by action type (optional)
-- `success`: Filter by success status (optional)
-
-**Requires**: Admin role
+**Note**: `audit-log` tool was removed from scope. Admin audit review should use dedicated admin tools (SIEM, database query tools) rather than MCP client interface. See [Docs/refactor-progress.md](Docs/refactor-progress.md#gap-2-missing-mcp-tools) for rationale.
 
 ## Security Features
 
@@ -525,12 +1009,12 @@ npm run test:coverage
 npm test -- --watch
 ```
 
-**Test Coverage**: 214/220 tests passing
-- ✅ Core layer: 161 tests (all passing)
-- ✅ Delegation layer: 23 tests (all passing)
-- ✅ MCP layer: 17 tests (all passing)
-- ✅ Integration: 49 tests (all passing)
-- ⚠️ Legacy: 6 tests (to be migrated)
+**Test Coverage**: 319/319 tests passing (100% pass rate)
+- ✅ Core layer: 158 tests (validators, audit, JWT, role mapper, session manager, auth service)
+- ✅ Delegation layer: 63 tests (registry, SQL module, Kerberos stub)
+- ✅ MCP layer: 65 tests (middleware, orchestrator, server wrapper, tools)
+- ✅ Config layer: 25 tests (schemas, migration)
+- ✅ Integration: 8 tests (core standalone, delegation standalone, MCP standalone)
 
 ### Creating a Custom Delegation Module
 

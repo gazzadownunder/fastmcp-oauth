@@ -14,6 +14,7 @@ import type { AuthenticationService } from '../core/authentication-service.js';
 import type { UserSession } from '../core/types.js';
 import { createSecurityError } from '../utils/errors.js';
 import type { MCPContext } from './types.js';
+import { Authorization } from './authorization.js';
 
 // ============================================================================
 // FastMCP Request Context (Placeholder)
@@ -114,9 +115,19 @@ export class MCPAuthMiddleware {
       // Check 1: authResult.rejected (from AuthenticationService)
       if (authResult.rejected) {
         console.log('[MCPAuthMiddleware] ❌ Auth result rejected:', authResult.rejectionReason);
+
+        // Translate technical role mapping errors to user-friendly authorization errors
+        // Note: Must include "Unauthorized" keyword for mcp-proxy to detect as auth error
+        let userMessage = 'Unauthorized: User has no valid roles assigned';
+
+        // Log technical details for debugging
+        if (authResult.rejectionReason) {
+          console.log('[MCPAuthMiddleware] Technical rejection reason:', authResult.rejectionReason);
+        }
+
         throw createSecurityError(
-          'SESSION_REJECTED',
-          authResult.rejectionReason || 'Authentication rejected',
+          'UNAUTHORIZED',
+          userMessage,
           403
         );
       }
@@ -124,10 +135,10 @@ export class MCPAuthMiddleware {
       // Check 2: session.rejected (from UserSession)
       // This prevents timing attacks by ensuring both rejection flags are checked
       if (authResult.session.rejected) {
-        console.log('[MCPAuthMiddleware] ❌ Session rejected');
+        console.log('[MCPAuthMiddleware] ❌ Session rejected - unassigned role');
         throw createSecurityError(
-          'SESSION_REJECTED',
-          'Session rejected - insufficient permissions or unassigned role',
+          'UNAUTHORIZED',
+          'Unauthorized: User has no valid roles assigned',
           403
         );
       }
@@ -209,65 +220,43 @@ export class MCPAuthMiddleware {
 }
 
 // ============================================================================
-// Helper Functions
+// Helper Functions (Backward Compatibility)
 // ============================================================================
 
 /**
  * Require authentication for a tool handler
  *
- * Throws an error if the session is not authenticated.
- *
+ * @deprecated Import from './authorization.js' instead
  * @param context - MCP context
  * @throws {Error} If session is rejected
  */
 export function requireAuth(context: MCPContext): void {
-  if (!context.session || context.session.rejected) {
-    throw createSecurityError(
-      'UNAUTHENTICATED',
-      'Authentication required to access this tool',
-      401
-    );
-  }
+  const auth = new Authorization();
+  auth.requireAuth(context);
 }
 
 /**
  * Require specific role for a tool handler
  *
- * Throws an error if the session does not have the required role.
- *
+ * @deprecated Import from './authorization.js' instead
  * @param context - MCP context
  * @param requiredRole - Required role ('admin', 'user', etc.)
  * @throws {Error} If session lacks required role
  */
 export function requireRole(context: MCPContext, requiredRole: string): void {
-  requireAuth(context);
-
-  if (context.session.role !== requiredRole) {
-    throw createSecurityError(
-      'INSUFFICIENT_PERMISSIONS',
-      `This tool requires the '${requiredRole}' role. Your role: ${context.session.role}`,
-      403
-    );
-  }
+  const auth = new Authorization();
+  auth.requireRole(context, requiredRole);
 }
 
 /**
  * Require specific permission for a tool handler
  *
- * Throws an error if the session does not have the required permission.
- *
+ * @deprecated Import from './authorization.js' instead
  * @param context - MCP context
  * @param requiredPermission - Required permission (e.g., 'sql:query')
  * @throws {Error} If session lacks required permission
  */
 export function requirePermission(context: MCPContext, requiredPermission: string): void {
-  requireAuth(context);
-
-  if (!context.session.permissions.includes(requiredPermission)) {
-    throw createSecurityError(
-      'INSUFFICIENT_PERMISSIONS',
-      `This tool requires the '${requiredPermission}' permission. Your permissions: ${context.session.permissions.join(', ')}`,
-      403
-    );
-  }
+  const auth = new Authorization();
+  auth.requirePermission(context, requiredPermission);
 }

@@ -321,4 +321,120 @@ describe('RoleMapper', () => {
       expect(result.failureReason).toContain('array');
     });
   });
+
+  describe('Unmapped Role Rejection (rejectUnmappedRoles)', () => {
+    it('should use defaultRole when rejectUnmappedRoles=false (default)', () => {
+      const mapper = new RoleMapper({
+        adminRoles: ['admin'],
+        userRoles: ['user'],
+        defaultRole: 'guest',
+        rejectUnmappedRoles: false,
+      });
+
+      const result = mapper.determineRoles(['unknown-role']);
+
+      expect(result.primaryRole).toBe('guest');
+      expect(result.mappingFailed).toBe(false);
+    });
+
+    it('should reject authentication when rejectUnmappedRoles=true', () => {
+      const mapper = new RoleMapper({
+        adminRoles: ['admin'],
+        userRoles: ['user'],
+        defaultRole: 'guest',
+        rejectUnmappedRoles: true,
+      });
+
+      const result = mapper.determineRoles(['unknown-role']);
+
+      expect(result.primaryRole).toBe(UNASSIGNED_ROLE);
+      expect(result.mappingFailed).toBe(true);
+      expect(result.failureReason).toContain('No role mappings found');
+      expect(result.failureReason).toContain('unknown-role');
+      expect(result.failureReason).toContain('rejectUnmappedRoles policy');
+    });
+
+    it('should accept authentication when role matches even if rejectUnmappedRoles=true', () => {
+      const mapper = new RoleMapper({
+        adminRoles: ['admin'],
+        userRoles: ['user'],
+        rejectUnmappedRoles: true,
+      });
+
+      const result = mapper.determineRoles(['user']);
+
+      expect(result.primaryRole).toBe(ROLE_USER);
+      expect(result.mappingFailed).toBe(false);
+    });
+
+    it('should reject multiple unmapped roles with detailed message', () => {
+      const mapper = new RoleMapper({
+        adminRoles: ['admin'],
+        userRoles: ['user'],
+        rejectUnmappedRoles: true,
+      });
+
+      const result = mapper.determineRoles(['role1', 'role2', 'role3']);
+
+      expect(result.primaryRole).toBe(UNASSIGNED_ROLE);
+      expect(result.mappingFailed).toBe(true);
+      expect(result.failureReason).toContain('role1, role2, role3');
+    });
+
+    it('should use defaultRole when rejectUnmappedRoles is not configured', () => {
+      const mapper = new RoleMapper({
+        adminRoles: ['admin'],
+        userRoles: ['user'],
+        defaultRole: 'guest',
+        // rejectUnmappedRoles not specified - defaults to false
+      });
+
+      const result = mapper.determineRoles(['unknown']);
+
+      expect(result.primaryRole).toBe('guest');
+      expect(result.mappingFailed).toBe(false);
+    });
+
+    it('should work with custom roles when rejectUnmappedRoles=true', () => {
+      const mapper = new RoleMapper({
+        adminRoles: ['admin'],
+        customRoles: {
+          analyst: ['data_analyst'],
+        },
+        rejectUnmappedRoles: true,
+      });
+
+      const result = mapper.determineRoles(['data_analyst']);
+
+      expect(result.primaryRole).toBe('analyst');
+      expect(result.mappingFailed).toBe(false);
+    });
+
+    it('should reject when none of multiple roles match and rejectUnmappedRoles=true', () => {
+      const mapper = new RoleMapper({
+        adminRoles: ['admin'],
+        userRoles: ['user'],
+        rejectUnmappedRoles: true,
+      });
+
+      const result = mapper.determineRoles(['guest', 'viewer', 'reader']);
+
+      expect(result.primaryRole).toBe(UNASSIGNED_ROLE);
+      expect(result.mappingFailed).toBe(true);
+    });
+
+    it('should accept if ANY role matches even when some roles are unmapped', () => {
+      const mapper = new RoleMapper({
+        adminRoles: ['admin'],
+        userRoles: ['user'],
+        rejectUnmappedRoles: true,
+      });
+
+      // Mix of mapped and unmapped roles - should accept because 'user' matches
+      const result = mapper.determineRoles(['unknown1', 'user', 'unknown2']);
+
+      expect(result.primaryRole).toBe(ROLE_USER);
+      expect(result.mappingFailed).toBe(false);
+    });
+  });
 });

@@ -167,6 +167,46 @@ All tools follow this security pattern:
 - Perform operation with audit logging
 - Return sanitized results as JSON strings
 
+### Authorization Helpers
+
+The framework provides two types of authorization checks via the `Authorization` class (in [src/mcp/authorization.ts](src/mcp/authorization.ts)):
+
+#### Soft Checks (Return Boolean)
+Use in `canAccess` implementations for fine-grained access control:
+- `isAuthenticated(context)` - Check if session exists and not rejected
+- `hasRole(context, role)` - Check if user has specific role
+- `hasAnyRole(context, roles[])` - Check if user has any of multiple roles (OR logic)
+- `hasAllRoles(context, roles[])` - Check if user has all roles (AND logic, checks customRoles)
+- `hasPermission(context, permission)` - Check if user has specific permission
+- `hasAnyPermission(context, permissions[])` - Check if user has any permission (OR logic)
+- `hasAllPermissions(context, permissions[])` - Check if user has all permissions (AND logic)
+
+#### Hard Checks (Throw on Failure)
+Use in tool handlers to enforce access requirements:
+- `requireAuth(context)` - Throws 401 if not authenticated
+- `requireRole(context, role)` - Throws 403 if role mismatch
+- `requireAnyRole(context, roles[])` - Throws 403 if lacks all roles
+- `requireAllRoles(context, roles[])` - Throws 403 if missing any role
+- `requirePermission(context, permission)` - Throws 403 if permission missing
+- `requireAnyPermission(context, permissions[])` - Throws 403 if lacks all permissions
+- `requireAllPermissions(context, permissions[])` - Throws 403 if missing any permission
+
+**Example Usage:**
+```typescript
+import { Authorization } from './mcp/authorization.js';
+
+const auth = new Authorization();
+
+// In tool handler (hard check)
+auth.requirePermission(context, 'sql:query');
+
+// In canAccess implementation (soft check)
+canAccess: (context) => {
+  if (!auth.isAuthenticated(context)) return false;
+  return auth.hasAnyPermission(context, ['sql:query', 'sql:execute']);
+}
+```
+
 ## Security Requirements
 
 ### JWT Validation (RFC 8725 Compliance)
@@ -226,6 +266,13 @@ Configuration files use JSON format with Zod validation. Example structure:
       "requireNbf": true
     }
   }],
+  "roleMappings": {
+    "admin": ["admin", "administrator"],
+    "user": ["user", "member"],
+    "guest": ["guest"],
+    "defaultRole": "guest",
+    "rejectUnmappedRoles": false
+  },
   "rateLimiting": { "maxRequests": 100, "windowMs": 900000 },
   "audit": { "logAllAttempts": true, "retentionDays": 90 },
   "sql": {
@@ -235,6 +282,41 @@ Configuration files use JSON format with Zod validation. Example structure:
   }
 }
 ```
+
+### Role Mapping Configuration
+
+The `roleMappings` section controls how JWT roles are mapped to application roles:
+
+- **`admin`**: Array of JWT role values that map to admin role (default: `["admin", "administrator"]`)
+- **`user`**: Array of JWT role values that map to user role (default: `["user"]`)
+- **`guest`**: Array of JWT role values that map to guest role (default: `[]`)
+- **`defaultRole`**: Role to use when JWT roles don't match any mapping (default: `"guest"`)
+- **`rejectUnmappedRoles`**: Reject authentication if JWT roles don't match any mapping (default: `false`)
+
+**Example 1 - Permissive (default)**: Accept unmapped roles and assign defaultRole
+```json
+{
+  "roleMappings": {
+    "admin": ["admin"],
+    "user": ["user"],
+    "defaultRole": "guest",
+    "rejectUnmappedRoles": false
+  }
+}
+```
+User with JWT role `"developer"` → Assigned `guest` role (defaultRole)
+
+**Example 2 - Strict**: Reject unmapped roles
+```json
+{
+  "roleMappings": {
+    "admin": ["admin"],
+    "user": ["user"],
+    "rejectUnmappedRoles": true
+  }
+}
+```
+User with JWT role `"developer"` → Authentication rejected with `HTTP 401 Unauthorized`
 
 Load configuration via: `configManager.loadConfig(path)` or pass `configPath` to `server.start()`.
 

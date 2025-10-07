@@ -35,6 +35,16 @@ export interface RoleMappingConfig {
 
   /** Default role if no matches found (defaults to 'guest') */
   defaultRole?: string;
+
+  /**
+   * Reject authentication if JWT contains roles that don't match any mapping
+   *
+   * When true: Returns UNASSIGNED_ROLE with mappingFailed=true if no roles match
+   * When false: Falls back to defaultRole if no roles match (default behavior)
+   *
+   * Default: false (use defaultRole for unmapped roles)
+   */
+  rejectUnmappedRoles?: boolean;
 }
 
 // ============================================================================
@@ -71,6 +81,7 @@ export class RoleMapper {
       guestRoles: config?.guestRoles || [],
       customRoles: config?.customRoles || {},
       defaultRole: config?.defaultRole || ROLE_GUEST,
+      rejectUnmappedRoles: config?.rejectUnmappedRoles || false,
     };
   }
 
@@ -130,6 +141,17 @@ export class RoleMapper {
       const primaryRole = this.determinePrimaryRole(validRoles);
       console.log('[RoleMapper] Primary role determined:', primaryRole);
 
+      // Check if role mapping failed due to rejectUnmappedRoles
+      if (primaryRole === UNASSIGNED_ROLE && this.config.rejectUnmappedRoles) {
+        console.log('[RoleMapper] Rejecting authentication - unmapped roles:', validRoles);
+        return {
+          primaryRole: UNASSIGNED_ROLE,
+          customRoles: [],
+          mappingFailed: true,
+          failureReason: `No role mappings found for JWT roles: ${validRoles.join(', ')}. Authentication rejected by rejectUnmappedRoles policy.`,
+        };
+      }
+
       const customRoles = this.determineCustomRoles(validRoles, primaryRole);
       console.log('[RoleMapper] Custom roles determined:', customRoles);
 
@@ -152,6 +174,8 @@ export class RoleMapper {
 
   /**
    * Determine primary role based on priority order
+   *
+   * Returns UNASSIGNED_ROLE if rejectUnmappedRoles=true and no roles match
    */
   private determinePrimaryRole(roles: string[]): string {
     // Priority 1: Admin roles
@@ -178,7 +202,13 @@ export class RoleMapper {
       }
     }
 
-    // No matches - use default role
+    // No matches - check rejectUnmappedRoles setting
+    if (this.config.rejectUnmappedRoles) {
+      // Reject unmapped roles - return UNASSIGNED_ROLE to trigger authentication failure
+      return UNASSIGNED_ROLE;
+    }
+
+    // Use default role as fallback
     return this.config.defaultRole || ROLE_GUEST;
   }
 

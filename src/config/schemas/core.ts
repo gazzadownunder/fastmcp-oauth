@@ -24,6 +24,15 @@ export const RoleMappingSchema = z
     user: z.array(z.string()).optional().default(['user']),
     guest: z.array(z.string()).optional().default([]),
     defaultRole: z.enum(['admin', 'user', 'guest']).optional().default('guest'),
+    rejectUnmappedRoles: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Reject authentication if JWT roles do not match any mapping. ' +
+        'When true, returns UNASSIGNED_ROLE for unmapped roles. ' +
+        'When false, falls back to defaultRole. Default: false'
+      ),
   })
   .passthrough(); // Allow additional custom role mappings
 
