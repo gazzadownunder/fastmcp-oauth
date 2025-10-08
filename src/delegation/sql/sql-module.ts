@@ -17,6 +17,7 @@
 import sql from 'mssql';
 import type { UserSession, AuditEntry } from '../../core/index.js';
 import type { DelegationModule, DelegationResult } from '../base.js';
+import type { TokenExchangeService } from '../token-exchange.js';
 import { createSecurityError } from '../../utils/errors.js';
 
 // ============================================================================
@@ -95,6 +96,32 @@ export class SQLDelegationModule implements DelegationModule {
   private pool: sql.ConnectionPool | null = null;
   private config: SQLConfig | null = null;
   private isConnected = false;
+  private tokenExchangeService: TokenExchangeService | null = null;
+  private tokenExchangeConfig: {
+    tokenEndpoint: string;
+    clientId: string;
+    clientSecret: string;
+    audience?: string;
+  } | null = null;
+
+  /**
+   * Set token exchange service (optional for Phase 1)
+   *
+   * @param service - TokenExchangeService instance
+   * @param config - Token exchange configuration
+   */
+  setTokenExchangeService(
+    service: TokenExchangeService,
+    config: {
+      tokenEndpoint: string;
+      clientId: string;
+      clientSecret: string;
+      audience?: string;
+    }
+  ): void {
+    this.tokenExchangeService = service;
+    this.tokenExchangeConfig = config;
+  }
 
   /**
    * Initialize SQL connection pool
@@ -175,8 +202,8 @@ export class SQLDelegationModule implements DelegationModule {
       }
     }
 
-    // Validate legacyUsername exists
-    if (!session.legacyUsername) {
+    // Validate legacyUsername exists (fallback for when TE-JWT is not available)
+    if (!session.legacyUsername && !this.tokenExchangeService) {
       return {
         success: false,
         error: 'Session missing legacyUsername (required for SQL delegation)',
@@ -191,21 +218,137 @@ export class SQLDelegationModule implements DelegationModule {
       };
     }
 
+    // PHASE 1: Token Exchange (if configured)
+    let effectiveLegacyUsername = session.legacyUsername;
+
+    if (this.tokenExchangeService) {
+      try {
+        // Extract JWT from session claims
+        const subjectToken = session.claims?.access_token as string | undefined;
+
+        if (!subjectToken) {
+          return {
+            success: false,
+            error: 'Session missing access_token in claims (required for token exchange)',
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:sql',
+              userId: session.userId,
+              action: `sql_delegation:${action}`,
+              success: false,
+              reason: 'Missing access_token in session claims',
+            },
+          };
+        }
+
+        // Validate token exchange configuration
+        if (!this.tokenExchangeConfig) {
+          return {
+            success: false,
+            error: 'Token exchange service configured but missing token exchange config',
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:sql',
+              userId: session.userId,
+              action: `sql_delegation:${action}`,
+              success: false,
+              reason: 'Missing token exchange configuration',
+            },
+          };
+        }
+
+        // Perform token exchange to get TE-JWT
+        const exchangeResult = await this.tokenExchangeService.performExchange({
+          subjectToken,
+          subjectTokenType: 'urn:ietf:params:oauth:token-type:jwt',
+          audience: this.tokenExchangeConfig.audience || 'sql-delegation',
+          tokenEndpoint: this.tokenExchangeConfig.tokenEndpoint,
+          clientId: this.tokenExchangeConfig.clientId,
+          clientSecret: this.tokenExchangeConfig.clientSecret,
+        });
+
+        if (!exchangeResult.success || !exchangeResult.accessToken) {
+          return {
+            success: false,
+            error: `Token exchange failed: ${exchangeResult.errorDescription || exchangeResult.error}`,
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:sql',
+              userId: session.userId,
+              action: `sql_delegation:${action}`,
+              success: false,
+              reason: `Token exchange error: ${exchangeResult.error}`,
+            },
+          };
+        }
+
+        // Decode TE-JWT to extract delegation claims
+        const teClaims = this.tokenExchangeService.decodeTokenClaims(exchangeResult.accessToken);
+
+        if (!teClaims || !teClaims.legacy_name) {
+          return {
+            success: false,
+            error: 'TE-JWT missing legacy_name claim (required for SQL delegation)',
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:sql',
+              userId: session.userId,
+              action: `sql_delegation:${action}`,
+              success: false,
+              reason: 'TE-JWT missing legacy_name claim',
+            },
+          };
+        }
+
+        // Use legacy_name from TE-JWT
+        effectiveLegacyUsername = teClaims.legacy_name;
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Token exchange failed',
+          auditTrail: {
+            timestamp: new Date(),
+            source: 'delegation:sql',
+            userId: session.userId,
+            action: `sql_delegation:${action}`,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        };
+      }
+    }
+
+    // Ensure we have a legacy username at this point
+    if (!effectiveLegacyUsername) {
+      return {
+        success: false,
+        error: 'Unable to determine legacy username for SQL delegation',
+        auditTrail: {
+          timestamp: new Date(),
+          source: 'delegation:sql',
+          userId: session.userId,
+          action: `sql_delegation:${action}`,
+          success: false,
+          reason: 'No legacy username available',
+        },
+      };
+    }
+
     // Route to appropriate handler
     try {
       let result: T;
 
       switch (action) {
         case 'query':
-          result = await this.executeQuery(session.legacyUsername, params);
+          result = await this.executeQuery(effectiveLegacyUsername, params);
           break;
 
         case 'procedure':
-          result = await this.executeProcedure(session.legacyUsername, params);
+          result = await this.executeProcedure(effectiveLegacyUsername, params);
           break;
 
         case 'function':
-          result = await this.executeFunction(session.legacyUsername, params);
+          result = await this.executeFunction(effectiveLegacyUsername, params);
           break;
 
         default:
@@ -233,8 +376,9 @@ export class SQLDelegationModule implements DelegationModule {
           action: `sql_delegation:${action}`,
           success: true,
           metadata: {
-            legacyUsername: session.legacyUsername,
+            legacyUsername: effectiveLegacyUsername,
             action,
+            tokenExchangeUsed: !!this.tokenExchangeService,
           },
         },
       };
@@ -250,7 +394,8 @@ export class SQLDelegationModule implements DelegationModule {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error',
           metadata: {
-            legacyUsername: session.legacyUsername,
+            legacyUsername: effectiveLegacyUsername,
+            tokenExchangeUsed: !!this.tokenExchangeService,
           },
         },
       };

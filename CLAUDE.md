@@ -158,6 +158,105 @@ External IDP (OAuth/JWKS) → JWT Middleware (jose lib) → FastMCP Core
 5. Session attached to context for tool execution
 6. All operations logged to audit trail
 
+### Token Exchange Architecture (Phase 1 - RFC 8693)
+
+**Status:** Implementation Complete | **Version:** v3.0 | **Completion Date:** 2025-01-08
+
+The framework implements **RFC 8693 OAuth 2.0 Token Exchange** for on-behalf-of (OBO) delegation. This enables the MCP server to exchange a requestor's JWT for a delegation token with different privileges for downstream resources.
+
+#### Two-Stage Authorization Model
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                    Stage 1: MCP Tool Access                      │
+│  Requestor JWT → JWT Validation → Role/Permission Check         │
+│  Authorization: Can user access this MCP tool?                   │
+└────────────────────────────┬─────────────────────────────────────┘
+                             ↓
+┌──────────────────────────────────────────────────────────────────┐
+│                 Stage 2: Downstream Resource Access              │
+│  Token Exchange → Delegation Token (TE-JWT)                      │
+│  Authorization: What privileges does user have on SQL/API?       │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Key Principle:** Requestor JWT authorizes MCP tool access, TE-JWT authorizes downstream resource operations.
+
+#### TokenExchangeService
+
+**Location:** [src/delegation/token-exchange.ts](src/delegation/token-exchange.ts)
+
+**Purpose:** Performs stateless RFC 8693 token exchange with external IDPs
+
+**Key Methods:**
+- `performExchange(params)` - Exchanges requestor JWT for delegation token
+- `decodeTokenClaims(token)` - Extracts claims from TE-JWT (sub, aud, exp, legacy_name, roles, permissions)
+
+**Security Features:**
+- HTTPS-only enforcement for token endpoints
+- Audit logging for all exchange attempts (success/failure)
+- Error sanitization (no sensitive data leakage)
+- Configurable per-IDP credentials and audiences
+
+**Configuration Example:**
+```json
+{
+  "trustedIDPs": [{
+    "issuer": "https://auth.company.com",
+    "tokenExchange": {
+      "tokenEndpoint": "https://auth.company.com/token",
+      "clientId": "mcp-server",
+      "clientSecret": "SECRET",
+      "audience": "urn:sql:database"
+    }
+  }]
+}
+```
+
+#### Delegation Module Integration
+
+**SQLDelegationModule** ([src/delegation/sql/sql-module.ts](src/delegation/sql/sql-module.ts)) integrates TokenExchangeService:
+
+1. **Before Delegation:** Calls `tokenExchangeService.performExchange()` with requestor JWT
+2. **Extract Claims:** Decodes TE-JWT to get `legacy_name`, `roles`, `permissions`
+3. **Authorization:** Uses TE-JWT claims (not requestor JWT) for SQL operations
+4. **Execute:** Performs `EXECUTE AS USER` with `legacy_name` from TE-JWT
+
+**Example Flow:**
+```typescript
+// Requestor JWT has role: "user", no legacy_name claim
+// Token exchange returns TE-JWT with:
+//   - legacy_name: "ALICE_ADMIN"
+//   - roles: ["admin"]
+//   - permissions: ["sql:write"]
+
+// SQLDelegationModule uses TE-JWT claims for authorization
+await sqlDelegator.delegate('ALICE_ADMIN', query, params);
+```
+
+#### Why Token Exchange?
+
+**Problem:** Requestor's JWT may not contain required claims for downstream systems (e.g., legacy username for SQL Server)
+
+**Solution:** Exchange requestor JWT for delegation token with appropriate claims
+
+**Benefits:**
+1. **Privilege Elevation:** User may have higher privileges on downstream resource
+2. **Privilege Reduction:** User may have lower privileges (read-only scope)
+3. **Claim Transformation:** Map modern claims to legacy system requirements
+4. **Centralized Authorization:** IDP controls both MCP access and resource access
+
+#### Testing
+
+**Test Suite:** [tests/unit/delegation/token-exchange.test.ts](tests/unit/delegation/token-exchange.test.ts)
+- **Coverage:** 99% statements, 88% branches, 100% functions
+- **Test Count:** 18 tests (configuration, success/error flows, audit logging)
+
+**Test Harness:** [test-harness/PHASE1-TOKEN-EXCHANGE-TEST.md](test-harness/PHASE1-TOKEN-EXCHANGE-TEST.md)
+- Web UI testing with Keycloak IDP
+- curl command examples for manual testing
+- Configuration: [test-harness/config/v2-keycloak-token-exchange.json](test-harness/config/v2-keycloak-token-exchange.json)
+
 ### Tool Registration Pattern
 
 All tools follow this security pattern:

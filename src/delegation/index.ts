@@ -20,6 +20,20 @@ export type {
 } from './base.js';
 
 // ============================================================================
+// Token Exchange (RFC 8693)
+// ============================================================================
+
+export { TokenExchangeService } from './token-exchange.js';
+export { EncryptedTokenCache } from './encrypted-token-cache.js';
+export type {
+  TokenExchangeParams,
+  TokenExchangeResult,
+  TokenExchangeConfig,
+  DelegationTokenClaims,
+} from './types.js';
+export type { CacheConfig, CacheMetrics } from './encrypted-token-cache.js';
+
+// ============================================================================
 // Delegation Registry
 // ============================================================================
 

@@ -10,6 +10,56 @@
 import { z } from 'zod';
 
 // ============================================================================
+// Token Exchange Configuration (RFC 8693)
+// ============================================================================
+
+/**
+ * Token exchange configuration for OAuth 2.0 Token Exchange (RFC 8693)
+ *
+ * Used by TokenExchangeService for on-behalf-of (OBO) delegation.
+ */
+export const TokenExchangeConfigSchema = z.object({
+  tokenEndpoint: z
+    .string()
+    .url()
+    .startsWith('https://')
+    .describe('IDP token endpoint URL (must be HTTPS)'),
+  clientId: z.string().min(1).describe('Client ID for token exchange'),
+  clientSecret: z.string().min(1).describe('Client secret for token exchange'),
+  audience: z.string().optional().describe('Expected audience for delegation tokens'),
+  resource: z.string().optional().describe('Resource identifier'),
+  defaultScope: z.string().optional().describe('Default scope for token exchange'),
+  cache: z
+    .object({
+      enabled: z.boolean().optional().default(false).describe('Enable token caching'),
+      ttlSeconds: z.number().int().min(1).optional().default(60).describe('Cache TTL in seconds'),
+      sessionTimeoutMs: z
+        .number()
+        .int()
+        .min(1000)
+        .optional()
+        .default(900000)
+        .describe('Session timeout in milliseconds'),
+      maxEntriesPerSession: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .default(10)
+        .describe('Max cache entries per session'),
+      maxTotalEntries: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .default(1000)
+        .describe('Max total cache entries'),
+    })
+    .optional()
+    .describe('Token caching configuration (Phase 2)'),
+});
+
+// ============================================================================
 // SQL Delegation Configuration
 // ============================================================================
 
@@ -81,6 +131,7 @@ export const DelegationConfigSchema = z.object({
     .record(z.any())
     .optional()
     .describe('Delegation module configurations keyed by module name'),
+  tokenExchange: TokenExchangeConfigSchema.optional().describe('Token exchange configuration'),
   sql: SQLConfigSchema.optional().describe('SQL delegation module configuration'),
   kerberos: KerberosConfigSchema.optional().describe('Kerberos delegation module configuration'),
 });
@@ -89,6 +140,7 @@ export const DelegationConfigSchema = z.object({
 // TypeScript Types
 // ============================================================================
 
+export type TokenExchangeConfig = z.infer<typeof TokenExchangeConfigSchema>;
 export type SQLConfig = z.infer<typeof SQLConfigSchema>;
 export type KerberosConfig = z.infer<typeof KerberosConfigSchema>;
 export type DelegationConfig = z.infer<typeof DelegationConfigSchema>;

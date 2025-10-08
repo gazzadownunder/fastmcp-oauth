@@ -22,6 +22,7 @@
 
 import { MCPOAuthServer } from '../src/mcp/server.js';
 import { SQLDelegationModule } from '../src/delegation/sql/sql-module.js';
+import { TokenExchangeService } from '../src/delegation/token-exchange.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -76,6 +77,31 @@ async function main() {
     if (delegationConfig?.modules?.sql) {
       console.log('      SQL delegation module detected in config');
       const sqlModule = new SQLDelegationModule();
+
+      // Check if token exchange is configured
+      if (delegationConfig?.tokenExchange) {
+        console.log('      Token exchange detected in config');
+        console.log(`      Token endpoint: ${delegationConfig.tokenExchange.tokenEndpoint}`);
+        console.log(`      Client ID: ${delegationConfig.tokenExchange.clientId}`);
+        console.log(`      Audience: ${delegationConfig.tokenExchange.audience || 'default'}`);
+
+        // Create TokenExchangeService
+        const tokenExchangeService = new TokenExchangeService(
+          delegationConfig.tokenExchange,
+          coreContext.auditService
+        );
+
+        // Inject into SQL module
+        sqlModule.setTokenExchangeService(tokenExchangeService, {
+          tokenEndpoint: delegationConfig.tokenExchange.tokenEndpoint,
+          clientId: delegationConfig.tokenExchange.clientId,
+          clientSecret: delegationConfig.tokenExchange.clientSecret,
+          audience: delegationConfig.tokenExchange.audience,
+        });
+
+        console.log('✓     Token exchange service initialized');
+      }
+
       await server.registerDelegationModule('sql', sqlModule);
       console.log('✓     SQL delegation module registered\n');
     } else {
