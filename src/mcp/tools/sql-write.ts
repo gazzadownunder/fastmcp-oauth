@@ -10,7 +10,7 @@
 import { z } from 'zod';
 import type { CoreContext } from '../../core/index.js';
 import type { ToolFactory, LLMResponse, MCPContext } from '../types.js';
-import { requireAuth } from '../middleware.js';
+import { Authorization } from '../authorization.js';
 
 // ============================================================================
 // Tool Schema
@@ -39,22 +39,16 @@ export const createSQLWriteTool: ToolFactory = (context: CoreContext) => ({
 
   // Visibility filtering: Only show to users with 'write' custom role
   canAccess: (mcpContext: MCPContext) => {
-    const session = mcpContext.session;
-    if (!session || session.rejected) {
-      return false;
-    }
-
+    const auth = new Authorization();
     // Check if user has 'write' role (either primary or custom)
-    return (
-      session.role === 'write' ||
-      (session.customRoles && session.customRoles.includes('write'))
-    );
+    return auth.hasRole(mcpContext, 'write');
   },
 
   handler: async (params: SQLWriteParams, mcpContext: MCPContext): Promise<LLMResponse> => {
     try {
       // Require authentication
-      requireAuth(mcpContext);
+      const auth = new Authorization();
+      auth.requireAuth(mcpContext);
 
       const session = mcpContext.session;
 

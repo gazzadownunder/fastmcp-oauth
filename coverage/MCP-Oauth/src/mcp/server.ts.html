@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for MCP-Oauth/src/services/sql-delegator.ts</title>
+    <title>Code coverage report for MCP-Oauth/src/mcp/server.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../../prettify.css" />
     <link rel="stylesheet" href="../../../base.css" />
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../../index.html">All files</a> / <a href="index.html">MCP-Oauth/src/services</a> sql-delegator.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">MCP-Oauth/src/mcp</a> server.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/343</span>
+                <span class='fraction'>0/350</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/343</span>
+                <span class='fraction'>0/350</span>
             </div>
         
             
@@ -405,7 +405,15 @@
 <a name='L340'></a><a href='#L340'>340</a>
 <a name='L341'></a><a href='#L341'>341</a>
 <a name='L342'></a><a href='#L342'>342</a>
-<a name='L343'></a><a href='#L343'>343</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L343'></a><a href='#L343'>343</a>
+<a name='L344'></a><a href='#L344'>344</a>
+<a name='L345'></a><a href='#L345'>345</a>
+<a name='L346'></a><a href='#L346'>346</a>
+<a name='L347'></a><a href='#L347'>347</a>
+<a name='L348'></a><a href='#L348'>348</a>
+<a name='L349'></a><a href='#L349'>349</a>
+<a name='L350'></a><a href='#L350'>350</a>
+<a name='L351'></a><a href='#L351'>351</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -747,356 +755,372 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import sql from 'mssql';</span></span></span>
-<span class="cstat-no" title="statement not covered" >import { configManager } from '../config/manager.js';</span>
-<span class="cstat-no" title="statement not covered" >import type { DelegationModule, DelegationResult, UserSession, AuditEntry } from '../types/index.js';</span>
-<span class="cstat-no" title="statement not covered" >import { SecurityErrors, createSecurityError } from '../utils/errors.js';</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >/**</span></span></span>
+<span class="cstat-no" title="statement not covered" > * MCP OAuth Server</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * High-level wrapper for FastMCP with OAuth authentication and delegation.</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Simplifies server setup by providing a single class that orchestrates:</span>
+<span class="cstat-no" title="statement not covered" > * - Configuration loading and validation</span>
+<span class="cstat-no" title="statement not covered" > * - CoreContext creation and validation</span>
+<span class="cstat-no" title="statement not covered" > * - Authentication middleware setup</span>
+<span class="cstat-no" title="statement not covered" > * - Tool registration with dependency injection</span>
+<span class="cstat-no" title="statement not covered" > * - Server lifecycle management</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * @example</span>
+<span class="cstat-no" title="statement not covered" > * ```typescript</span>
+<span class="cstat-no" title="statement not covered" > * const server = new MCPOAuthServer('./config/unified-config.json');</span>
+<span class="cstat-no" title="statement not covered" > * await server.start({ transport: 'httpStream', port: 3000 });</span>
+<span class="cstat-no" title="statement not covered" > * ```</span>
+<span class="cstat-no" title="statement not covered" > */</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >export class SQLDelegator implements DelegationModule {</span>
-<span class="cstat-no" title="statement not covered" >  readonly type = 'sql' as const;</span>
-<span class="cstat-no" title="statement not covered" >  private pool: sql.ConnectionPool | null = null;</span>
-<span class="cstat-no" title="statement not covered" >  private isConnected = false;</span>
+<span class="cstat-no" title="statement not covered" >import { FastMCP } from '@gazzadownunder/fastmcp';</span>
+<span class="cstat-no" title="statement not covered" >import { ConfigManager } from '../config/manager.js';</span>
+<span class="cstat-no" title="statement not covered" >import { ConfigOrchestrator } from './orchestrator.js';</span>
+<span class="cstat-no" title="statement not covered" >import { MCPAuthMiddleware } from './middleware.js';</span>
+<span class="cstat-no" title="statement not covered" >import { getAllToolFactories } from './tools/index.js';</span>
+<span class="cstat-no" title="statement not covered" >import type { CoreContext } from '../core/index.js';</span>
+<span class="cstat-no" title="statement not covered" >import type { MCPStartOptions, MCPContext } from './types.js';</span>
+<span class="cstat-no" title="statement not covered" >import type { DelegationModule } from '../delegation/base.js';</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async initialize(): Promise&lt;void&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    if (this.isConnected) return;</span>
+<span class="cstat-no" title="statement not covered" >/**</span>
+<span class="cstat-no" title="statement not covered" > * MCP OAuth Server</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Provides a simplified API for setting up an OAuth-enabled MCP server.</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Features:</span>
+<span class="cstat-no" title="statement not covered" > * - Automatic configuration loading and validation</span>
+<span class="cstat-no" title="statement not covered" > * - CoreContext creation with all services</span>
+<span class="cstat-no" title="statement not covered" > * - Built-in authentication middleware</span>
+<span class="cstat-no" title="statement not covered" > * - Tool registration with dependency injection</span>
+<span class="cstat-no" title="statement not covered" > * - Lifecycle management (start/stop)</span>
+<span class="cstat-no" title="statement not covered" > * - Custom delegation module support</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * @see remediation-plan.md Gap #3 for implementation details</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >export class MCPOAuthServer {</span>
+<span class="cstat-no" title="statement not covered" >  private configManager: ConfigManager;</span>
+<span class="cstat-no" title="statement not covered" >  private orchestrator: ConfigOrchestrator;</span>
+<span class="cstat-no" title="statement not covered" >  private coreContext?: CoreContext;</span>
+<span class="cstat-no" title="statement not covered" >  private mcpServer?: FastMCP;</span>
+<span class="cstat-no" title="statement not covered" >  private configPath: string;</span>
+<span class="cstat-no" title="statement not covered" >  private isRunning: boolean = false;</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const sqlConfig = configManager.getDelegationConfig('sql') as any;</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Create a new MCP OAuth server</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @param configPath - Path to unified configuration file</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @example</span>
+<span class="cstat-no" title="statement not covered" >   * ```typescript</span>
+<span class="cstat-no" title="statement not covered" >   * const server = new MCPOAuthServer('./config/unified-config.json');</span>
+<span class="cstat-no" title="statement not covered" >   * ```</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  constructor(configPath: string) {</span>
+<span class="cstat-no" title="statement not covered" >    this.configPath = configPath;</span>
+<span class="cstat-no" title="statement not covered" >    this.configManager = new ConfigManager();</span>
+<span class="cstat-no" title="statement not covered" >    this.orchestrator = new ConfigOrchestrator({</span>
+<span class="cstat-no" title="statement not covered" >      configManager: this.configManager,</span>
+<span class="cstat-no" title="statement not covered" >      enableAudit: true,</span>
+<span class="cstat-no" title="statement not covered" >      onAuditOverflow: (entries) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >        console.warn(</span>
+<span class="cstat-no" title="statement not covered" >          `[MCP OAuth Server] Audit overflow: ${entries.length} entries discarded. ` +</span>
+<span class="cstat-no" title="statement not covered" >          'Consider implementing persistent storage for audit logs.'</span>
+<span class="cstat-no" title="statement not covered" >        );</span>
+<span class="cstat-no" title="statement not covered" >      },</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      const connectionConfig: sql.config = {</span>
-<span class="cstat-no" title="statement not covered" >        server: sqlConfig.server,</span>
-<span class="cstat-no" title="statement not covered" >        database: sqlConfig.database,</span>
-<span class="cstat-no" title="statement not covered" >        options: {</span>
-<span class="cstat-no" title="statement not covered" >          ...sqlConfig.options,</span>
-<span class="cstat-no" title="statement not covered" >          trustServerCertificate: false, // Security: Always verify certificates</span>
-<span class="cstat-no" title="statement not covered" >          encrypt: true, // Security: Always encrypt connections</span>
-<span class="cstat-no" title="statement not covered" >        },</span>
-<span class="cstat-no" title="statement not covered" >        pool: {</span>
-<span class="cstat-no" title="statement not covered" >          max: 10,</span>
-<span class="cstat-no" title="statement not covered" >          min: 0,</span>
-<span class="cstat-no" title="statement not covered" >          idleTimeoutMillis: 30000,</span>
-<span class="cstat-no" title="statement not covered" >        },</span>
-<span class="cstat-no" title="statement not covered" >        connectionTimeout: 5000,</span>
-<span class="cstat-no" title="statement not covered" >        requestTimeout: 30000,</span>
-<span class="cstat-no" title="statement not covered" >      };</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      this.pool = new sql.ConnectionPool(connectionConfig);</span>
-<span class="cstat-no" title="statement not covered" >      await this.pool.connect();</span>
-<span class="cstat-no" title="statement not covered" >      this.isConnected = true;</span>
-<span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >        'SQL_CONNECTION_FAILED',</span>
-<span class="cstat-no" title="statement not covered" >        `Failed to initialize SQL connection: ${error}`,</span>
-<span class="cstat-no" title="statement not covered" >        500</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Register a custom delegation module</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * This allows you to add custom delegation strategies beyond the built-in</span>
+<span class="cstat-no" title="statement not covered" >   * SQL and Kerberos modules.</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @param name - Module name (e.g., 'sql', 'kerberos', 'ldap')</span>
+<span class="cstat-no" title="statement not covered" >   * @param module - DelegationModule implementation</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @throws {Error} If server is not initialized (call start() first)</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @example</span>
+<span class="cstat-no" title="statement not covered" >   * ```typescript</span>
+<span class="cstat-no" title="statement not covered" >   * const sqlModule = new SQLDelegationModule(sqlConfig);</span>
+<span class="cstat-no" title="statement not covered" >   * await server.registerDelegationModule('sql', sqlModule);</span>
+<span class="cstat-no" title="statement not covered" >   * ```</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  async registerDelegationModule(name: string, module: DelegationModule): Promise&lt;void&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (!this.coreContext) {</span>
+<span class="cstat-no" title="statement not covered" >      throw new Error(</span>
+<span class="cstat-no" title="statement not covered" >        'Cannot register delegation module before server initialization. ' +</span>
+<span class="cstat-no" title="statement not covered" >        'Call start() first, or register modules in the start callback.'</span>
 <span class="cstat-no" title="statement not covered" >      );</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    await this.coreContext.delegationRegistry.register(name, module);</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`[MCP OAuth Server] Registered delegation module: ${name}`);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async delegate&lt;T&gt;(</span>
-<span class="cstat-no" title="statement not covered" >    legacyUsername: string,</span>
-<span class="cstat-no" title="statement not covered" >    action: string,</span>
-<span class="cstat-no" title="statement not covered" >    parameters: Record&lt;string, unknown&gt;</span>
-<span class="cstat-no" title="statement not covered" >  ): Promise&lt;DelegationResult&lt;T&gt;&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    if (!this.isConnected || !this.pool) {</span>
-<span class="cstat-no" title="statement not covered" >      await this.initialize();</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Start the MCP OAuth server</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * This will:</span>
+<span class="cstat-no" title="statement not covered" >   * 1. Load and validate configuration</span>
+<span class="cstat-no" title="statement not covered" >   * 2. Build and validate CoreContext</span>
+<span class="cstat-no" title="statement not covered" >   * 3. Set up authentication middleware</span>
+<span class="cstat-no" title="statement not covered" >   * 4. Register all tools with dependency injection</span>
+<span class="cstat-no" title="statement not covered" >   * 5. Start the FastMCP server</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @param options - Server start options (transport, port, etc.)</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @example</span>
+<span class="cstat-no" title="statement not covered" >   * ```typescript</span>
+<span class="cstat-no" title="statement not covered" >   * // Start with default settings from config</span>
+<span class="cstat-no" title="statement not covered" >   * await server.start();</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * // Start with custom transport and port</span>
+<span class="cstat-no" title="statement not covered" >   * await server.start({ transport: 'httpStream', port: 3000 });</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * // Start with stdio transport</span>
+<span class="cstat-no" title="statement not covered" >   * await server.start({ transport: 'stdio' });</span>
+<span class="cstat-no" title="statement not covered" >   * ```</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  async start(options: MCPStartOptions = {}): Promise&lt;void&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (this.isRunning) {</span>
+<span class="cstat-no" title="statement not covered" >      throw new Error('Server is already running. Call stop() first.');</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const auditEntry: AuditEntry = {</span>
-<span class="cstat-no" title="statement not covered" >      timestamp: new Date(),</span>
-<span class="cstat-no" title="statement not covered" >      userId: legacyUsername,</span>
-<span class="cstat-no" title="statement not covered" >      legacyUsername,</span>
-<span class="cstat-no" title="statement not covered" >      action: `sql_delegation:${action}`,</span>
-<span class="cstat-no" title="statement not covered" >      resource: parameters.resource as string || 'unknown',</span>
-<span class="cstat-no" title="statement not covered" >      success: false,</span>
-<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] Starting server...');</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      // Validate input parameters</span>
-<span class="cstat-no" title="statement not covered" >      this.validateDelegationParameters(legacyUsername, action, parameters);</span>
+<span class="cstat-no" title="statement not covered" >    // 1. Load configuration</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`[MCP OAuth Server] Loading configuration from: ${this.configPath}`);</span>
+<span class="cstat-no" title="statement not covered" >    await this.configManager.loadConfig(this.configPath);</span>
+<span class="cstat-no" title="statement not covered" >    const mcpConfig = this.configManager.getMCPConfig();</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Create new request for this delegation</span>
-<span class="cstat-no" title="statement not covered" >      const request = this.pool!.request();</span>
+<span class="cstat-no" title="statement not covered" >    // 2. Build CoreContext (services created but NOT initialized yet)</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] Building CoreContext...');</span>
+<span class="cstat-no" title="statement not covered" >    this.coreContext = await this.orchestrator.buildCoreContext();</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      let result: any;</span>
+<span class="cstat-no" title="statement not covered" >    // 3. Initialize AuthenticationService (CRITICAL: fetch JWKS before validation)</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] Initializing AuthenticationService (fetching JWKS)...');</span>
+<span class="cstat-no" title="statement not covered" >    await this.coreContext.authService.initialize();</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] ✓ AuthenticationService initialized');</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Execute with proper impersonation</span>
-<span class="cstat-no" title="statement not covered" >      try {</span>
-<span class="cstat-no" title="statement not covered" >        // Step 1: Begin impersonation</span>
-<span class="cstat-no" title="statement not covered" >        await this.beginImpersonation(request, legacyUsername);</span>
+<span class="cstat-no" title="statement not covered" >    // 4. Validate CoreContext (MANDATORY GAP #8: validate AFTER initialization)</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] Validating CoreContext...');</span>
+<span class="cstat-no" title="statement not covered" >    ConfigOrchestrator.validateCoreContext(this.coreContext);</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] ✓ CoreContext validated');</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        // Step 2: Execute the delegated action</span>
-<span class="cstat-no" title="statement not covered" >        result = await this.executeDelegatedAction(request, action, parameters);</span>
+<span class="cstat-no" title="statement not covered" >    // 5. Create authentication middleware</span>
+<span class="cstat-no" title="statement not covered" >    const authMiddleware = new MCPAuthMiddleware(this.coreContext.authService);</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        // Step 3: End impersonation</span>
-<span class="cstat-no" title="statement not covered" >        await this.endImpersonation(request);</span>
+<span class="cstat-no" title="statement not covered" >    // 6. Create FastMCP server</span>
+<span class="cstat-no" title="statement not covered" >    const serverName = mcpConfig?.serverName || 'MCP OAuth Server';</span>
+<span class="cstat-no" title="statement not covered" >    const serverVersion = mcpConfig?.version || '2.0.0';</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        auditEntry.success = true;</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`[MCP OAuth Server] Creating FastMCP server: ${serverName} v${serverVersion}`);</span>
+<span class="cstat-no" title="statement not covered" >    this.mcpServer = new FastMCP({</span>
+<span class="cstat-no" title="statement not covered" >      name: serverName,</span>
+<span class="cstat-no" title="statement not covered" >      version: serverVersion,</span>
+<span class="cstat-no" title="statement not covered" >      authenticate: authMiddleware.authenticate.bind(authMiddleware),</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        return {</span>
-<span class="cstat-no" title="statement not covered" >          success: true,</span>
-<span class="cstat-no" title="statement not covered" >          data: result,</span>
-<span class="cstat-no" title="statement not covered" >          auditTrail: auditEntry,</span>
-<span class="cstat-no" title="statement not covered" >        };</span>
-<span class="cstat-no" title="statement not covered" >      } catch (actionError) {</span>
-<span class="cstat-no" title="statement not covered" >        // Always attempt to revert impersonation on error</span>
-<span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >          await this.endImpersonation(request);</span>
-<span class="cstat-no" title="statement not covered" >        } catch (revertError) {</span>
-<span class="cstat-no" title="statement not covered" >          // Log revert error but don't mask the original error</span>
-<span class="cstat-no" title="statement not covered" >          console.error('Failed to revert SQL impersonation:', revertError);</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >    // 7. Register all tools</span>
+<span class="cstat-no" title="statement not covered" >    const toolFactories = getAllToolFactories();</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`[MCP OAuth Server] Registering ${toolFactories.length} tools...`);</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        throw actionError;</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
-<span class="cstat-no" title="statement not covered" >      auditEntry.error = error instanceof Error ? error.message : 'Unknown error';</span>
+<span class="cstat-no" title="statement not covered" >    for (const factory of toolFactories) {</span>
+<span class="cstat-no" title="statement not covered" >      const toolReg = factory(this.coreContext);</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      return {</span>
-<span class="cstat-no" title="statement not covered" >        success: false,</span>
-<span class="cstat-no" title="statement not covered" >        error: error instanceof Error ? error.message : 'Unknown error',</span>
-<span class="cstat-no" title="statement not covered" >        auditTrail: auditEntry,</span>
-<span class="cstat-no" title="statement not covered" >      };</span>
+<span class="cstat-no" title="statement not covered" >      this.mcpServer.addTool({</span>
+<span class="cstat-no" title="statement not covered" >        name: toolReg.name,</span>
+<span class="cstat-no" title="statement not covered" >        description: toolReg.description,</span>
+<span class="cstat-no" title="statement not covered" >        parameters: toolReg.schema,</span>
+<span class="cstat-no" title="statement not covered" >        canAccess: toolReg.canAccess as any, // FastMCP's canAccess API</span>
+<span class="cstat-no" title="statement not covered" >        execute: async (args, context) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >          // FastMCP provides: { authenticated: true, session: UserSession }</span>
+<span class="cstat-no" title="statement not covered" >          // Extract the actual UserSession from the wrapper</span>
+<span class="cstat-no" title="statement not covered" >          const fastmcpSession = (context as any).session;</span>
+<span class="cstat-no" title="statement not covered" >          const mcpContext: MCPContext = {</span>
+<span class="cstat-no" title="statement not covered" >            session: fastmcpSession?.session || fastmcpSession,</span>
+<span class="cstat-no" title="statement not covered" >          };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >          // Call tool handler (returns LLMResponse with { status, data } or { status, code, message })</span>
+<span class="cstat-no" title="statement not covered" >          const result = await toolReg.handler(args, mcpContext);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >          // Convert LLMResponse to MCP protocol format</span>
+<span class="cstat-no" title="statement not covered" >          // FastMCP expects: { content: [{ type: 'text', text: string }] }</span>
+<span class="cstat-no" title="statement not covered" >          if ('data' in result) {</span>
+<span class="cstat-no" title="statement not covered" >            // Success response: serialize data as JSON string</span>
+<span class="cstat-no" title="statement not covered" >            return {</span>
+<span class="cstat-no" title="statement not covered" >              content: [</span>
+<span class="cstat-no" title="statement not covered" >                {</span>
+<span class="cstat-no" title="statement not covered" >                  type: 'text',</span>
+<span class="cstat-no" title="statement not covered" >                  text: JSON.stringify(result.data, null, 2),</span>
+<span class="cstat-no" title="statement not covered" >                },</span>
+<span class="cstat-no" title="statement not covered" >              ],</span>
+<span class="cstat-no" title="statement not covered" >            };</span>
+<span class="cstat-no" title="statement not covered" >          } else {</span>
+<span class="cstat-no" title="statement not covered" >            // Failure response: return error details as JSON string</span>
+<span class="cstat-no" title="statement not covered" >            return {</span>
+<span class="cstat-no" title="statement not covered" >              content: [</span>
+<span class="cstat-no" title="statement not covered" >                {</span>
+<span class="cstat-no" title="statement not covered" >                  type: 'text',</span>
+<span class="cstat-no" title="statement not covered" >                  text: JSON.stringify(</span>
+<span class="cstat-no" title="statement not covered" >                    {</span>
+<span class="cstat-no" title="statement not covered" >                      error: result.code,</span>
+<span class="cstat-no" title="statement not covered" >                      message: result.message,</span>
+<span class="cstat-no" title="statement not covered" >                    },</span>
+<span class="cstat-no" title="statement not covered" >                    null,</span>
+<span class="cstat-no" title="statement not covered" >                    2</span>
+<span class="cstat-no" title="statement not covered" >                  ),</span>
+<span class="cstat-no" title="statement not covered" >                },</span>
+<span class="cstat-no" title="statement not covered" >              ],</span>
+<span class="cstat-no" title="statement not covered" >              isError: true,</span>
+<span class="cstat-no" title="statement not covered" >            };</span>
+<span class="cstat-no" title="statement not covered" >          }</span>
+<span class="cstat-no" title="statement not covered" >        },</span>
+<span class="cstat-no" title="statement not covered" >      });</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      console.log(`[MCP OAuth Server]   ✓ Registered tool: ${toolReg.name}`);</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    console.log(`[MCP OAuth Server] ✓ Registered ${toolFactories.length} tools`);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // 8. Start server</span>
+<span class="cstat-no" title="statement not covered" >    const transport = options.transport || mcpConfig?.transport || 'httpStream';</span>
+<span class="cstat-no" title="statement not covered" >    const port = options.port || mcpConfig?.port || 3000;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] Starting FastMCP server...');</span>
+<span class="cstat-no" title="statement not covered" >    await this.mcpServer.start({</span>
+<span class="cstat-no" title="statement not covered" >      transportType: transport as any,</span>
+<span class="cstat-no" title="statement not covered" >      httpStream: transport === 'httpStream' ? { port, endpoint: '/mcp' } : undefined,</span>
+<span class="cstat-no" title="statement not covered" >      stateless: true, // OAuth requires stateless mode</span>
+<span class="cstat-no" title="statement not covered" >      logLevel: 'debug', // Increased for troubleshooting</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    this.isRunning = true;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // 9. Log startup summary</span>
+<span class="cstat-no" title="statement not covered" >    console.log('\n' + '='.repeat(60));</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] ✓ Server started successfully');</span>
+<span class="cstat-no" title="statement not covered" >    console.log('='.repeat(60));</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`  Server Name:      ${serverName}`);</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`  Version:          ${serverVersion}`);</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`  Transport:        ${transport}`);</span>
+<span class="cstat-no" title="statement not covered" >    if (transport === 'httpStream') {</span>
+<span class="cstat-no" title="statement not covered" >      console.log(`  Port:             ${port}`);</span>
+<span class="cstat-no" title="statement not covered" >      console.log(`  Endpoint:         /mcp`);</span>
+<span class="cstat-no" title="statement not covered" >      console.log(`  URL:              http://localhost:${port}/mcp`);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`  Authentication:   OAuth 2.1 with JWT`);</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`  Tools Registered: ${toolFactories.length}`);</span>
+<span class="cstat-no" title="statement not covered" >    console.log(`  Audit Logging:    ${this.coreContext.auditService ? 'Enabled' : 'Disabled'}`);</span>
+<span class="cstat-no" title="statement not covered" >    console.log('='.repeat(60) + '\n');</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async validateAccess(context: UserSession): Promise&lt;boolean&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    // Check if user has SQL delegation permissions</span>
-<span class="cstat-no" title="statement not covered" >    const requiredScopes = ['sql:delegate', 'legacy:access'];</span>
-<span class="cstat-no" title="statement not covered" >    const hasRequiredScope = requiredScopes.some(scope =&gt;</span>
-<span class="cstat-no" title="statement not covered" >      context.scopes?.includes(scope) || context.permissions?.includes(scope)</span>
-<span class="cstat-no" title="statement not covered" >    );</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (!hasRequiredScope) {</span>
-<span class="cstat-no" title="statement not covered" >      return false;</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Stop the MCP OAuth server</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * This will:</span>
+<span class="cstat-no" title="statement not covered" >   * 1. Stop the FastMCP server</span>
+<span class="cstat-no" title="statement not covered" >   * 2. Destroy the CoreContext and cleanup resources</span>
+<span class="cstat-no" title="statement not covered" >   * 3. Clear all internal state</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @example</span>
+<span class="cstat-no" title="statement not covered" >   * ```typescript</span>
+<span class="cstat-no" title="statement not covered" >   * // Graceful shutdown</span>
+<span class="cstat-no" title="statement not covered" >   * process.on('SIGINT', async () =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >   *   console.log('\nShutting down...');</span>
+<span class="cstat-no" title="statement not covered" >   *   await server.stop();</span>
+<span class="cstat-no" title="statement not covered" >   *   process.exit(0);</span>
+<span class="cstat-no" title="statement not covered" >   * });</span>
+<span class="cstat-no" title="statement not covered" >   * ```</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  async stop(): Promise&lt;void&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (!this.isRunning) {</span>
+<span class="cstat-no" title="statement not covered" >      console.log('[MCP OAuth Server] Server is not running');</span>
+<span class="cstat-no" title="statement not covered" >      return;</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Additional role-based validation</span>
-<span class="cstat-no" title="statement not covered" >    if (context.role === 'guest') {</span>
-<span class="cstat-no" title="statement not covered" >      return false;</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] Stopping server...');</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // 1. Stop FastMCP server</span>
+<span class="cstat-no" title="statement not covered" >    if (this.mcpServer) {</span>
+<span class="cstat-no" title="statement not covered" >      await this.mcpServer.close();</span>
+<span class="cstat-no" title="statement not covered" >      console.log('[MCP OAuth Server] ✓ FastMCP server stopped');</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Validate legacy username is present</span>
-<span class="cstat-no" title="statement not covered" >    if (!context.legacyUsername) {</span>
-<span class="cstat-no" title="statement not covered" >      return false;</span>
+<span class="cstat-no" title="statement not covered" >    // 2. Destroy CoreContext</span>
+<span class="cstat-no" title="statement not covered" >    if (this.coreContext) {</span>
+<span class="cstat-no" title="statement not covered" >      await ConfigOrchestrator.destroyCoreContext(this.coreContext);</span>
+<span class="cstat-no" title="statement not covered" >      console.log('[MCP OAuth Server] ✓ CoreContext destroyed');</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    return true;</span>
+<span class="cstat-no" title="statement not covered" >    // 3. Clear state</span>
+<span class="cstat-no" title="statement not covered" >    this.coreContext = undefined;</span>
+<span class="cstat-no" title="statement not covered" >    this.mcpServer = undefined;</span>
+<span class="cstat-no" title="statement not covered" >    this.isRunning = false;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCP OAuth Server] ✓ Server stopped');</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private validateDelegationParameters(</span>
-<span class="cstat-no" title="statement not covered" >    legacyUsername: string,</span>
-<span class="cstat-no" title="statement not covered" >    action: string,</span>
-<span class="cstat-no" title="statement not covered" >    parameters: Record&lt;string, unknown&gt;</span>
-<span class="cstat-no" title="statement not covered" >  ): void {</span>
-<span class="cstat-no" title="statement not covered" >    // Validate legacy username format (prevent injection)</span>
-<span class="cstat-no" title="statement not covered" >    if (!this.isValidSQLIdentifier(legacyUsername)) {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Invalid legacy username format');</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Get the CoreContext</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * Provides access to core services for advanced use cases.</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @returns CoreContext with all core services</span>
+<span class="cstat-no" title="statement not covered" >   * @throws {Error} If server is not initialized</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @example</span>
+<span class="cstat-no" title="statement not covered" >   * ```typescript</span>
+<span class="cstat-no" title="statement not covered" >   * const context = server.getCoreContext();</span>
+<span class="cstat-no" title="statement not covered" >   * const auditEntries = context.auditService.getEntries();</span>
+<span class="cstat-no" title="statement not covered" >   * ```</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  getCoreContext(): CoreContext {</span>
+<span class="cstat-no" title="statement not covered" >    if (!this.coreContext) {</span>
+<span class="cstat-no" title="statement not covered" >      throw new Error(</span>
+<span class="cstat-no" title="statement not covered" >        'CoreContext not initialized. Call start() first.'</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Validate action is allowed</span>
-<span class="cstat-no" title="statement not covered" >    const allowedActions = ['query', 'procedure', 'function'];</span>
-<span class="cstat-no" title="statement not covered" >    if (!allowedActions.includes(action)) {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', `Action not allowed: ${action}`);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Validate required parameters</span>
-<span class="cstat-no" title="statement not covered" >    if (action === 'query' &amp;&amp; !parameters.sql) {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Missing SQL query parameter');</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (action === 'procedure' &amp;&amp; !parameters.procedure) {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Missing procedure name parameter');</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    return this.coreContext;</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private async beginImpersonation(request: sql.Request, legacyUsername: string): Promise&lt;void&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    // Security: Use parameterized query to prevent injection</span>
-<span class="cstat-no" title="statement not covered" >    const impersonateQuery = 'EXECUTE AS USER = @username;';</span>
-<span class="cstat-no" title="statement not covered" >    request.input('username', sql.NVarChar, legacyUsername);</span>
-<span class="cstat-no" title="statement not covered" >    await request.query(impersonateQuery);</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Check if server is running</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @returns true if server is running, false otherwise</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  isServerRunning(): boolean {</span>
+<span class="cstat-no" title="statement not covered" >    return this.isRunning;</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private async endImpersonation(request: sql.Request): Promise&lt;void&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    await request.query('REVERT;');</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private async executeDelegatedAction(</span>
-<span class="cstat-no" title="statement not covered" >    request: sql.Request,</span>
-<span class="cstat-no" title="statement not covered" >    action: string,</span>
-<span class="cstat-no" title="statement not covered" >    parameters: Record&lt;string, unknown&gt;</span>
-<span class="cstat-no" title="statement not covered" >  ): Promise&lt;any&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    switch (action) {</span>
-<span class="cstat-no" title="statement not covered" >      case 'query':</span>
-<span class="cstat-no" title="statement not covered" >        return this.executeQuery(request, parameters);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      case 'procedure':</span>
-<span class="cstat-no" title="statement not covered" >        return this.executeProcedure(request, parameters);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      case 'function':</span>
-<span class="cstat-no" title="statement not covered" >        return this.executeFunction(request, parameters);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      default:</span>
-<span class="cstat-no" title="statement not covered" >        throw SecurityErrors.DELEGATION_FAILED('SQL', `Unsupported action: ${action}`);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private async executeQuery(request: sql.Request, parameters: Record&lt;string, unknown&gt;): Promise&lt;any&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    const { sql: query, params } = parameters;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (typeof query !== 'string') {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Query must be a string');</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Security: Prevent dangerous operations</span>
-<span class="cstat-no" title="statement not covered" >    this.validateQuerySafety(query);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Add parameters if provided</span>
-<span class="cstat-no" title="statement not covered" >    if (params &amp;&amp; typeof params === 'object') {</span>
-<span class="cstat-no" title="statement not covered" >      for (const [key, value] of Object.entries(params as Record&lt;string, any&gt;)) {</span>
-<span class="cstat-no" title="statement not covered" >        this.addParameterToRequest(request, key, value);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const result = await request.query(query);</span>
-<span class="cstat-no" title="statement not covered" >    return result.recordset;</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private async executeProcedure(request: sql.Request, parameters: Record&lt;string, unknown&gt;): Promise&lt;any&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    const { procedure, params } = parameters;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (typeof procedure !== 'string') {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Procedure name must be a string');</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Validate procedure name format</span>
-<span class="cstat-no" title="statement not covered" >    if (!this.isValidSQLIdentifier(procedure)) {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Invalid procedure name format');</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Add parameters if provided</span>
-<span class="cstat-no" title="statement not covered" >    if (params &amp;&amp; typeof params === 'object') {</span>
-<span class="cstat-no" title="statement not covered" >      for (const [key, value] of Object.entries(params as Record&lt;string, any&gt;)) {</span>
-<span class="cstat-no" title="statement not covered" >        this.addParameterToRequest(request, key, value);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const result = await request.execute(procedure);</span>
-<span class="cstat-no" title="statement not covered" >    return result.recordset;</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private async executeFunction(request: sql.Request, parameters: Record&lt;string, unknown&gt;): Promise&lt;any&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    const { functionName, params } = parameters;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (typeof functionName !== 'string') {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Function name must be a string');</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Validate function name format</span>
-<span class="cstat-no" title="statement not covered" >    if (!this.isValidSQLIdentifier(functionName)) {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Invalid function name format');</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Build function call query</span>
-<span class="cstat-no" title="statement not covered" >    const paramPlaceholders = params &amp;&amp; typeof params === 'object' ?</span>
-<span class="cstat-no" title="statement not covered" >      Object.keys(params as Record&lt;string, any&gt;).map(key =&gt; `@${key}`).join(', ') : '';</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const functionQuery = `SELECT dbo.${functionName}(${paramPlaceholders}) AS result;`;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Add parameters if provided</span>
-<span class="cstat-no" title="statement not covered" >    if (params &amp;&amp; typeof params === 'object') {</span>
-<span class="cstat-no" title="statement not covered" >      for (const [key, value] of Object.entries(params as Record&lt;string, any&gt;)) {</span>
-<span class="cstat-no" title="statement not covered" >        this.addParameterToRequest(request, key, value);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const result = await request.query(functionQuery);</span>
-<span class="cstat-no" title="statement not covered" >    return result.recordset;</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private addParameterToRequest(request: sql.Request, key: string, value: any): void {</span>
-<span class="cstat-no" title="statement not covered" >    // Determine SQL type based on value type</span>
-<span class="cstat-no" title="statement not covered" >    if (typeof value === 'string') {</span>
-<span class="cstat-no" title="statement not covered" >      request.input(key, sql.NVarChar, value);</span>
-<span class="cstat-no" title="statement not covered" >    } else if (typeof value === 'number') {</span>
-<span class="cstat-no" title="statement not covered" >      if (Number.isInteger(value)) {</span>
-<span class="cstat-no" title="statement not covered" >        request.input(key, sql.Int, value);</span>
-<span class="cstat-no" title="statement not covered" >      } else {</span>
-<span class="cstat-no" title="statement not covered" >        request.input(key, sql.Float, value);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    } else if (typeof value === 'boolean') {</span>
-<span class="cstat-no" title="statement not covered" >      request.input(key, sql.Bit, value);</span>
-<span class="cstat-no" title="statement not covered" >    } else if (value instanceof Date) {</span>
-<span class="cstat-no" title="statement not covered" >      request.input(key, sql.DateTime, value);</span>
-<span class="cstat-no" title="statement not covered" >    } else {</span>
-<span class="cstat-no" title="statement not covered" >      // Default to NVarChar for other types</span>
-<span class="cstat-no" title="statement not covered" >      request.input(key, sql.NVarChar, String(value));</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private validateQuerySafety(query: string): void {</span>
-<span class="cstat-no" title="statement not covered" >    const normalizedQuery = query.toLowerCase().trim();</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Prevent dangerous operations</span>
-<span class="cstat-no" title="statement not covered" >    const dangerousPatterns = [</span>
-<span class="cstat-no" title="statement not covered" >      /\b(drop|create|alter|truncate)\s+/i,</span>
-<span class="cstat-no" title="statement not covered" >      /\b(grant|revoke)\s+/i,</span>
-<span class="cstat-no" title="statement not covered" >      /\b(shutdown|backup|restore)\s+/i,</span>
-<span class="cstat-no" title="statement not covered" >      /xp_cmdshell/i,</span>
-<span class="cstat-no" title="statement not covered" >      /sp_configure/i,</span>
-<span class="cstat-no" title="statement not covered" >      /openrowset/i,</span>
-<span class="cstat-no" title="statement not covered" >      /opendatasource/i,</span>
-<span class="cstat-no" title="statement not covered" >    ];</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    for (const pattern of dangerousPatterns) {</span>
-<span class="cstat-no" title="statement not covered" >      if (pattern.test(normalizedQuery)) {</span>
-<span class="cstat-no" title="statement not covered" >        throw SecurityErrors.DELEGATION_FAILED('SQL', 'Query contains prohibited operations');</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Prevent nested EXECUTE AS</span>
-<span class="cstat-no" title="statement not covered" >    if (/execute\s+as/i.test(normalizedQuery)) {</span>
-<span class="cstat-no" title="statement not covered" >      throw SecurityErrors.DELEGATION_FAILED('SQL', 'Nested EXECUTE AS not allowed');</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private isValidSQLIdentifier(identifier: string): boolean {</span>
-<span class="cstat-no" title="statement not covered" >    // SQL Server identifier validation</span>
-<span class="cstat-no" title="statement not covered" >    // Allow alphanumeric, underscore, and @ symbol for parameters</span>
-<span class="cstat-no" title="statement not covered" >    return /^[a-zA-Z][a-zA-Z0-9_@]*$/.test(identifier) &amp;&amp; identifier.length &lt;= 128;</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async destroy(): Promise&lt;void&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    if (this.pool) {</span>
-<span class="cstat-no" title="statement not covered" >      await this.pool.close();</span>
-<span class="cstat-no" title="statement not covered" >      this.pool = null;</span>
-<span class="cstat-no" title="statement not covered" >      this.isConnected = false;</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // Health check method</span>
-<span class="cstat-no" title="statement not covered" >  async healthCheck(): Promise&lt;boolean&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    if (!this.isConnected || !this.pool) {</span>
-<span class="cstat-no" title="statement not covered" >      return false;</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      const request = this.pool.request();</span>
-<span class="cstat-no" title="statement not covered" >      await request.query('SELECT 1 AS healthy');</span>
-<span class="cstat-no" title="statement not covered" >      return true;</span>
-<span class="cstat-no" title="statement not covered" >    } catch {</span>
-<span class="cstat-no" title="statement not covered" >      return false;</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Get server configuration</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @returns Configuration manager instance</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  getConfigManager(): ConfigManager {</span>
+<span class="cstat-no" title="statement not covered" >    return this.configManager;</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >export const sqlDelegator = new SQLDelegator();</span></pre></td></tr></table></pre>
+&nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-03T07:02:56.770Z
+                at 2025-10-08T08:18:44.389Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

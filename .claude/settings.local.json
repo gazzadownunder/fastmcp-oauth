@@ -55,7 +55,8 @@
       "Bash(npm list:*)",
       "Bash(curl:*)",
       "Bash(git checkout:*)",
-      "Bash(npm cache clean:*)"
+      "Bash(npm cache clean:*)",
+      "Bash(npx vitest run:*)"
     ],
     "deny": [],
     "ask": []

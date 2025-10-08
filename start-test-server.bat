@@ -13,6 +13,6 @@ echo.
 
 set NODE_ENV=development
 set CONFIG_PATH=./test-harness/config/v2-keycloak-oauth-only.json
-set SERVER_PORT=3000
+set SERVER_PORT=3100
 
 node dist/test-harness/v2-test-server.js

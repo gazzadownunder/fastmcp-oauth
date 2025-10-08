@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/281</span>
+                <span class='fraction'>0/284</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/281</span>
+                <span class='fraction'>0/284</span>
             </div>
         
             
@@ -344,7 +344,13 @@
 <a name='L279'></a><a href='#L279'>279</a>
 <a name='L280'></a><a href='#L280'>280</a>
 <a name='L281'></a><a href='#L281'>281</a>
-<a name='L282'></a><a href='#L282'>282</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -705,15 +711,12 @@
 <span class="cstat-no" title="statement not covered" >  private config: PermissionConfig;</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >  constructor(config?: PermissionConfig) {</span>
+<span class="cstat-no" title="statement not covered" >    // SECURITY: No default permissions - users MUST explicitly configure</span>
+<span class="cstat-no" title="statement not covered" >    // Framework will not assign ANY permissions unless explicitly configured</span>
 <span class="cstat-no" title="statement not covered" >    this.config = {</span>
-<span class="cstat-no" title="statement not covered" >      adminPermissions: config?.adminPermissions || [</span>
-<span class="cstat-no" title="statement not covered" >        'read',</span>
-<span class="cstat-no" title="statement not covered" >        'write',</span>
-<span class="cstat-no" title="statement not covered" >        'delete',</span>
-<span class="cstat-no" title="statement not covered" >        'admin',</span>
-<span class="cstat-no" title="statement not covered" >      ],</span>
-<span class="cstat-no" title="statement not covered" >      userPermissions: config?.userPermissions || ['read', 'write'],</span>
-<span class="cstat-no" title="statement not covered" >      guestPermissions: config?.guestPermissions || ['read'],</span>
+<span class="cstat-no" title="statement not covered" >      adminPermissions: config?.adminPermissions || [],</span>
+<span class="cstat-no" title="statement not covered" >      userPermissions: config?.userPermissions || [],</span>
+<span class="cstat-no" title="statement not covered" >      guestPermissions: config?.guestPermissions || [],</span>
 <span class="cstat-no" title="statement not covered" >      customPermissions: config?.customPermissions || {},</span>
 <span class="cstat-no" title="statement not covered" >    };</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
@@ -852,11 +855,23 @@
 <span class="cstat-no" title="statement not covered" >  /**</span>
 <span class="cstat-no" title="statement not covered" >   * Get permissions for a given role</span>
 <span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * SECURITY (SEC-2): UNASSIGNED_ROLE protection with early return</span>
+<span class="cstat-no" title="statement not covered" >   * - Returns [] immediately for UNASSIGNED_ROLE (config-independent)</span>
+<span class="cstat-no" title="statement not covered" >   * - Prevents configuration errors from causing authentication failures</span>
+<span class="cstat-no" title="statement not covered" >   * - Enforces fail-safe behavior: if role is UNASSIGNED, permissions are ALWAYS empty</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
 <span class="cstat-no" title="statement not covered" >   * @param role - Role name</span>
 <span class="cstat-no" title="statement not covered" >   * @returns Array of permissions</span>
 <span class="cstat-no" title="statement not covered" >   */</span>
 <span class="cstat-no" title="statement not covered" >  private getPermissions(role: string): string[] {</span>
-<span class="cstat-no" title="statement not covered" >    // Standard roles</span>
+<span class="cstat-no" title="statement not covered" >    // SECURITY (SEC-2): UNASSIGNED_ROLE always gets empty permissions</span>
+<span class="cstat-no" title="statement not covered" >    // This is a fail-safe that bypasses configuration lookup</span>
+<span class="cstat-no" title="statement not covered" >    // Prevents configuration errors from causing authentication failures</span>
+<span class="cstat-no" title="statement not covered" >    if (role === UNASSIGNED_ROLE) {</span>
+<span class="cstat-no" title="statement not covered" >      return []; // ✅ Early return, config-independent</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // Standard roles - use configured permissions</span>
 <span class="cstat-no" title="statement not covered" >    if (role === ROLE_ADMIN) {</span>
 <span class="cstat-no" title="statement not covered" >      return this.config.adminPermissions || [];</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
@@ -867,15 +882,9 @@
 <span class="cstat-no" title="statement not covered" >      return this.config.guestPermissions || [];</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Custom roles (checked BEFORE UNASSIGNED_ROLE to allow safety assertion to catch config bugs)</span>
+<span class="cstat-no" title="statement not covered" >    // Custom roles - look up in customPermissions map</span>
 <span class="cstat-no" title="statement not covered" >    if (this.config.customPermissions?.[role]) {</span>
 <span class="cstat-no" title="statement not covered" >      return this.config.customPermissions[role];</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // UNASSIGNED_ROLE must always return empty array</span>
-<span class="cstat-no" title="statement not covered" >    // This should never be reached if createSession() properly enforces the invariant</span>
-<span class="cstat-no" title="statement not covered" >    if (role === UNASSIGNED_ROLE) {</span>
-<span class="cstat-no" title="statement not covered" >      return [];</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    // Unknown role - return empty permissions</span>
@@ -913,7 +922,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-03T07:02:56.770Z
+                at 2025-10-08T08:18:44.389Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

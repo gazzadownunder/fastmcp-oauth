@@ -14,7 +14,7 @@
 import { z } from 'zod';
 import type { CoreContext } from '../../core/index.js';
 import type { ToolFactory, LLMResponse, MCPContext } from '../types.js';
-import { requireAuth } from '../middleware.js';
+import { Authorization } from '../authorization.js';
 import { OAuthSecurityError } from '../../utils/errors.js';
 import { handleToolError } from '../utils/error-helpers.js';
 
@@ -64,13 +64,15 @@ export const createUserInfoTool: ToolFactory = (context: CoreContext) => ({
   // Visibility filtering using canAccess (two-tier security)
   // All authenticated users can see this tool
   canAccess: (mcpContext: MCPContext) => {
-    return !!(mcpContext.session && !mcpContext.session.rejected);
+    const auth = new Authorization();
+    return auth.isAuthenticated(mcpContext);
   },
 
   handler: async (params: UserInfoParams, mcpContext: MCPContext): Promise<LLMResponse> => {
     try {
       // Require authentication
-      requireAuth(mcpContext);
+      const auth = new Authorization();
+      auth.requireAuth(mcpContext);
 
       const session = mcpContext.session;
 

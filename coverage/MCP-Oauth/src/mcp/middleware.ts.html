@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/252</span>
+                <span class='fraction'>0/262</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/252</span>
+                <span class='fraction'>0/262</span>
             </div>
         
             
@@ -315,7 +315,27 @@
 <a name='L250'></a><a href='#L250'>250</a>
 <a name='L251'></a><a href='#L251'>251</a>
 <a name='L252'></a><a href='#L252'>252</a>
-<a name='L253'></a><a href='#L253'>253</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -583,6 +603,7 @@
 <span class="cstat-no" title="statement not covered" >import type { UserSession } from '../core/types.js';</span>
 <span class="cstat-no" title="statement not covered" >import { createSecurityError } from '../utils/errors.js';</span>
 <span class="cstat-no" title="statement not covered" >import type { MCPContext } from './types.js';</span>
+<span class="cstat-no" title="statement not covered" >import { Authorization } from './authorization.js';</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >// ============================================================================</span>
 <span class="cstat-no" title="statement not covered" >// FastMCP Request Context (Placeholder)</span>
@@ -647,11 +668,18 @@
 <span class="cstat-no" title="statement not covered" >   * @throws {OAuthSecurityError} If authentication fails or session is rejected</span>
 <span class="cstat-no" title="statement not covered" >   */</span>
 <span class="cstat-no" title="statement not covered" >  async authenticate(request: FastMCPRequest): Promise&lt;FastMCPAuthResult&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    console.log('[MCPAuthMiddleware] Authenticating request:', {</span>
+<span class="cstat-no" title="statement not covered" >      method: request.method,</span>
+<span class="cstat-no" title="statement not covered" >      path: request.path,</span>
+<span class="cstat-no" title="statement not covered" >      hasAuthHeader: !!(request.headers['authorization'] || request.headers['Authorization'])</span>
+<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
 <span class="cstat-no" title="statement not covered" >      // Extract Bearer token</span>
 <span class="cstat-no" title="statement not covered" >      const token = this.extractToken(request);</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      if (!token) {</span>
+<span class="cstat-no" title="statement not covered" >        console.log('[MCPAuthMiddleware] ❌ No Bearer token found');</span>
 <span class="cstat-no" title="statement not covered" >        throw createSecurityError(</span>
 <span class="cstat-no" title="statement not covered" >          'MISSING_TOKEN',</span>
 <span class="cstat-no" title="statement not covered" >          'Missing Authorization header with Bearer token',</span>
@@ -659,15 +687,36 @@
 <span class="cstat-no" title="statement not covered" >        );</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
 <span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      console.log('[MCPAuthMiddleware] ✓ Token extracted, validating...');</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      // Authenticate with AuthenticationService</span>
 <span class="cstat-no" title="statement not covered" >      const authResult = await this.authService.authenticate(token);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      console.log('[MCPAuthMiddleware] Auth result:', {</span>
+<span class="cstat-no" title="statement not covered" >        rejected: authResult.rejected,</span>
+<span class="cstat-no" title="statement not covered" >        sessionRejected: authResult.session.rejected,</span>
+<span class="cstat-no" title="statement not covered" >        role: authResult.session.role,</span>
+<span class="cstat-no" title="statement not covered" >        customRoles: authResult.session.customRoles,</span>
+<span class="cstat-no" title="statement not covered" >        userId: authResult.session.userId</span>
+<span class="cstat-no" title="statement not covered" >      });</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      // CRITICAL (GAP #1): Dual rejection check</span>
 <span class="cstat-no" title="statement not covered" >      // Check 1: authResult.rejected (from AuthenticationService)</span>
 <span class="cstat-no" title="statement not covered" >      if (authResult.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >        console.log('[MCPAuthMiddleware] ❌ Auth result rejected:', authResult.rejectionReason);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        // Translate technical role mapping errors to user-friendly authorization errors</span>
+<span class="cstat-no" title="statement not covered" >        // Note: Must include "Unauthorized" keyword for mcp-proxy to detect as auth error</span>
+<span class="cstat-no" title="statement not covered" >        let userMessage = 'Unauthorized: User has no valid roles assigned';</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        // Log technical details for debugging</span>
+<span class="cstat-no" title="statement not covered" >        if (authResult.rejectionReason) {</span>
+<span class="cstat-no" title="statement not covered" >          console.log('[MCPAuthMiddleware] Technical rejection reason:', authResult.rejectionReason);</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >        throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >          'SESSION_REJECTED',</span>
-<span class="cstat-no" title="statement not covered" >          authResult.rejectionReason || 'Authentication rejected',</span>
+<span class="cstat-no" title="statement not covered" >          'UNAUTHORIZED',</span>
+<span class="cstat-no" title="statement not covered" >          userMessage,</span>
 <span class="cstat-no" title="statement not covered" >          403</span>
 <span class="cstat-no" title="statement not covered" >        );</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
@@ -675,20 +724,23 @@
 <span class="cstat-no" title="statement not covered" >      // Check 2: session.rejected (from UserSession)</span>
 <span class="cstat-no" title="statement not covered" >      // This prevents timing attacks by ensuring both rejection flags are checked</span>
 <span class="cstat-no" title="statement not covered" >      if (authResult.session.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >        console.log('[MCPAuthMiddleware] ❌ Session rejected - unassigned role');</span>
 <span class="cstat-no" title="statement not covered" >        throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >          'SESSION_REJECTED',</span>
-<span class="cstat-no" title="statement not covered" >          'Session rejected - insufficient permissions or unassigned role',</span>
+<span class="cstat-no" title="statement not covered" >          'UNAUTHORIZED',</span>
+<span class="cstat-no" title="statement not covered" >          'Unauthorized: User has no valid roles assigned',</span>
 <span class="cstat-no" title="statement not covered" >          403</span>
 <span class="cstat-no" title="statement not covered" >        );</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      // Authentication successful</span>
+<span class="cstat-no" title="statement not covered" >      console.log('[MCPAuthMiddleware] ✓ Authentication successful');</span>
 <span class="cstat-no" title="statement not covered" >      return {</span>
 <span class="cstat-no" title="statement not covered" >        authenticated: true,</span>
 <span class="cstat-no" title="statement not covered" >        session: authResult.session,</span>
 <span class="cstat-no" title="statement not covered" >      };</span>
 <span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
 <span class="cstat-no" title="statement not covered" >      // Convert to FastMCP auth result</span>
+<span class="cstat-no" title="statement not covered" >      console.log('[MCPAuthMiddleware] ❌ Authentication error:', error);</span>
 <span class="cstat-no" title="statement not covered" >      if (error instanceof Error) {</span>
 <span class="cstat-no" title="statement not covered" >        return {</span>
 <span class="cstat-no" title="statement not covered" >          authenticated: false,</span>
@@ -757,67 +809,45 @@
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >// ============================================================================</span>
-<span class="cstat-no" title="statement not covered" >// Helper Functions</span>
+<span class="cstat-no" title="statement not covered" >// Helper Functions (Backward Compatibility)</span>
 <span class="cstat-no" title="statement not covered" >// ============================================================================</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >/**</span>
 <span class="cstat-no" title="statement not covered" > * Require authentication for a tool handler</span>
 <span class="cstat-no" title="statement not covered" > *</span>
-<span class="cstat-no" title="statement not covered" > * Throws an error if the session is not authenticated.</span>
-<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * @deprecated Import from './authorization.js' instead</span>
 <span class="cstat-no" title="statement not covered" > * @param context - MCP context</span>
 <span class="cstat-no" title="statement not covered" > * @throws {Error} If session is rejected</span>
 <span class="cstat-no" title="statement not covered" > */</span>
 <span class="cstat-no" title="statement not covered" >export function requireAuth(context: MCPContext): void {</span>
-<span class="cstat-no" title="statement not covered" >  if (context.session.rejected) {</span>
-<span class="cstat-no" title="statement not covered" >    throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >      'UNAUTHENTICATED',</span>
-<span class="cstat-no" title="statement not covered" >      'Authentication required to access this tool',</span>
-<span class="cstat-no" title="statement not covered" >      401</span>
-<span class="cstat-no" title="statement not covered" >    );</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  const auth = new Authorization();</span>
+<span class="cstat-no" title="statement not covered" >  auth.requireAuth(context);</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >/**</span>
 <span class="cstat-no" title="statement not covered" > * Require specific role for a tool handler</span>
 <span class="cstat-no" title="statement not covered" > *</span>
-<span class="cstat-no" title="statement not covered" > * Throws an error if the session does not have the required role.</span>
-<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * @deprecated Import from './authorization.js' instead</span>
 <span class="cstat-no" title="statement not covered" > * @param context - MCP context</span>
 <span class="cstat-no" title="statement not covered" > * @param requiredRole - Required role ('admin', 'user', etc.)</span>
 <span class="cstat-no" title="statement not covered" > * @throws {Error} If session lacks required role</span>
 <span class="cstat-no" title="statement not covered" > */</span>
 <span class="cstat-no" title="statement not covered" >export function requireRole(context: MCPContext, requiredRole: string): void {</span>
-<span class="cstat-no" title="statement not covered" >  requireAuth(context);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  if (context.session.role !== requiredRole) {</span>
-<span class="cstat-no" title="statement not covered" >    throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >      'INSUFFICIENT_PERMISSIONS',</span>
-<span class="cstat-no" title="statement not covered" >      `This tool requires the '${requiredRole}' role. Your role: ${context.session.role}`,</span>
-<span class="cstat-no" title="statement not covered" >      403</span>
-<span class="cstat-no" title="statement not covered" >    );</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  const auth = new Authorization();</span>
+<span class="cstat-no" title="statement not covered" >  auth.requireRole(context, requiredRole);</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >/**</span>
 <span class="cstat-no" title="statement not covered" > * Require specific permission for a tool handler</span>
 <span class="cstat-no" title="statement not covered" > *</span>
-<span class="cstat-no" title="statement not covered" > * Throws an error if the session does not have the required permission.</span>
-<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * @deprecated Import from './authorization.js' instead</span>
 <span class="cstat-no" title="statement not covered" > * @param context - MCP context</span>
 <span class="cstat-no" title="statement not covered" > * @param requiredPermission - Required permission (e.g., 'sql:query')</span>
 <span class="cstat-no" title="statement not covered" > * @throws {Error} If session lacks required permission</span>
 <span class="cstat-no" title="statement not covered" > */</span>
 <span class="cstat-no" title="statement not covered" >export function requirePermission(context: MCPContext, requiredPermission: string): void {</span>
-<span class="cstat-no" title="statement not covered" >  requireAuth(context);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  if (!context.session.permissions.includes(requiredPermission)) {</span>
-<span class="cstat-no" title="statement not covered" >    throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >      'INSUFFICIENT_PERMISSIONS',</span>
-<span class="cstat-no" title="statement not covered" >      `This tool requires the '${requiredPermission}' permission. Your permissions: ${context.session.permissions.join(', ')}`,</span>
-<span class="cstat-no" title="statement not covered" >      403</span>
-<span class="cstat-no" title="statement not covered" >    );</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  const auth = new Authorization();</span>
+<span class="cstat-no" title="statement not covered" >  auth.requirePermission(context, requiredPermission);</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
@@ -826,7 +856,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-03T07:02:56.770Z
+                at 2025-10-08T08:18:44.389Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -14,7 +14,7 @@
 import { z } from 'zod';
 import type { CoreContext } from '../../core/index.js';
 import type { ToolFactory, LLMResponse, MCPContext } from '../types.js';
-import { requireAuth } from '../middleware.js';
+import { Authorization } from '../authorization.js';
 import { OAuthSecurityError } from '../../utils/errors.js';
 import { handleToolError } from '../utils/error-helpers.js';
 
@@ -64,11 +64,8 @@ export const createHealthCheckTool: ToolFactory = (context: CoreContext) => ({
   // Visibility filtering using canAccess (two-tier security)
   canAccess: (mcpContext: MCPContext) => {
     // Only show to authenticated users with user or admin role
-    if (!mcpContext.session || mcpContext.session.rejected) {
-      return false;
-    }
-
-    return mcpContext.session.role === 'admin' || mcpContext.session.role === 'user';
+    const auth = new Authorization();
+    return auth.hasAnyRole(mcpContext, ['admin', 'user']);
   },
 
   handler: async (
@@ -77,7 +74,8 @@ export const createHealthCheckTool: ToolFactory = (context: CoreContext) => ({
   ): Promise<LLMResponse> => {
     try {
       // Require authentication
-      requireAuth(mcpContext);
+      const auth = new Authorization();
+      auth.requireAuth(mcpContext);
 
       // Check all services (default to 'all' if not specified)
       if (!params.service || params.service === 'all') {

@@ -155,7 +155,7 @@ export class ConfigOrchestrator {
 
     // Build role mapping config with support for custom roles
     const customRolesExtracted = roleMappings ? Object.keys(roleMappings)
-      .filter(key => !['admin', 'user', 'guest', 'defaultRole'].includes(key))
+      .filter(key => !['admin', 'user', 'guest', 'defaultRole', 'rejectUnmappedRoles'].includes(key))
       .reduce((acc, key) => {
         acc[key] = roleMappings[key as keyof typeof roleMappings] as string[];
         return acc;
@@ -168,6 +168,7 @@ export class ConfigOrchestrator {
       userRoles: roleMappings.user,
       guestRoles: roleMappings.guest,
       defaultRole: roleMappings.defaultRole,
+      rejectUnmappedRoles: roleMappings.rejectUnmappedRoles,
       customRoles: customRolesExtracted
     } : undefined;
 

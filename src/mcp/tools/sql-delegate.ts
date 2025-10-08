@@ -15,7 +15,7 @@
 import { z } from 'zod';
 import type { CoreContext } from '../../core/index.js';
 import type { ToolFactory, LLMResponse, MCPContext } from '../types.js';
-import { requirePermission } from '../middleware.js';
+import { Authorization } from '../authorization.js';
 import { OAuthSecurityError } from '../../utils/errors.js';
 import { handleToolError } from '../utils/error-helpers.js';
 
@@ -66,7 +66,8 @@ export const createSqlDelegateTool: ToolFactory = (context: CoreContext) => ({
   // Visibility filtering using canAccess (two-tier security)
   canAccess: (mcpContext: MCPContext) => {
     // Only show to authenticated users with sql permissions
-    if (!mcpContext.session || mcpContext.session.rejected) {
+    const auth = new Authorization();
+    if (!auth.isAuthenticated(mcpContext)) {
       return false;
     }
 
@@ -77,8 +78,9 @@ export const createSqlDelegateTool: ToolFactory = (context: CoreContext) => ({
   handler: async (params: SqlDelegateParams, mcpContext: MCPContext): Promise<LLMResponse> => {
     try {
       // Require appropriate permission based on action
+      const auth = new Authorization();
       const requiredPermission = `sql:${params.action}`;
-      requirePermission(mcpContext, requiredPermission);
+      auth.requirePermission(mcpContext, requiredPermission);
 
       // Validate action-specific parameters
       if (params.action === 'query' && !params.sql) {

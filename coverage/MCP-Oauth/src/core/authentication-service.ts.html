@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/246</span>
+                <span class='fraction'>0/258</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/246</span>
+                <span class='fraction'>0/258</span>
             </div>
         
             
@@ -309,7 +309,31 @@
 <a name='L244'></a><a href='#L244'>244</a>
 <a name='L245'></a><a href='#L245'>245</a>
 <a name='L246'></a><a href='#L246'>246</a>
-<a name='L247'></a><a href='#L247'>247</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L247'></a><a href='#L247'>247</a>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -708,15 +732,27 @@
 <span class="cstat-no" title="statement not covered" >      const rolesClaimPath = idpConfig.claimMappings.roles;</span>
 <span class="cstat-no" title="statement not covered" >      const rolesFromClaims = validationResult.claims[rolesClaimPath];</span>
 <span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      console.log('[AuthenticationService] Role extraction:', {</span>
+<span class="cstat-no" title="statement not covered" >        rolesClaimPath,</span>
+<span class="cstat-no" title="statement not covered" >        rolesFromClaims,</span>
+<span class="cstat-no" title="statement not covered" >        rolesType: typeof rolesFromClaims,</span>
+<span class="cstat-no" title="statement not covered" >        isArray: Array.isArray(rolesFromClaims),</span>
+<span class="cstat-no" title="statement not covered" >        allClaimsKeys: Object.keys(validationResult.claims)</span>
+<span class="cstat-no" title="statement not covered" >      });</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      // Let RoleMapper handle validation - pass raw value</span>
 <span class="cstat-no" title="statement not covered" >      // If it's a string, convert to array; otherwise pass as-is for validation</span>
 <span class="cstat-no" title="statement not covered" >      const rolesInput = typeof rolesFromClaims === 'string'</span>
 <span class="cstat-no" title="statement not covered" >        ? [rolesFromClaims] // String -&gt; single-element array</span>
 <span class="cstat-no" title="statement not covered" >        : rolesFromClaims; // Pass as-is (array, undefined, null, number, etc.)</span>
 <span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      console.log('[AuthenticationService] Roles input to RoleMapper:', rolesInput);</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      const roleResult: RoleMapperResult = this.roleMapper.determineRoles(</span>
 <span class="cstat-no" title="statement not covered" >        rolesInput as string[] // Type assertion - RoleMapper will validate</span>
 <span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      console.log('[AuthenticationService] RoleMapper result:', roleResult);</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      // Step 3: Create session</span>
 <span class="cstat-no" title="statement not covered" >      const session = this.sessionManager.createSession(</span>
@@ -808,7 +844,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-03T07:02:56.770Z
+                at 2025-10-08T08:18:44.389Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

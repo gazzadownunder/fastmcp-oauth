@@ -10,7 +10,7 @@
 import { z } from 'zod';
 import type { CoreContext } from '../../core/index.js';
 import type { ToolFactory, LLMResponse, MCPContext } from '../types.js';
-import { requireAuth } from '../middleware.js';
+import { Authorization } from '../authorization.js';
 
 // ============================================================================
 // Tool Schema
@@ -39,26 +39,20 @@ export const createSQLReadTool: ToolFactory = (context: CoreContext) => ({
 
   // Visibility filtering: Only show to users with 'read' or 'write' role
   canAccess: (mcpContext: MCPContext) => {
-    const session = mcpContext.session;
-    if (!session || session.rejected) {
+    const auth = new Authorization();
+    if (!auth.isAuthenticated(mcpContext)) {
       return false;
     }
 
     // Check if user has 'read' or 'write' role (either primary or custom)
-    const hasRead =
-      session.role === 'read' ||
-      (session.customRoles && session.customRoles.includes('read'));
-    const hasWrite =
-      session.role === 'write' ||
-      (session.customRoles && session.customRoles.includes('write'));
-
-    return hasRead || hasWrite;
+    return auth.hasAnyRole(mcpContext, ['read', 'write']);
   },
 
   handler: async (params: SQLReadParams, mcpContext: MCPContext): Promise<LLMResponse> => {
     try {
       // Require authentication
-      requireAuth(mcpContext);
+      const auth = new Authorization();
+      auth.requireAuth(mcpContext);
 
       const session = mcpContext.session;
 

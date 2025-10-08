@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for MCP-Oauth/src/legacy/index-simple-adapter.ts</title>
+    <title>Code coverage report for MCP-Oauth/examples/canAccess-demo.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../../prettify.css" />
-    <link rel="stylesheet" href="../../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../../sort-arrow-sprite.png);
+            background-image: url(../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../../index.html">All files</a> / <a href="index.html">MCP-Oauth/src/legacy</a> index-simple-adapter.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">MCP-Oauth/examples</a> canAccess-demo.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/329</span>
+                <span class='fraction'>0/341</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/329</span>
+                <span class='fraction'>0/341</span>
             </div>
         
             
@@ -391,7 +391,20 @@
 <a name='L326'></a><a href='#L326'>326</a>
 <a name='L327'></a><a href='#L327'>327</a>
 <a name='L328'></a><a href='#L328'>328</a>
-<a name='L329'></a><a href='#L329'>329</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L329'></a><a href='#L329'>329</a>
+<a name='L330'></a><a href='#L330'>330</a>
+<a name='L331'></a><a href='#L331'>331</a>
+<a name='L332'></a><a href='#L332'>332</a>
+<a name='L333'></a><a href='#L333'>333</a>
+<a name='L334'></a><a href='#L334'>334</a>
+<a name='L335'></a><a href='#L335'>335</a>
+<a name='L336'></a><a href='#L336'>336</a>
+<a name='L337'></a><a href='#L337'>337</a>
+<a name='L338'></a><a href='#L338'>338</a>
+<a name='L339'></a><a href='#L339'>339</a>
+<a name='L340'></a><a href='#L340'>340</a>
+<a name='L341'></a><a href='#L341'>341</a>
+<a name='L342'></a><a href='#L342'>342</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -719,351 +732,377 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { FastMCP } from 'fastmcp';</span></span></span>
-<span class="cstat-no" title="statement not covered" >import { z } from 'zod';</span>
-<span class="cstat-no" title="statement not covered" >import { configManager } from '../config/manager.js';</span>
-<span class="cstat-no" title="statement not covered" >import { jwtValidator } from '../middleware/jwt-validator.js';</span>
-<span class="cstat-no" title="statement not covered" >import { sqlDelegator } from '../services/sql-delegator.js';</span>
-<span class="cstat-no" title="statement not covered" >import type { UserSession, AuditEntry } from '../types/index.js';</span>
-<span class="cstat-no" title="statement not covered" >import { createSecurityError, sanitizeError } from '../utils/errors.js';</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >/**</span>
-<span class="cstat-no" title="statement not covered" > * @deprecated OAuthOBOServer is deprecated. Please migrate to the new modular architecture:</span>
-<span class="cstat-no" title="statement not covered" > * - Use ConfigOrchestrator to build CoreContext</span>
-<span class="cstat-no" title="statement not covered" > * - Use MCPAuthMiddleware for authentication</span>
-<span class="cstat-no" title="statement not covered" > * - Use createSqlDelegateTool and other tool factories</span>
-<span class="cstat-no" title="statement not covered" > * - See examples/ directory for migration guides</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >/**</span></span></span>
+<span class="cstat-no" title="statement not covered" > * Example: Two-Tier Security with canAccess</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Demonstrates defense-in-depth using FastMCP's canAccess property:</span>
+<span class="cstat-no" title="statement not covered" > * 1. Visibility tier (canAccess - soft check) - controls tool visibility</span>
+<span class="cstat-no" title="statement not covered" > * 2. Execution tier (handler - hard check) - enforces permissions</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * This pattern ensures:</span>
+<span class="cstat-no" title="statement not covered" > * - Users don't see tools they can't use (better UX)</span>
+<span class="cstat-no" title="statement not covered" > * - Security is still enforced even if visibility check fails (defense-in-depth)</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * @see Phase-0-Discovery-Report.md for FastMCP canAccess API verification</span>
 <span class="cstat-no" title="statement not covered" > */</span>
-<span class="cstat-no" title="statement not covered" >export class OAuthOBOServer {</span>
-<span class="cstat-no" title="statement not covered" >  private server: FastMCP;</span>
-<span class="cstat-no" title="statement not covered" >  private auditLog: AuditEntry[] = [];</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  constructor() {</span>
-<span class="cstat-no" title="statement not covered" >    // Deprecation warning</span>
-<span class="cstat-no" title="statement not covered" >    console.warn('\n⚠️  WARNING: OAuthOBOServer is deprecated!');</span>
-<span class="cstat-no" title="statement not covered" >    console.warn('Please migrate to the new modular architecture.');</span>
-<span class="cstat-no" title="statement not covered" >    console.warn('See documentation for migration guide.\n');</span>
+<span class="cstat-no" title="statement not covered" >import type { UserSession } from '../src/core/types.js';</span>
+<span class="cstat-no" title="statement not covered" >import type { MCPContext } from '../src/mcp/types.js';</span>
+<span class="cstat-no" title="statement not covered" >import { createSecurityError } from '../src/utils/errors.js';</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // FastMCP authenticate callback: validates JWT and creates session on initialize</span>
-<span class="cstat-no" title="statement not covered" >    this.server = new FastMCP({</span>
-<span class="cstat-no" title="statement not covered" >      name: 'FastMCP OAuth OBO Server',</span>
-<span class="cstat-no" title="statement not covered" >      version: '1.0.0',</span>
-<span class="cstat-no" title="statement not covered" >      authenticate: this.authenticateRequest.bind(this),</span>
-<span class="cstat-no" title="statement not covered" >    });</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Authorization Helper (Simplified for Demo)</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    this.setupTools();</span>
+<span class="cstat-no" title="statement not covered" >class Authorization {</span>
+<span class="cstat-no" title="statement not covered" >  // Soft checks (return boolean, don't throw)</span>
+<span class="cstat-no" title="statement not covered" >  static hasRole(session: UserSession | null | undefined, role: string): boolean {</span>
+<span class="cstat-no" title="statement not covered" >    if (!session || session.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    return session.role === role;</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private async authenticateRequest(request: any): Promise&lt;UserSession | undefined&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    console.log('\n[AUTH DEBUG] ========== Authentication Request ==========');</span>
-<span class="cstat-no" title="statement not covered" >    console.log('[AUTH DEBUG] Request type:', typeof request);</span>
-<span class="cstat-no" title="statement not covered" >    console.log('[AUTH DEBUG] Request method:', request?.method);</span>
-<span class="cstat-no" title="statement not covered" >    console.log('[AUTH DEBUG] Request URL:', request?.url);</span>
-<span class="cstat-no" title="statement not covered" >    console.log('[AUTH DEBUG] Request body (first 100 chars):', JSON.stringify(request?.body)?.substring(0, 100));</span>
-<span class="cstat-no" title="statement not covered" >    console.log('[AUTH DEBUG] Request headers:', request?.headers);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Extract Authorization header from HTTP request</span>
-<span class="cstat-no" title="statement not covered" >    const authHeader = request?.headers?.authorization;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (!authHeader) {</span>
-<span class="cstat-no" title="statement not covered" >      console.log('[AUTH DEBUG] No authorization header provided');</span>
-<span class="cstat-no" title="statement not covered" >      return undefined;</span>
+<span class="cstat-no" title="statement not covered" >  static hasAnyRole(session: UserSession | null | undefined, roles: string[]): boolean {</span>
+<span class="cstat-no" title="statement not covered" >    if (!session || session.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    return roles.includes(session.role);</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    console.log('[AUTH DEBUG] Authorization header found:', authHeader.substring(0, 20) + '...');</span>
+<span class="cstat-no" title="statement not covered" >  static hasPermission(session: UserSession | null | undefined, permission: string): boolean {</span>
+<span class="cstat-no" title="statement not covered" >    if (!session || session.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    return session.permissions.includes(permission);</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      // Extract JWT from Bearer token</span>
-<span class="cstat-no" title="statement not covered" >      const token = this.extractBearerToken(authHeader);</span>
-<span class="cstat-no" title="statement not covered" >      if (!token) {</span>
-<span class="cstat-no" title="statement not covered" >        console.log('[AUTH DEBUG] Failed to extract Bearer token from authorization header');</span>
-<span class="cstat-no" title="statement not covered" >        return undefined;</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      console.log('[AUTH DEBUG] Bearer token extracted successfully');</span>
-<span class="cstat-no" title="statement not covered" >      console.log('[AUTH DEBUG] Token preview:', token.substring(0, 50) + '...');</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Decode token to inspect claims before validation</span>
-<span class="cstat-no" title="statement not covered" >      const parts = token.split('.');</span>
-<span class="cstat-no" title="statement not covered" >      if (parts.length === 3) {</span>
-<span class="cstat-no" title="statement not covered" >        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());</span>
-<span class="cstat-no" title="statement not covered" >        console.log('[AUTH DEBUG] JWT Claims:');</span>
-<span class="cstat-no" title="statement not covered" >        console.log(`  - iss (issuer): ${payload.iss || 'NOT PRESENT'}`);</span>
-<span class="cstat-no" title="statement not covered" >        console.log(`  - aud (audience): ${JSON.stringify(payload.aud) || 'NOT PRESENT'}`);</span>
-<span class="cstat-no" title="statement not covered" >        console.log(`  - azp (authorized party): ${payload.azp || 'NOT PRESENT'}`);</span>
-<span class="cstat-no" title="statement not covered" >        console.log(`  - sub (subject): ${payload.sub || 'NOT PRESENT'}`);</span>
-<span class="cstat-no" title="statement not covered" >        console.log(`  - exp (expires): ${payload.exp ? new Date(payload.exp * 1000).toISOString() : 'NOT PRESENT'}`);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Validate JWT and create session</span>
-<span class="cstat-no" title="statement not covered" >      console.log('[AUTH DEBUG] Starting JWT validation...');</span>
-<span class="cstat-no" title="statement not covered" >      const { session, auditEntry } = await jwtValidator.validateJWT(token);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      console.log('[AUTH DEBUG] ✓ JWT validation SUCCESSFUL');</span>
-<span class="cstat-no" title="statement not covered" >      console.log('[AUTH DEBUG] Session created:');</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - userId: ${session.userId}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - username: ${session.username}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - legacyUsername: ${session.legacyUsername || 'N/A'}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - role: ${session.role}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - permissions: ${session.permissions.join(', ')}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log('[AUTH DEBUG] ================================================\n');</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Log audit entry</span>
-<span class="cstat-no" title="statement not covered" >      this.auditLog.push(auditEntry);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      return session;</span>
-<span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
-<span class="cstat-no" title="statement not covered" >      console.error('[AUTH DEBUG] ✗ JWT validation FAILED');</span>
-<span class="cstat-no" title="statement not covered" >      console.error('[AUTH DEBUG] Error:', error instanceof Error ? error.message : 'Unknown error');</span>
-<span class="cstat-no" title="statement not covered" >      console.error('[AUTH DEBUG] ================================================\n');</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Log failed authentication attempt</span>
-<span class="cstat-no" title="statement not covered" >      const auditEntry: AuditEntry = {</span>
-<span class="cstat-no" title="statement not covered" >        timestamp: new Date(),</span>
-<span class="cstat-no" title="statement not covered" >        userId: 'unknown',</span>
-<span class="cstat-no" title="statement not covered" >        action: 'authentication',</span>
-<span class="cstat-no" title="statement not covered" >        resource: 'server',</span>
-<span class="cstat-no" title="statement not covered" >        success: false,</span>
-<span class="cstat-no" title="statement not covered" >        error: error instanceof Error ? error.message : 'Unknown error',</span>
-<span class="cstat-no" title="statement not covered" >      };</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      this.auditLog.push(auditEntry);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Return undefined for failed authentication (don't throw)</span>
-<span class="cstat-no" title="statement not covered" >      return undefined;</span>
+<span class="cstat-no" title="statement not covered" >  // Hard checks (throw on failure)</span>
+<span class="cstat-no" title="statement not covered" >  static requireRole(session: UserSession | null | undefined, role: string): void {</span>
+<span class="cstat-no" title="statement not covered" >    if (!session || session.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError('UNAUTHENTICATED', 'Authentication required', 401);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    if (session.role !== role) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'INSUFFICIENT_PERMISSIONS',</span>
+<span class="cstat-no" title="statement not covered" >        `Requires '${role}' role. Your role: ${session.role}`,</span>
+<span class="cstat-no" title="statement not covered" >        403</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private extractBearerToken(auth: string): string | null {</span>
-<span class="cstat-no" title="statement not covered" >    const bearerPrefix = 'Bearer ';</span>
-<span class="cstat-no" title="statement not covered" >    if (!auth.startsWith(bearerPrefix)) {</span>
-<span class="cstat-no" title="statement not covered" >      return null;</span>
+<span class="cstat-no" title="statement not covered" >  static requireAnyRole(session: UserSession | null | undefined, roles: string[]): void {</span>
+<span class="cstat-no" title="statement not covered" >    if (!session || session.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError('UNAUTHENTICATED', 'Authentication required', 401);</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    return auth.slice(bearerPrefix.length).trim();</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private setupTools(): void {</span>
-<span class="cstat-no" title="statement not covered" >    // SQL Delegation Tool</span>
-<span class="cstat-no" title="statement not covered" >    this.server.addTool({</span>
-<span class="cstat-no" title="statement not covered" >      name: 'sql-delegate',</span>
-<span class="cstat-no" title="statement not covered" >      description: 'Execute SQL operations on behalf of legacy users',</span>
-<span class="cstat-no" title="statement not covered" >      parameters: z.object({</span>
-<span class="cstat-no" title="statement not covered" >        action: z.enum(['query', 'procedure', 'function']),</span>
-<span class="cstat-no" title="statement not covered" >        sql: z.string().optional(),</span>
-<span class="cstat-no" title="statement not covered" >        procedure: z.string().optional(),</span>
-<span class="cstat-no" title="statement not covered" >        functionName: z.string().optional(),</span>
-<span class="cstat-no" title="statement not covered" >        params: z.record(z.any()).optional(),</span>
-<span class="cstat-no" title="statement not covered" >        resource: z.string().optional(),</span>
-<span class="cstat-no" title="statement not covered" >      }),</span>
-<span class="cstat-no" title="statement not covered" >      execute: async (args, context) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        const session = (context as any)?.session as UserSession | undefined;</span>
-<span class="cstat-no" title="statement not covered" >        if (!session) {</span>
-<span class="cstat-no" title="statement not covered" >          throw createSecurityError('AUTHENTICATION_REQUIRED', 'Authentication required', 401);</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        // Validate access for SQL delegation</span>
-<span class="cstat-no" title="statement not covered" >        const hasAccess = await sqlDelegator.validateAccess(session);</span>
-<span class="cstat-no" title="statement not covered" >        if (!hasAccess) {</span>
-<span class="cstat-no" title="statement not covered" >          throw createSecurityError('INSUFFICIENT_PERMISSIONS', 'Insufficient permissions for SQL delegation', 403);</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        if (!session.legacyUsername) {</span>
-<span class="cstat-no" title="statement not covered" >          throw createSecurityError('MISSING_LEGACY_USERNAME', 'Legacy username required for delegation', 400);</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        // Perform delegation</span>
-<span class="cstat-no" title="statement not covered" >        const result = await sqlDelegator.delegate(</span>
-<span class="cstat-no" title="statement not covered" >          session.legacyUsername,</span>
-<span class="cstat-no" title="statement not covered" >          args.action,</span>
-<span class="cstat-no" title="statement not covered" >          {</span>
-<span class="cstat-no" title="statement not covered" >            sql: args.sql,</span>
-<span class="cstat-no" title="statement not covered" >            procedure: args.procedure,</span>
-<span class="cstat-no" title="statement not covered" >            functionName: args.functionName,</span>
-<span class="cstat-no" title="statement not covered" >            params: args.params,</span>
-<span class="cstat-no" title="statement not covered" >            resource: args.resource || 'sql-database',</span>
-<span class="cstat-no" title="statement not covered" >          }</span>
-<span class="cstat-no" title="statement not covered" >        );</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        // Log audit entry</span>
-<span class="cstat-no" title="statement not covered" >        this.auditLog.push(result.auditTrail);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        if (!result.success) {</span>
-<span class="cstat-no" title="statement not covered" >          throw createSecurityError('DELEGATION_FAILED', result.error || 'SQL delegation failed', 500);</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        return JSON.stringify({</span>
-<span class="cstat-no" title="statement not covered" >          success: true,</span>
-<span class="cstat-no" title="statement not covered" >          data: result.data,</span>
-<span class="cstat-no" title="statement not covered" >          legacyUser: session.legacyUsername,</span>
-<span class="cstat-no" title="statement not covered" >          timestamp: new Date().toISOString(),</span>
-<span class="cstat-no" title="statement not covered" >        });</span>
-<span class="cstat-no" title="statement not covered" >      },</span>
-<span class="cstat-no" title="statement not covered" >    });</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Health Check Tool</span>
-<span class="cstat-no" title="statement not covered" >    this.server.addTool({</span>
-<span class="cstat-no" title="statement not covered" >      name: 'health-check',</span>
-<span class="cstat-no" title="statement not covered" >      description: 'Check the health status of delegation services',</span>
-<span class="cstat-no" title="statement not covered" >      parameters: z.object({</span>
-<span class="cstat-no" title="statement not covered" >        service: z.enum(['sql', 'kerberos', 'all']).default('all'),</span>
-<span class="cstat-no" title="statement not covered" >      }),</span>
-<span class="cstat-no" title="statement not covered" >      execute: async (args, context) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        const session = (context as any)?.session as UserSession | undefined;</span>
-<span class="cstat-no" title="statement not covered" >        if (!session) {</span>
-<span class="cstat-no" title="statement not covered" >          throw createSecurityError('AUTHENTICATION_REQUIRED', 'Authentication required', 401);</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        const healthStatus: Record&lt;string, boolean&gt; = {};</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        if (args.service === 'sql' || args.service === 'all') {</span>
-<span class="cstat-no" title="statement not covered" >          healthStatus.sql = await sqlDelegator.healthCheck();</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        if (args.service === 'kerberos' || args.service === 'all') {</span>
-<span class="cstat-no" title="statement not covered" >          // TODO: Implement Kerberos health check</span>
-<span class="cstat-no" title="statement not covered" >          healthStatus.kerberos = false;</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        return JSON.stringify({</span>
-<span class="cstat-no" title="statement not covered" >          healthy: Object.values(healthStatus).every(status =&gt; status),</span>
-<span class="cstat-no" title="statement not covered" >          services: healthStatus,</span>
-<span class="cstat-no" title="statement not covered" >          timestamp: new Date().toISOString(),</span>
-<span class="cstat-no" title="statement not covered" >        });</span>
-<span class="cstat-no" title="statement not covered" >      },</span>
-<span class="cstat-no" title="statement not covered" >    });</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // User Info Tool</span>
-<span class="cstat-no" title="statement not covered" >    this.server.addTool({</span>
-<span class="cstat-no" title="statement not covered" >      name: 'user-info',</span>
-<span class="cstat-no" title="statement not covered" >      description: 'Get current user session information',</span>
-<span class="cstat-no" title="statement not covered" >      parameters: z.object({}),</span>
-<span class="cstat-no" title="statement not covered" >      execute: async (args, context) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        const session = (context as any)?.session as UserSession | undefined;</span>
-<span class="cstat-no" title="statement not covered" >        if (!session) {</span>
-<span class="cstat-no" title="statement not covered" >          throw createSecurityError('AUTHENTICATION_REQUIRED', 'Authentication required', 401);</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        // Return sanitized user information</span>
-<span class="cstat-no" title="statement not covered" >        return JSON.stringify({</span>
-<span class="cstat-no" title="statement not covered" >          userId: session.userId,</span>
-<span class="cstat-no" title="statement not covered" >          username: session.username,</span>
-<span class="cstat-no" title="statement not covered" >          legacyUsername: session.legacyUsername,</span>
-<span class="cstat-no" title="statement not covered" >          role: session.role,</span>
-<span class="cstat-no" title="statement not covered" >          permissions: session.permissions,</span>
-<span class="cstat-no" title="statement not covered" >          scopes: session.scopes,</span>
-<span class="cstat-no" title="statement not covered" >          timestamp: new Date().toISOString(),</span>
-<span class="cstat-no" title="statement not covered" >        });</span>
-<span class="cstat-no" title="statement not covered" >      },</span>
-<span class="cstat-no" title="statement not covered" >    });</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async start(options: {</span>
-<span class="cstat-no" title="statement not covered" >    transportType?: 'stdio' | 'httpStream';</span>
-<span class="cstat-no" title="statement not covered" >    port?: number;</span>
-<span class="cstat-no" title="statement not covered" >    endpoint?: string;</span>
-<span class="cstat-no" title="statement not covered" >    configPath?: string;</span>
-<span class="cstat-no" title="statement not covered" >  } = {}): Promise&lt;void&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      // Load configuration</span>
-<span class="cstat-no" title="statement not covered" >      await configManager.loadConfig(options.configPath);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Initialize JWT validator</span>
-<span class="cstat-no" title="statement not covered" >      await jwtValidator.initialize();</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Initialize SQL delegator only if SQL config is present</span>
-<span class="cstat-no" title="statement not covered" >      const config = configManager.getConfig();</span>
-<span class="cstat-no" title="statement not covered" >      if (config.sql) {</span>
-<span class="cstat-no" title="statement not covered" >        console.log('SQL configuration detected, initializing SQL delegator...');</span>
-<span class="cstat-no" title="statement not covered" >        await sqlDelegator.initialize();</span>
-<span class="cstat-no" title="statement not covered" >      } else {</span>
-<span class="cstat-no" title="statement not covered" >        console.log('No SQL configuration, skipping SQL delegator initialization');</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Start FastMCP server with appropriate transport</span>
-<span class="cstat-no" title="statement not covered" >      const transportType = options.transportType || 'stdio';</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      if (transportType === 'httpStream') {</span>
-<span class="cstat-no" title="statement not covered" >        console.log('[SERVER] Starting HTTP Stream transport');</span>
-<span class="cstat-no" title="statement not covered" >        console.log('[SERVER] Using stateless mode (stateless: true)');</span>
-<span class="cstat-no" title="statement not covered" >        await this.server.start({</span>
-<span class="cstat-no" title="statement not covered" >          transportType: 'httpStream',</span>
-<span class="cstat-no" title="statement not covered" >          httpStream: {</span>
-<span class="cstat-no" title="statement not covered" >            port: options.port || configManager.getServerPort(),</span>
-<span class="cstat-no" title="statement not covered" >            endpoint: options.endpoint || '/mcp',</span>
-<span class="cstat-no" title="statement not covered" >          },</span>
-<span class="cstat-no" title="statement not covered" >          stateless: true,  // Stateless mode - JWT auth on every request</span>
-<span class="cstat-no" title="statement not covered" >          logLevel: 'debug',</span>
-<span class="cstat-no" title="statement not covered" >        });</span>
-<span class="cstat-no" title="statement not covered" >      } else {</span>
-<span class="cstat-no" title="statement not covered" >        await this.server.start({</span>
-<span class="cstat-no" title="statement not covered" >          transportType: 'stdio',</span>
-<span class="cstat-no" title="statement not covered" >          stateless: false,</span>
-<span class="cstat-no" title="statement not covered" >          logLevel: configManager.getLogLevel() as any,</span>
-<span class="cstat-no" title="statement not covered" >        });</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      console.log('FastMCP OAuth OBO Server started successfully');</span>
-<span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
-<span class="cstat-no" title="statement not covered" >      console.error('Failed to start server:', sanitizeError(error));</span>
-<span class="cstat-no" title="statement not covered" >      throw error;</span>
+<span class="cstat-no" title="statement not covered" >    if (!roles.includes(session.role)) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'INSUFFICIENT_PERMISSIONS',</span>
+<span class="cstat-no" title="statement not covered" >        `Requires one of: ${roles.join(', ')}. Your role: ${session.role}`,</span>
+<span class="cstat-no" title="statement not covered" >        403</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async stop(): Promise&lt;void&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      // Cleanup resources</span>
-<span class="cstat-no" title="statement not covered" >      const config = configManager.getConfig();</span>
-<span class="cstat-no" title="statement not covered" >      if (config.sql) {</span>
-<span class="cstat-no" title="statement not covered" >        await sqlDelegator.destroy();</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >      jwtValidator.destroy();</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      console.log('FastMCP OAuth OBO Server stopped successfully');</span>
-<span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
-<span class="cstat-no" title="statement not covered" >      console.error('Error during server shutdown:', sanitizeError(error));</span>
-<span class="cstat-no" title="statement not covered" >      throw error;</span>
+<span class="cstat-no" title="statement not covered" >  static requirePermission(session: UserSession | null | undefined, permission: string): void {</span>
+<span class="cstat-no" title="statement not covered" >    if (!session || session.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError('UNAUTHENTICATED', 'Authentication required', 401);</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // Get server instance for advanced usage</span>
-<span class="cstat-no" title="statement not covered" >  getServer(): FastMCP {</span>
-<span class="cstat-no" title="statement not covered" >    return this.server;</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // Get audit log for external processing</span>
-<span class="cstat-no" title="statement not covered" >  getAuditLog(): AuditEntry[] {</span>
-<span class="cstat-no" title="statement not covered" >    return [...this.auditLog];</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // Clear audit log (admin operation)</span>
-<span class="cstat-no" title="statement not covered" >  clearAuditLog(): void {</span>
-<span class="cstat-no" title="statement not covered" >    this.auditLog = [];</span>
+<span class="cstat-no" title="statement not covered" >    if (!session.permissions.includes(permission)) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'INSUFFICIENT_PERMISSIONS',</span>
+<span class="cstat-no" title="statement not covered" >        `Requires permission: ${permission}`,</span>
+<span class="cstat-no" title="statement not covered" >        403</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// Export server instance and types</span>
-<span class="cstat-no" title="statement not covered" >export { configManager, jwtValidator, sqlDelegator };</span>
-<span class="cstat-no" title="statement not covered" >export type { UserSession, AuditEntry, OAuthOBOConfig } from './types/index.js';</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Example 1: Admin-Only Tool</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// Default export for easy usage</span>
-<span class="cstat-no" title="statement not covered" >export default OAuthOBOServer;</span></pre></td></tr></table></pre>
+<span class="cstat-no" title="statement not covered" >/**</span>
+<span class="cstat-no" title="statement not covered" > * Tool that only admins can see and use</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >const adminOnlyTool = {</span>
+<span class="cstat-no" title="statement not covered" >  name: 'admin-tool',</span>
+<span class="cstat-no" title="statement not covered" >  description: 'Perform administrative operations (admin role required)',</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 1: Visibility filtering (soft check)</span>
+<span class="cstat-no" title="statement not covered" >  // Only admins see this tool in their tool list</span>
+<span class="cstat-no" title="statement not covered" >  canAccess: (mcpContext: MCPContext) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    return Authorization.hasRole(mcpContext.session, 'admin');</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 2: Execution enforcement (hard check)</span>
+<span class="cstat-no" title="statement not covered" >  // Defense-in-depth: still verify role even if canAccess was bypassed</span>
+<span class="cstat-no" title="statement not covered" >  execute: async (args: any, context: any) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const mcpContext: MCPContext = { session: context.session };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // This will throw if not admin</span>
+<span class="cstat-no" title="statement not covered" >    Authorization.requireRole(mcpContext.session, 'admin');</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // Perform admin operation</span>
+<span class="cstat-no" title="statement not covered" >    return {</span>
+<span class="cstat-no" title="statement not covered" >      status: 'success',</span>
+<span class="cstat-no" title="statement not covered" >      message: 'Admin operation completed successfully',</span>
+<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Example 2: Multi-Role Tool (User or Admin)</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >/**</span>
+<span class="cstat-no" title="statement not covered" > * Tool accessible to both users and admins</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >const userOrAdminTool = {</span>
+<span class="cstat-no" title="statement not covered" >  name: 'user-tool',</span>
+<span class="cstat-no" title="statement not covered" >  description: 'Perform user operations (user or admin role required)',</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 1: Visibility filtering</span>
+<span class="cstat-no" title="statement not covered" >  // Show to users and admins</span>
+<span class="cstat-no" title="statement not covered" >  canAccess: (mcpContext: MCPContext) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    return Authorization.hasAnyRole(mcpContext.session, ['user', 'admin']);</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 2: Execution enforcement</span>
+<span class="cstat-no" title="statement not covered" >  execute: async (args: any, context: any) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const mcpContext: MCPContext = { session: context.session };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    Authorization.requireAnyRole(mcpContext.session, ['user', 'admin']);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    return {</span>
+<span class="cstat-no" title="statement not covered" >      status: 'success',</span>
+<span class="cstat-no" title="statement not covered" >      message: 'User operation completed successfully',</span>
+<span class="cstat-no" title="statement not covered" >      role: mcpContext.session.role,</span>
+<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Example 3: Permission-Based Tool</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >/**</span>
+<span class="cstat-no" title="statement not covered" > * Tool that requires specific permission (e.g., sql:query)</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >const sqlQueryTool = {</span>
+<span class="cstat-no" title="statement not covered" >  name: 'sql-query',</span>
+<span class="cstat-no" title="statement not covered" >  description: 'Execute SQL queries (requires sql:query permission)',</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 1: Visibility filtering</span>
+<span class="cstat-no" title="statement not covered" >  // Only show to users with sql:query permission</span>
+<span class="cstat-no" title="statement not covered" >  canAccess: (mcpContext: MCPContext) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    return Authorization.hasPermission(mcpContext.session, 'sql:query');</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 2: Execution enforcement</span>
+<span class="cstat-no" title="statement not covered" >  execute: async (args: any, context: any) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const mcpContext: MCPContext = { session: context.session };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    Authorization.requirePermission(mcpContext.session, 'sql:query');</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // Perform SQL operation</span>
+<span class="cstat-no" title="statement not covered" >    return {</span>
+<span class="cstat-no" title="statement not covered" >      status: 'success',</span>
+<span class="cstat-no" title="statement not covered" >      message: 'SQL query executed successfully',</span>
+<span class="cstat-no" title="statement not covered" >      query: args.sql || 'SELECT * FROM example',</span>
+<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Example 4: Multiple Permission Check</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >/**</span>
+<span class="cstat-no" title="statement not covered" > * Tool that requires ANY of several permissions</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >const sqlDelegateTool = {</span>
+<span class="cstat-no" title="statement not covered" >  name: 'sql-delegate',</span>
+<span class="cstat-no" title="statement not covered" >  description: 'Execute SQL operations (requires any sql:* permission)',</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 1: Visibility filtering</span>
+<span class="cstat-no" title="statement not covered" >  // Show if user has ANY sql permission</span>
+<span class="cstat-no" title="statement not covered" >  canAccess: (mcpContext: MCPContext) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (!mcpContext.session || mcpContext.session.rejected) {</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // Check if user has ANY sql permission</span>
+<span class="cstat-no" title="statement not covered" >    return mcpContext.session.permissions.some(p =&gt; p.startsWith('sql:'));</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 2: Execution enforcement</span>
+<span class="cstat-no" title="statement not covered" >  // Specific permission checked based on action</span>
+<span class="cstat-no" title="statement not covered" >  execute: async (args: any, context: any) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const mcpContext: MCPContext = { session: context.session };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    const action = args.action || 'query';</span>
+<span class="cstat-no" title="statement not covered" >    const requiredPermission = `sql:${action}`;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    Authorization.requirePermission(mcpContext.session, requiredPermission);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    return {</span>
+<span class="cstat-no" title="statement not covered" >      status: 'success',</span>
+<span class="cstat-no" title="statement not covered" >      message: `SQL ${action} operation completed successfully`,</span>
+<span class="cstat-no" title="statement not covered" >      action,</span>
+<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Example 5: Unauthenticated (Public) Tool</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >/**</span>
+<span class="cstat-no" title="statement not covered" > * Tool accessible to everyone (even unauthenticated users)</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >const publicTool = {</span>
+<span class="cstat-no" title="statement not covered" >  name: 'health-check',</span>
+<span class="cstat-no" title="statement not covered" >  description: 'Check server health (public access)',</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 1: Visibility filtering</span>
+<span class="cstat-no" title="statement not covered" >  // Always visible (no auth required)</span>
+<span class="cstat-no" title="statement not covered" >  canAccess: (mcpContext: MCPContext) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    return true; // Always show this tool</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 2: Execution (no auth required)</span>
+<span class="cstat-no" title="statement not covered" >  execute: async (args: any, context: any) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    // No authentication check needed for public endpoint</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    return {</span>
+<span class="cstat-no" title="statement not covered" >      status: 'success',</span>
+<span class="cstat-no" title="statement not covered" >      healthy: true,</span>
+<span class="cstat-no" title="statement not covered" >      uptime: process.uptime(),</span>
+<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Example 6: Guest with Upgrade Path</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >/**</span>
+<span class="cstat-no" title="statement not covered" > * Tool visible to guests but requires upgrade to use</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >const freemiumTool = {</span>
+<span class="cstat-no" title="statement not covered" >  name: 'premium-feature',</span>
+<span class="cstat-no" title="statement not covered" >  description: 'Premium feature (visible to all, usable by user/admin)',</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 1: Visibility filtering</span>
+<span class="cstat-no" title="statement not covered" >  // Show to everyone (including guests) to encourage upgrades</span>
+<span class="cstat-no" title="statement not covered" >  canAccess: (mcpContext: MCPContext) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    return true; // Always visible</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // TIER 2: Execution enforcement</span>
+<span class="cstat-no" title="statement not covered" >  // But require user or admin role to actually use</span>
+<span class="cstat-no" title="statement not covered" >  execute: async (args: any, context: any) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const mcpContext: MCPContext = { session: context.session };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // Check if guest role</span>
+<span class="cstat-no" title="statement not covered" >    if (mcpContext.session.role === 'guest') {</span>
+<span class="cstat-no" title="statement not covered" >      return {</span>
+<span class="cstat-no" title="statement not covered" >        status: 'failure',</span>
+<span class="cstat-no" title="statement not covered" >        code: 'UPGRADE_REQUIRED',</span>
+<span class="cstat-no" title="statement not covered" >        message: 'This feature requires a user or admin account. Please upgrade your account.',</span>
+<span class="cstat-no" title="statement not covered" >        upgradeUrl: 'https://example.com/upgrade',</span>
+<span class="cstat-no" title="statement not covered" >      };</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    Authorization.requireAnyRole(mcpContext.session, ['user', 'admin']);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    return {</span>
+<span class="cstat-no" title="statement not covered" >      status: 'success',</span>
+<span class="cstat-no" title="statement not covered" >      message: 'Premium feature executed successfully',</span>
+<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >  },</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Summary of Patterns</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >console.log(`</span>
+<span class="cstat-no" title="statement not covered" >Two-Tier Security Patterns Demonstrated:</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >1. Admin-Only Tool</span>
+<span class="cstat-no" title="statement not covered" >   - canAccess: Only admins see it</span>
+<span class="cstat-no" title="statement not covered" >   - execute: Enforces admin role</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >2. Multi-Role Tool</span>
+<span class="cstat-no" title="statement not covered" >   - canAccess: Users and admins see it</span>
+<span class="cstat-no" title="statement not covered" >   - execute: Enforces user OR admin role</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >3. Permission-Based Tool</span>
+<span class="cstat-no" title="statement not covered" >   - canAccess: Check specific permission</span>
+<span class="cstat-no" title="statement not covered" >   - execute: Enforce same permission</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >4. Multiple Permission Tool</span>
+<span class="cstat-no" title="statement not covered" >   - canAccess: Check for ANY permission in group</span>
+<span class="cstat-no" title="statement not covered" >   - execute: Enforce specific permission based on action</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >5. Public Tool</span>
+<span class="cstat-no" title="statement not covered" >   - canAccess: Always true</span>
+<span class="cstat-no" title="statement not covered" >   - execute: No auth required</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >6. Freemium Tool</span>
+<span class="cstat-no" title="statement not covered" >   - canAccess: Always true (show to encourage upgrades)</span>
+<span class="cstat-no" title="statement not covered" >   - execute: Require upgraded account</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >Key Principles:</span>
+<span class="cstat-no" title="statement not covered" >- canAccess = Soft check (UX optimization, returns boolean)</span>
+<span class="cstat-no" title="statement not covered" >- execute handler = Hard check (security enforcement, throws on failure)</span>
+<span class="cstat-no" title="statement not covered" >- Always implement BOTH checks for defense-in-depth</span>
+<span class="cstat-no" title="statement not covered" >- canAccess should use soft check methods (hasRole, hasPermission)</span>
+<span class="cstat-no" title="statement not covered" >- execute should use hard check methods (requireRole, requirePermission)</span>
+<span class="cstat-no" title="statement not covered" >`);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// Export examples for testing/documentation</span>
+<span class="cstat-no" title="statement not covered" >export {</span>
+<span class="cstat-no" title="statement not covered" >  adminOnlyTool,</span>
+<span class="cstat-no" title="statement not covered" >  userOrAdminTool,</span>
+<span class="cstat-no" title="statement not covered" >  sqlQueryTool,</span>
+<span class="cstat-no" title="statement not covered" >  sqlDelegateTool,</span>
+<span class="cstat-no" title="statement not covered" >  publicTool,</span>
+<span class="cstat-no" title="statement not covered" >  freemiumTool,</span>
+<span class="cstat-no" title="statement not covered" >  Authorization,</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+&nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-03T07:02:56.770Z
+                at 2025-10-08T08:18:44.389Z
             </div>
-        <script src="../../../prettify.js"></script>
+        <script src="../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../../sorter.js"></script>
-        <script src="../../../block-navigation.js"></script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
     </body>
 </html>
     

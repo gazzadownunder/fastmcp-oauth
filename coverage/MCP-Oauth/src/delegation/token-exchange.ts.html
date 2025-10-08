@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for MCP-Oauth/src/middleware/jwt-validator.ts</title>
+    <title>Code coverage report for MCP-Oauth/src/delegation/token-exchange.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../../prettify.css" />
     <link rel="stylesheet" href="../../../base.css" />
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../../index.html">All files</a> / <a href="index.html">MCP-Oauth/src/middleware</a> jwt-validator.ts</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">MCP-Oauth/src/delegation</a> token-exchange.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/395</span>
+                <span class='fraction'>0/386</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/395</span>
+                <span class='fraction'>0/386</span>
             </div>
         
             
@@ -449,15 +449,7 @@
 <a name='L384'></a><a href='#L384'>384</a>
 <a name='L385'></a><a href='#L385'>385</a>
 <a name='L386'></a><a href='#L386'>386</a>
-<a name='L387'></a><a href='#L387'>387</a>
-<a name='L388'></a><a href='#L388'>388</a>
-<a name='L389'></a><a href='#L389'>389</a>
-<a name='L390'></a><a href='#L390'>390</a>
-<a name='L391'></a><a href='#L391'>391</a>
-<a name='L392'></a><a href='#L392'>392</a>
-<a name='L393'></a><a href='#L393'>393</a>
-<a name='L394'></a><a href='#L394'>394</a>
-<a name='L395'></a><a href='#L395'>395</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L387'></a><a href='#L387'>387</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -843,416 +835,400 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { jwtVerify, createRemoteJWKSet, JWTPayload as JoseJWTPayload } from 'jose';</span></span></span>
-<span class="cstat-no" title="statement not covered" >import { configManager } from '../config/manager.js';</span>
-<span class="cstat-no" title="statement not covered" >import type { JWTPayload, ValidationContext, UserSession, SecurityError, AuditEntry } from '../types/index.js';</span>
-<span class="cstat-no" title="statement not covered" >import { createSecurityError, OAuthSecurityError } from '../utils/errors.js';</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >/**</span></span></span>
+<span class="cstat-no" title="statement not covered" > * Token Exchange Service (RFC 8693)</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Implements OAuth 2.0 Token Exchange for on-behalf-of (OBO) delegation.</span>
+<span class="cstat-no" title="statement not covered" > * Exchanges subject tokens for delegation tokens with appropriate claims.</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Security Features:</span>
+<span class="cstat-no" title="statement not covered" > * - Optional encrypted token caching (Phase 2)</span>
+<span class="cstat-no" title="statement not covered" > * - HTTPS-only token endpoints</span>
+<span class="cstat-no" title="statement not covered" > * - Comprehensive audit logging</span>
+<span class="cstat-no" title="statement not covered" > * - Error sanitization</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Architecture: Core → Delegation → MCP</span>
+<span class="cstat-no" title="statement not covered" > * Delegation layer CAN import from Core, but NOT from MCP</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * @see https://datatracker.ietf.org/doc/html/rfc8693</span>
+<span class="cstat-no" title="statement not covered" > */</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >export class JWTValidator {</span>
-<span class="cstat-no" title="statement not covered" >  private jwksSets: Map&lt;string, ReturnType&lt;typeof createRemoteJWKSet&gt;&gt; = new Map();</span>
-<span class="cstat-no" title="statement not covered" >  private initialized = false;</span>
+<span class="cstat-no" title="statement not covered" >import type { AuditEntry } from '../core/index.js';</span>
+<span class="cstat-no" title="statement not covered" >import type {</span>
+<span class="cstat-no" title="statement not covered" >  TokenExchangeParams,</span>
+<span class="cstat-no" title="statement not covered" >  TokenExchangeResult,</span>
+<span class="cstat-no" title="statement not covered" >  TokenExchangeConfig,</span>
+<span class="cstat-no" title="statement not covered" >  DelegationTokenClaims,</span>
+<span class="cstat-no" title="statement not covered" >} from './types.js';</span>
+<span class="cstat-no" title="statement not covered" >import { EncryptedTokenCache } from './encrypted-token-cache.js';</span>
+<span class="cstat-no" title="statement not covered" >import { createSecurityError } from '../utils/errors.js';</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async initialize(): Promise&lt;void&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    if (this.initialized) return;</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
+<span class="cstat-no" title="statement not covered" >// Token Exchange Service</span>
+<span class="cstat-no" title="statement not covered" >// ============================================================================</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const config = configManager.getConfig();</span>
+<span class="cstat-no" title="statement not covered" >/**</span>
+<span class="cstat-no" title="statement not covered" > * TokenExchangeService - Token exchange with optional encrypted caching</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Exchanges subject tokens (from user authentication) for delegation tokens</span>
+<span class="cstat-no" title="statement not covered" > * (TE-JWT) that can be used by delegation modules.</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Phase 1: Stateless (cache disabled)</span>
+<span class="cstat-no" title="statement not covered" > * Phase 2: Encrypted caching (opt-in via config)</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Usage:</span>
+<span class="cstat-no" title="statement not covered" > * ```typescript</span>
+<span class="cstat-no" title="statement not covered" > * const service = new TokenExchangeService(config, auditService);</span>
+<span class="cstat-no" title="statement not covered" > * const result = await service.performExchange({</span>
+<span class="cstat-no" title="statement not covered" > *   subjectToken: userJWT,</span>
+<span class="cstat-no" title="statement not covered" > *   audience: 'sql-delegation',</span>
+<span class="cstat-no" title="statement not covered" > *   tokenEndpoint: 'https://idp.example.com/token',</span>
+<span class="cstat-no" title="statement not covered" > *   clientId: 'mcp-oauth',</span>
+<span class="cstat-no" title="statement not covered" > *   clientSecret: 'secret'</span>
+<span class="cstat-no" title="statement not covered" > * });</span>
+<span class="cstat-no" title="statement not covered" > * ```</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >export class TokenExchangeService {</span>
+<span class="cstat-no" title="statement not covered" >  private config: TokenExchangeConfig;</span>
+<span class="cstat-no" title="statement not covered" >  private auditService: any; // Will be typed as AuditService once implemented</span>
+<span class="cstat-no" title="statement not covered" >  private cache: EncryptedTokenCache | null = null;</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Initialize JWKS resolvers for all trusted IDPs</span>
-<span class="cstat-no" title="statement not covered" >    for (const idp of config.trustedIDPs) {</span>
-<span class="cstat-no" title="statement not covered" >      try {</span>
-<span class="cstat-no" title="statement not covered" >        const jwks = createRemoteJWKSet(new URL(idp.jwksUri), {</span>
-<span class="cstat-no" title="statement not covered" >          timeoutDuration: 5000,</span>
-<span class="cstat-no" title="statement not covered" >          cooldownDuration: 30000,</span>
-<span class="cstat-no" title="statement not covered" >          cacheMaxAge: 600000, // 10 minutes</span>
+<span class="cstat-no" title="statement not covered" >  constructor(config: TokenExchangeConfig, auditService?: any) {</span>
+<span class="cstat-no" title="statement not covered" >    this.config = config;</span>
+<span class="cstat-no" title="statement not covered" >    this.auditService = auditService;</span>
+<span class="cstat-no" title="statement not covered" >    this.validateConfig();</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    // Initialize cache if enabled (Phase 2)</span>
+<span class="cstat-no" title="statement not covered" >    if (config.cache?.enabled) {</span>
+<span class="cstat-no" title="statement not covered" >      this.cache = new EncryptedTokenCache(config.cache, auditService);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Perform RFC 8693 token exchange (with optional caching)</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @param params - Token exchange parameters</span>
+<span class="cstat-no" title="statement not covered" >   * @param sessionId - Optional session ID for caching (Phase 2)</span>
+<span class="cstat-no" title="statement not covered" >   * @param jwtSubject - Optional JWT subject for cache ownership validation</span>
+<span class="cstat-no" title="statement not covered" >   * @returns Exchange result with TE-JWT or error</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  async performExchange(</span>
+<span class="cstat-no" title="statement not covered" >    params: TokenExchangeParams,</span>
+<span class="cstat-no" title="statement not covered" >    sessionId?: string,</span>
+<span class="cstat-no" title="statement not covered" >    jwtSubject?: string</span>
+<span class="cstat-no" title="statement not covered" >  ): Promise&lt;TokenExchangeResult&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const startTime = Date.now();</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      // Validate parameters</span>
+<span class="cstat-no" title="statement not covered" >      this.validateParams(params);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      // Phase 2: Check cache first (if enabled and session provided)</span>
+<span class="cstat-no" title="statement not covered" >      if (this.cache &amp;&amp; sessionId) {</span>
+<span class="cstat-no" title="statement not covered" >        // Activate session if not already active</span>
+<span class="cstat-no" title="statement not covered" >        if (jwtSubject) {</span>
+<span class="cstat-no" title="statement not covered" >          this.cache.activateSession(params.subjectToken, jwtSubject);</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        // Generate cache key from audience</span>
+<span class="cstat-no" title="statement not covered" >        const cacheKey = `te:${params.audience}`;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        // Try to get from cache</span>
+<span class="cstat-no" title="statement not covered" >        const cachedToken = this.cache.get(sessionId, cacheKey, params.subjectToken);</span>
+<span class="cstat-no" title="statement not covered" >        if (cachedToken) {</span>
+<span class="cstat-no" title="statement not covered" >          // Cache hit!</span>
+<span class="cstat-no" title="statement not covered" >          return {</span>
+<span class="cstat-no" title="statement not covered" >            success: true,</span>
+<span class="cstat-no" title="statement not covered" >            accessToken: cachedToken,</span>
+<span class="cstat-no" title="statement not covered" >            tokenType: 'Bearer',</span>
+<span class="cstat-no" title="statement not covered" >            issuedTokenType: 'urn:ietf:params:oauth:token-type:access_token',</span>
+<span class="cstat-no" title="statement not covered" >          };</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >      }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      // Build RFC 8693 request body</span>
+<span class="cstat-no" title="statement not covered" >      const requestBody = this.buildRequestBody(params);</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      // Make POST request to IDP token endpoint</span>
+<span class="cstat-no" title="statement not covered" >      const response = await fetch(params.tokenEndpoint, {</span>
+<span class="cstat-no" title="statement not covered" >        method: 'POST',</span>
+<span class="cstat-no" title="statement not covered" >        headers: {</span>
+<span class="cstat-no" title="statement not covered" >          'Content-Type': 'application/x-www-form-urlencoded',</span>
+<span class="cstat-no" title="statement not covered" >          'Accept': 'application/json',</span>
+<span class="cstat-no" title="statement not covered" >        },</span>
+<span class="cstat-no" title="statement not covered" >        body: new URLSearchParams(requestBody).toString(),</span>
+<span class="cstat-no" title="statement not covered" >      });</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      // Parse response</span>
+<span class="cstat-no" title="statement not covered" >      const responseData = await response.json();</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      // Handle success</span>
+<span class="cstat-no" title="statement not covered" >      if (response.ok &amp;&amp; responseData.access_token) {</span>
+<span class="cstat-no" title="statement not covered" >        const result: TokenExchangeResult = {</span>
+<span class="cstat-no" title="statement not covered" >          success: true,</span>
+<span class="cstat-no" title="statement not covered" >          accessToken: responseData.access_token,</span>
+<span class="cstat-no" title="statement not covered" >          issuedTokenType: responseData.issued_token_type || 'urn:ietf:params:oauth:token-type:access_token',</span>
+<span class="cstat-no" title="statement not covered" >          tokenType: responseData.token_type || 'Bearer',</span>
+<span class="cstat-no" title="statement not covered" >          expiresIn: responseData.expires_in,</span>
+<span class="cstat-no" title="statement not covered" >          scope: responseData.scope,</span>
+<span class="cstat-no" title="statement not covered" >          refreshToken: responseData.refresh_token,</span>
+<span class="cstat-no" title="statement not covered" >        };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        // Phase 2: Store in cache (if enabled and session provided)</span>
+<span class="cstat-no" title="statement not covered" >        if (this.cache &amp;&amp; sessionId &amp;&amp; responseData.expires_in) {</span>
+<span class="cstat-no" title="statement not covered" >          const cacheKey = `te:${params.audience}`;</span>
+<span class="cstat-no" title="statement not covered" >          const expiresAt = Math.floor(Date.now() / 1000) + responseData.expires_in;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >          this.cache.set(</span>
+<span class="cstat-no" title="statement not covered" >            sessionId,</span>
+<span class="cstat-no" title="statement not covered" >            cacheKey,</span>
+<span class="cstat-no" title="statement not covered" >            responseData.access_token,</span>
+<span class="cstat-no" title="statement not covered" >            params.subjectToken,</span>
+<span class="cstat-no" title="statement not covered" >            expiresAt</span>
+<span class="cstat-no" title="statement not covered" >          );</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        // Audit success</span>
+<span class="cstat-no" title="statement not covered" >        await this.logAudit({</span>
+<span class="cstat-no" title="statement not covered" >          timestamp: new Date(),</span>
+<span class="cstat-no" title="statement not covered" >          source: 'delegation:token-exchange',</span>
+<span class="cstat-no" title="statement not covered" >          action: 'token_exchange',</span>
+<span class="cstat-no" title="statement not covered" >          success: true,</span>
+<span class="cstat-no" title="statement not covered" >          metadata: {</span>
+<span class="cstat-no" title="statement not covered" >            audience: params.audience,</span>
+<span class="cstat-no" title="statement not covered" >            tokenEndpoint: params.tokenEndpoint,</span>
+<span class="cstat-no" title="statement not covered" >            durationMs: Date.now() - startTime,</span>
+<span class="cstat-no" title="statement not covered" >            cacheEnabled: !!this.cache,</span>
+<span class="cstat-no" title="statement not covered" >          },</span>
 <span class="cstat-no" title="statement not covered" >        });</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        this.jwksSets.set(idp.issuer, jwks);</span>
-<span class="cstat-no" title="statement not covered" >      } catch (error) {</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error(`Failed to initialize JWKS for IDP ${idp.issuer}: ${error}`);</span>
+<span class="cstat-no" title="statement not covered" >        return result;</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    this.initialized = true;</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async validateJWT(token: string, context: Partial&lt;ValidationContext&gt; = {}): Promise&lt;{</span>
-<span class="cstat-no" title="statement not covered" >    payload: JWTPayload;</span>
-<span class="cstat-no" title="statement not covered" >    session: UserSession;</span>
-<span class="cstat-no" title="statement not covered" >    auditEntry: AuditEntry;</span>
-<span class="cstat-no" title="statement not covered" >  }&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    if (!this.initialized) {</span>
-<span class="cstat-no" title="statement not covered" >      await this.initialize();</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const auditEntry: AuditEntry = {</span>
-<span class="cstat-no" title="statement not covered" >      timestamp: new Date(),</span>
-<span class="cstat-no" title="statement not covered" >      userId: '',</span>
-<span class="cstat-no" title="statement not covered" >      action: 'jwt_validation',</span>
-<span class="cstat-no" title="statement not covered" >      resource: 'authentication',</span>
-<span class="cstat-no" title="statement not covered" >      success: false,</span>
-<span class="cstat-no" title="statement not covered" >    };</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      // Basic format validation</span>
-<span class="cstat-no" title="statement not covered" >      this.validateTokenFormat(token);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Decode header to get issuer</span>
-<span class="cstat-no" title="statement not covered" >      const { issuer, audience } = await this.extractClaims(token);</span>
-<span class="cstat-no" title="statement not covered" >      auditEntry.userId = issuer;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Get IDP configuration</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] Checking if issuer is trusted: ${issuer}`);</span>
-<span class="cstat-no" title="statement not covered" >      const idpConfig = configManager.getTrustedIDP(issuer);</span>
-<span class="cstat-no" title="statement not covered" >      if (!idpConfig) {</span>
-<span class="cstat-no" title="statement not covered" >        console.error(`[JWT VALIDATOR] ✗ UNTRUSTED ISSUER: ${issuer}`);</span>
-<span class="cstat-no" title="statement not covered" >        throw createSecurityError('UNTRUSTED_ISSUER', `Untrusted issuer: ${issuer}`, 401);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] ✓ Issuer is trusted`);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Get JWKS resolver</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] Looking up JWKS for issuer...`);</span>
-<span class="cstat-no" title="statement not covered" >      const jwks = this.jwksSets.get(issuer);</span>
-<span class="cstat-no" title="statement not covered" >      if (!jwks) {</span>
-<span class="cstat-no" title="statement not covered" >        console.error(`[JWT VALIDATOR] ✗ JWKS not found for issuer: ${issuer}`);</span>
-<span class="cstat-no" title="statement not covered" >        throw createSecurityError('JWKS_NOT_FOUND', `JWKS not found for issuer: ${issuer}`, 500);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] ✓ JWKS found`);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Prepare validation context</span>
-<span class="cstat-no" title="statement not covered" >      const validationContext: ValidationContext = {</span>
-<span class="cstat-no" title="statement not covered" >        expectedIssuer: issuer,</span>
-<span class="cstat-no" title="statement not covered" >        expectedAudiences: Array.isArray(audience) ? audience : [audience],</span>
-<span class="cstat-no" title="statement not covered" >        clockTolerance: context.clockTolerance ?? idpConfig.security.clockTolerance,</span>
-<span class="cstat-no" title="statement not covered" >        maxTokenAge: context.maxTokenAge ?? idpConfig.security.maxTokenAge,</span>
+<span class="cstat-no" title="statement not covered" >      // Handle error response</span>
+<span class="cstat-no" title="statement not covered" >      const result: TokenExchangeResult = {</span>
+<span class="cstat-no" title="statement not covered" >        success: false,</span>
+<span class="cstat-no" title="statement not covered" >        error: responseData.error || 'unknown_error',</span>
+<span class="cstat-no" title="statement not covered" >        errorDescription: responseData.error_description || `HTTP ${response.status}`,</span>
 <span class="cstat-no" title="statement not covered" >      };</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] Validation context:`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - Expected issuer: ${validationContext.expectedIssuer}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - Expected audiences: ${JSON.stringify(validationContext.expectedAudiences)}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - Clock tolerance: ${validationContext.clockTolerance}s`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`  - Max token age: ${validationContext.maxTokenAge}s`);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Verify JWT signature and claims</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] Verifying JWT signature and claims...`);</span>
-<span class="cstat-no" title="statement not covered" >      const { payload } = await jwtVerify(token, jwks, {</span>
-<span class="cstat-no" title="statement not covered" >        issuer: validationContext.expectedIssuer,</span>
-<span class="cstat-no" title="statement not covered" >        audience: validationContext.expectedAudiences,</span>
-<span class="cstat-no" title="statement not covered" >        algorithms: idpConfig.algorithms,</span>
-<span class="cstat-no" title="statement not covered" >        clockTolerance: validationContext.clockTolerance,</span>
-<span class="cstat-no" title="statement not covered" >        maxTokenAge: validationContext.maxTokenAge,</span>
+<span class="cstat-no" title="statement not covered" >      // Audit failure</span>
+<span class="cstat-no" title="statement not covered" >      await this.logAudit({</span>
+<span class="cstat-no" title="statement not covered" >        timestamp: new Date(),</span>
+<span class="cstat-no" title="statement not covered" >        source: 'delegation:token-exchange',</span>
+<span class="cstat-no" title="statement not covered" >        action: 'token_exchange',</span>
+<span class="cstat-no" title="statement not covered" >        success: false,</span>
+<span class="cstat-no" title="statement not covered" >        error: result.error,</span>
+<span class="cstat-no" title="statement not covered" >        reason: result.errorDescription,</span>
+<span class="cstat-no" title="statement not covered" >        metadata: {</span>
+<span class="cstat-no" title="statement not covered" >          audience: params.audience,</span>
+<span class="cstat-no" title="statement not covered" >          tokenEndpoint: params.tokenEndpoint,</span>
+<span class="cstat-no" title="statement not covered" >          httpStatus: response.status,</span>
+<span class="cstat-no" title="statement not covered" >          durationMs: Date.now() - startTime,</span>
+<span class="cstat-no" title="statement not covered" >        },</span>
 <span class="cstat-no" title="statement not covered" >      });</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] ✓ JWT signature and basic claims verified`);</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Additional security validations</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] Performing additional security validations...`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR]   Checking azp (authorized party) claim...`);</span>
-<span class="cstat-no" title="statement not covered" >      this.validateSecurityRequirements(payload, idpConfig);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] ✓ Additional security validations passed`);</span>
+<span class="cstat-no" title="statement not covered" >      return result;</span>
+<span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
+<span class="cstat-no" title="statement not covered" >      // Handle network/fetch errors</span>
+<span class="cstat-no" title="statement not covered" >      const errorMessage = error instanceof Error ? error.message : 'Token exchange failed';</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Create user session from JWT payload</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] Creating user session from JWT payload...`);</span>
-<span class="cstat-no" title="statement not covered" >      const session = this.createUserSession(payload, idpConfig);</span>
-<span class="cstat-no" title="statement not covered" >      auditEntry.userId = session.userId;</span>
-<span class="cstat-no" title="statement not covered" >      auditEntry.legacyUsername = session.legacyUsername;</span>
-<span class="cstat-no" title="statement not covered" >      auditEntry.success = true;</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR] ✓ User session created`);</span>
+<span class="cstat-no" title="statement not covered" >      await this.logAudit({</span>
+<span class="cstat-no" title="statement not covered" >        timestamp: new Date(),</span>
+<span class="cstat-no" title="statement not covered" >        source: 'delegation:token-exchange',</span>
+<span class="cstat-no" title="statement not covered" >        action: 'token_exchange',</span>
+<span class="cstat-no" title="statement not covered" >        success: false,</span>
+<span class="cstat-no" title="statement not covered" >        error: errorMessage,</span>
+<span class="cstat-no" title="statement not covered" >        metadata: {</span>
+<span class="cstat-no" title="statement not covered" >          audience: params.audience,</span>
+<span class="cstat-no" title="statement not covered" >          tokenEndpoint: params.tokenEndpoint,</span>
+<span class="cstat-no" title="statement not covered" >          durationMs: Date.now() - startTime,</span>
+<span class="cstat-no" title="statement not covered" >        },</span>
+<span class="cstat-no" title="statement not covered" >      });</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      return {</span>
-<span class="cstat-no" title="statement not covered" >        payload: payload as JWTPayload,</span>
-<span class="cstat-no" title="statement not covered" >        session,</span>
-<span class="cstat-no" title="statement not covered" >        auditEntry,</span>
+<span class="cstat-no" title="statement not covered" >        success: false,</span>
+<span class="cstat-no" title="statement not covered" >        error: 'request_failed',</span>
+<span class="cstat-no" title="statement not covered" >        errorDescription: errorMessage,</span>
 <span class="cstat-no" title="statement not covered" >      };</span>
-<span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
-<span class="cstat-no" title="statement not covered" >      auditEntry.error = error instanceof Error ? error.message : 'Unknown error';</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      if (error instanceof OAuthSecurityError || (error as any).code) {</span>
-<span class="cstat-no" title="statement not covered" >        throw error;</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      // Wrap unexpected errors</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >        'JWT_VALIDATION_FAILED',</span>
-<span class="cstat-no" title="statement not covered" >        'JWT validation failed',</span>
-<span class="cstat-no" title="statement not covered" >        401,</span>
-<span class="cstat-no" title="statement not covered" >        { originalError: error instanceof Error ? error.message : 'Unknown error' }</span>
-<span class="cstat-no" title="statement not covered" >      );</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private validateTokenFormat(token: string): void {</span>
-<span class="cstat-no" title="statement not covered" >    const parts = token.split('.');</span>
-<span class="cstat-no" title="statement not covered" >    if (parts.length !== 3) {</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError('INVALID_TOKEN_FORMAT', 'Invalid JWT format', 400);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Validate each part is valid base64url</span>
-<span class="cstat-no" title="statement not covered" >    for (const part of parts) {</span>
-<span class="cstat-no" title="statement not covered" >      if (!/^[A-Za-z0-9_-]+$/.test(part)) {</span>
-<span class="cstat-no" title="statement not covered" >        throw createSecurityError('INVALID_TOKEN_ENCODING', 'Invalid JWT encoding', 400);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private async extractClaims(token: string): Promise&lt;{ issuer: string; audience: string | string[] }&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Decode delegation token claims (without verification)</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * WARNING: This method only decodes the JWT payload, it does NOT verify</span>
+<span class="cstat-no" title="statement not covered" >   * the signature. Token verification should be done by delegation modules</span>
+<span class="cstat-no" title="statement not covered" >   * if needed.</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @param token - TE-JWT token</span>
+<span class="cstat-no" title="statement not covered" >   * @returns Decoded claims</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  decodeTokenClaims(token: string): DelegationTokenClaims | null {</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      const [, payloadPart] = token.split('.');</span>
-<span class="cstat-no" title="statement not covered" >      const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString());</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      if (!payload.iss) {</span>
-<span class="cstat-no" title="statement not covered" >        throw createSecurityError('MISSING_ISSUER', 'Missing issuer claim', 400);</span>
+<span class="cstat-no" title="statement not covered" >      // Split JWT into parts</span>
+<span class="cstat-no" title="statement not covered" >      const parts = token.split('.');</span>
+<span class="cstat-no" title="statement not covered" >      if (parts.length !== 3) {</span>
+<span class="cstat-no" title="statement not covered" >        return null;</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      if (!payload.aud) {</span>
-<span class="cstat-no" title="statement not covered" >        throw createSecurityError('MISSING_AUDIENCE', 'Missing audience claim', 400);</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
+<span class="cstat-no" title="statement not covered" >      // Decode payload (base64url)</span>
+<span class="cstat-no" title="statement not covered" >      const payload = parts[1];</span>
+<span class="cstat-no" title="statement not covered" >      const decoded = Buffer.from(payload, 'base64url').toString('utf-8');</span>
+<span class="cstat-no" title="statement not covered" >      const claims = JSON.parse(decoded);</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      return {</span>
-<span class="cstat-no" title="statement not covered" >        issuer: payload.iss,</span>
-<span class="cstat-no" title="statement not covered" >        audience: payload.aud,</span>
-<span class="cstat-no" title="statement not covered" >      };</span>
+<span class="cstat-no" title="statement not covered" >      return claims as DelegationTokenClaims;</span>
 <span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
-<span class="cstat-no" title="statement not covered" >      if (error instanceof OAuthSecurityError) {</span>
-<span class="cstat-no" title="statement not covered" >        throw error;</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError('INVALID_TOKEN_PAYLOAD', 'Invalid JWT payload', 400);</span>
+<span class="cstat-no" title="statement not covered" >      return null;</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private validateSecurityRequirements(payload: JoseJWTPayload, idpConfig: any): void {</span>
-<span class="cstat-no" title="statement not covered" >    const now = Math.floor(Date.now() / 1000);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Check azp claim (critical for OAuth 2.1 security)</span>
-<span class="cstat-no" title="statement not covered" >    const azp = (payload as any).azp;</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[JWT VALIDATOR]   - azp claim: ${azp || 'NOT PRESENT'}`);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[JWT VALIDATOR]   - Expected audience: ${idpConfig.audience}`);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (azp) {</span>
-<span class="cstat-no" title="statement not covered" >      // CRITICAL: azp must match the expected audience for this service</span>
-<span class="cstat-no" title="statement not covered" >      // This prevents token substitution attacks where a token for one service</span>
-<span class="cstat-no" title="statement not covered" >      // is used to access another service</span>
-<span class="cstat-no" title="statement not covered" >      if (azp !== idpConfig.audience) {</span>
-<span class="cstat-no" title="statement not covered" >        console.error(`[JWT VALIDATOR] ✗ AZP MISMATCH: Token azp='${azp}' does not match expected audience='${idpConfig.audience}'`);</span>
-<span class="cstat-no" title="statement not covered" >        console.error(`[JWT VALIDATOR]   This token was issued for a different client and cannot be used here`);</span>
-<span class="cstat-no" title="statement not covered" >        throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >          'AZP_MISMATCH',</span>
-<span class="cstat-no" title="statement not covered" >          `Token authorized party '${azp}' does not match expected audience '${idpConfig.audience}'`,</span>
-<span class="cstat-no" title="statement not covered" >          403</span>
-<span class="cstat-no" title="statement not covered" >        );</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[JWT VALIDATOR]   ✓ azp claim matches expected audience`);</span>
-<span class="cstat-no" title="statement not covered" >    } else {</span>
-<span class="cstat-no" title="statement not covered" >      console.warn(`[JWT VALIDATOR]   ⚠ WARNING: azp claim not present in token (this is acceptable for some token types)`);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // RFC 8725 validations</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[JWT VALIDATOR]   Checking temporal claims (nbf, iat, exp)...`);</span>
-<span class="cstat-no" title="statement not covered" >    if (idpConfig.security.requireNbf &amp;&amp; !payload.nbf) {</span>
-<span class="cstat-no" title="statement not covered" >      console.error(`[JWT VALIDATOR] ✗ MISSING NBF: Token missing not-before claim`);</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError('MISSING_NBF', 'Token missing not-before claim', 400);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (payload.nbf &amp;&amp; payload.nbf &gt; now + idpConfig.security.clockTolerance) {</span>
-<span class="cstat-no" title="statement not covered" >      console.error(`[JWT VALIDATOR] ✗ TOKEN NOT YET VALID: nbf=${payload.nbf}, now=${now}`);</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError('TOKEN_NOT_YET_VALID', 'Token not yet valid', 401);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Validate token age</span>
-<span class="cstat-no" title="statement not covered" >    if (payload.iat &amp;&amp; (now - payload.iat) &gt; idpConfig.security.maxTokenAge) {</span>
-<span class="cstat-no" title="statement not covered" >      const age = now - payload.iat;</span>
-<span class="cstat-no" title="statement not covered" >      console.error(`[JWT VALIDATOR] ✗ TOKEN TOO OLD: age=${age}s, max=${idpConfig.security.maxTokenAge}s`);</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError('TOKEN_TOO_OLD', 'Token exceeds maximum age', 401);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Additional security checks</span>
-<span class="cstat-no" title="statement not covered" >    if (payload.exp &amp;&amp; payload.exp &lt; now - idpConfig.security.clockTolerance) {</span>
-<span class="cstat-no" title="statement not covered" >      console.error(`[JWT VALIDATOR] ✗ TOKEN EXPIRED: exp=${payload.exp}, now=${now}`);</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError('TOKEN_EXPIRED', 'Token has expired', 401);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[JWT VALIDATOR]   ✓ All temporal claims valid`);</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Get cache metrics (Phase 2)</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @returns Cache metrics or null if caching disabled</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  getCacheMetrics() {</span>
+<span class="cstat-no" title="statement not covered" >    return this.cache?.getMetrics() ?? null;</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private getNestedClaim(payload: JoseJWTPayload, path: string): any {</span>
-<span class="cstat-no" title="statement not covered" >    const parts = path.split('.');</span>
-<span class="cstat-no" title="statement not covered" >    let value: any = payload;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    for (const part of parts) {</span>
-<span class="cstat-no" title="statement not covered" >      if (value &amp;&amp; typeof value === 'object') {</span>
-<span class="cstat-no" title="statement not covered" >        value = value[part];</span>
-<span class="cstat-no" title="statement not covered" >      } else {</span>
-<span class="cstat-no" title="statement not covered" >        return undefined;</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    return value;</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Heartbeat for session keep-alive (Phase 2)</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @param sessionId - Session ID</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  heartbeat(sessionId: string): void {</span>
+<span class="cstat-no" title="statement not covered" >    this.cache?.heartbeat(sessionId);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private createUserSession(payload: JoseJWTPayload, idpConfig: any): UserSession {</span>
-<span class="cstat-no" title="statement not covered" >    const claimMappings = idpConfig.claimMappings;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Extract mapped claims (support nested paths like "realm_access.roles")</span>
-<span class="cstat-no" title="statement not covered" >    const legacyUsername = this.getNestedClaim(payload, claimMappings.legacyUsername) as string;</span>
-<span class="cstat-no" title="statement not covered" >    const roles = this.getNestedClaim(payload, claimMappings.roles) as string | string[];</span>
-<span class="cstat-no" title="statement not covered" >    const scopes = this.getNestedClaim(payload, claimMappings.scopes) as string | string[];</span>
-<span class="cstat-no" title="statement not covered" >    const userId = this.getNestedClaim(payload, claimMappings.userId || 'sub') as string;</span>
-<span class="cstat-no" title="statement not covered" >    const username = this.getNestedClaim(payload, claimMappings.username || 'preferred_username') as string;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (!legacyUsername) {</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >        'MISSING_LEGACY_USERNAME',</span>
-<span class="cstat-no" title="statement not covered" >        `Missing required claim: ${claimMappings.legacyUsername}`,</span>
-<span class="cstat-no" title="statement not covered" >        400</span>
-<span class="cstat-no" title="statement not covered" >      );</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    if (!userId) {</span>
-<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
-<span class="cstat-no" title="statement not covered" >        'MISSING_USER_ID',</span>
-<span class="cstat-no" title="statement not covered" >        `Missing required claim: ${claimMappings.userId || 'sub'}`,</span>
-<span class="cstat-no" title="statement not covered" >        400</span>
-<span class="cstat-no" title="statement not covered" >      );</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Determine user role from roles claim</span>
-<span class="cstat-no" title="statement not covered" >    const roleArray = Array.isArray(roles) ? roles : [roles].filter(Boolean);</span>
-<span class="cstat-no" title="statement not covered" >    const { primaryRole, customRoles } = this.determineRoles(roleArray, idpConfig.roleMappings);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Convert scopes to array</span>
-<span class="cstat-no" title="statement not covered" >    const scopeArray = Array.isArray(scopes) ? scopes :</span>
-<span class="cstat-no" title="statement not covered" >                      typeof scopes === 'string' ? scopes.split(' ') : [];</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    return {</span>
-<span class="cstat-no" title="statement not covered" >      userId,</span>
-<span class="cstat-no" title="statement not covered" >      username: username || userId,</span>
-<span class="cstat-no" title="statement not covered" >      legacyUsername,</span>
-<span class="cstat-no" title="statement not covered" >      role: primaryRole,</span>
-<span class="cstat-no" title="statement not covered" >      customRoles,</span>
-<span class="cstat-no" title="statement not covered" >      permissions: scopeArray,</span>
-<span class="cstat-no" title="statement not covered" >      scopes: scopeArray,</span>
-<span class="cstat-no" title="statement not covered" >      claims: payload as Record&lt;string, unknown&gt;,</span>
-<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Clear session cache (Phase 2)</span>
+<span class="cstat-no" title="statement not covered" >   *</span>
+<span class="cstat-no" title="statement not covered" >   * @param sessionId - Session ID</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  clearSession(sessionId: string): void {</span>
+<span class="cstat-no" title="statement not covered" >    this.cache?.clearSession(sessionId);</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  private determineRoles(roles: string[], roleMappings?: any): {</span>
-<span class="cstat-no" title="statement not covered" >    primaryRole: string;</span>
-<span class="cstat-no" title="statement not covered" >    customRoles: string[];</span>
-<span class="cstat-no" title="statement not covered" >  } {</span>
-<span class="cstat-no" title="statement not covered" >    // Use configured role mappings or defaults</span>
-<span class="cstat-no" title="statement not covered" >    const adminRoles = roleMappings?.admin || ['admin', 'administrator'];</span>
-<span class="cstat-no" title="statement not covered" >    const userRoles = roleMappings?.user || ['user'];</span>
-<span class="cstat-no" title="statement not covered" >    const guestRoles = roleMappings?.guest || [];</span>
-<span class="cstat-no" title="statement not covered" >    const defaultRole = roleMappings?.defaultRole || 'guest';</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER] ========== Role Determination ==========`);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER] Input roles from JWT: ${JSON.stringify(roles)}`);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER] Role mappings configuration:`);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER]   - Admin roles: ${JSON.stringify(adminRoles)}`);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER]   - User roles: ${JSON.stringify(userRoles)}`);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER]   - Guest roles: ${JSON.stringify(guestRoles)}`);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER]   - Default role: ${defaultRole}`);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Collect ALL role matches (standard + custom) with priority</span>
-<span class="cstat-no" title="statement not covered" >    const allMatches: { roleName: string; priority: number; matches: string[] }[] = [];</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Priority: admin=1, user=2, custom=3, guest=4</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Check admin roles (highest priority)</span>
-<span class="cstat-no" title="statement not covered" >    const adminMatch = roles.filter(role =&gt; adminRoles.includes(role));</span>
-<span class="cstat-no" title="statement not covered" >    if (adminMatch.length &gt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >      allMatches.push({ roleName: 'admin', priority: 1, matches: adminMatch });</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] ✓ MATCHED ADMIN - Found: ${JSON.stringify(adminMatch)}`);</span>
-<span class="cstat-no" title="statement not covered" >    } else {</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] ✗ No admin role match`);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Check user roles</span>
-<span class="cstat-no" title="statement not covered" >    const userMatch = roles.filter(role =&gt; userRoles.includes(role));</span>
-<span class="cstat-no" title="statement not covered" >    if (userMatch.length &gt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >      allMatches.push({ roleName: 'user', priority: 2, matches: userMatch });</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] ✓ MATCHED USER - Found: ${JSON.stringify(userMatch)}`);</span>
-<span class="cstat-no" title="statement not covered" >    } else {</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] ✗ No user role match`);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Check custom roles</span>
-<span class="cstat-no" title="statement not covered" >    if (roleMappings) {</span>
-<span class="cstat-no" title="statement not covered" >      for (const [roleName, roleValues] of Object.entries(roleMappings)) {</span>
-<span class="cstat-no" title="statement not covered" >        // Skip standard mappings and defaultRole</span>
-<span class="cstat-no" title="statement not covered" >        if (['admin', 'user', 'guest', 'defaultRole'].includes(roleName)) {</span>
-<span class="cstat-no" title="statement not covered" >          continue;</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        const matches = roles.filter(role =&gt; (roleValues as string[]).includes(role));</span>
-<span class="cstat-no" title="statement not covered" >        if (matches.length &gt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >          allMatches.push({ roleName, priority: 3, matches });</span>
-<span class="cstat-no" title="statement not covered" >          console.log(`[ROLE MAPPER] ✓ MATCHED CUSTOM ROLE '${roleName}' - Found: ${JSON.stringify(matches)}`);</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Check guest roles (lowest priority)</span>
-<span class="cstat-no" title="statement not covered" >    const guestMatch = roles.filter(role =&gt; guestRoles.includes(role));</span>
-<span class="cstat-no" title="statement not covered" >    if (guestMatch.length &gt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >      allMatches.push({ roleName: 'guest', priority: 4, matches: guestMatch });</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] ✓ MATCHED GUEST - Found: ${JSON.stringify(guestMatch)}`);</span>
-<span class="cstat-no" title="statement not covered" >    } else {</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] ✗ No guest role match`);</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // Sort by priority and select primary role</span>
-<span class="cstat-no" title="statement not covered" >    if (allMatches.length &gt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >      allMatches.sort((a, b) =&gt; a.priority - b.priority);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      const primaryRole = allMatches[0].roleName;</span>
-<span class="cstat-no" title="statement not covered" >      const customRoles = allMatches.slice(1).map(m =&gt; m.roleName);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] ✓ PRIMARY ROLE: ${primaryRole}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] Additional roles: ${JSON.stringify(customRoles)}`);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`[ROLE MAPPER] ==========================================`);</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      return { primaryRole, customRoles };</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    // No matching roles - use configured default</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER] ⚠ NO MATCHES - Using default role: ${defaultRole}`);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[ROLE MAPPER] ==========================================`);</span>
-<span class="cstat-no" title="statement not covered" >    return { primaryRole: defaultRole, customRoles: [] };</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // Rate limiting and security monitoring</span>
-<span class="cstat-no" title="statement not covered" >  async validateWithRateLimit(</span>
-<span class="cstat-no" title="statement not covered" >    token: string,</span>
-<span class="cstat-no" title="statement not covered" >    clientId: string,</span>
-<span class="cstat-no" title="statement not covered" >    context: Partial&lt;ValidationContext&gt; = {}</span>
-<span class="cstat-no" title="statement not covered" >  ): Promise&lt;{ payload: JWTPayload; session: UserSession; auditEntry: AuditEntry }&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    // TODO: Implement rate limiting logic here</span>
-<span class="cstat-no" title="statement not covered" >    // For now, delegate to standard validation</span>
-<span class="cstat-no" title="statement not covered" >    return this.validateJWT(token, context);</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // Cleanup resources</span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Destroy service and cleanup resources</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
 <span class="cstat-no" title="statement not covered" >  destroy(): void {</span>
-<span class="cstat-no" title="statement not covered" >    this.jwksSets.clear();</span>
-<span class="cstat-no" title="statement not covered" >    this.initialized = false;</span>
+<span class="cstat-no" title="statement not covered" >    this.cache?.destroy();</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // ==========================================================================</span>
+<span class="cstat-no" title="statement not covered" >  // Private Methods</span>
+<span class="cstat-no" title="statement not covered" >  // ==========================================================================</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Validate configuration</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  private validateConfig(): void {</span>
+<span class="cstat-no" title="statement not covered" >    if (!this.config.tokenEndpoint) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'TOKEN_EXCHANGE_CONFIG_INVALID',</span>
+<span class="cstat-no" title="statement not covered" >        'Token exchange config missing tokenEndpoint',</span>
+<span class="cstat-no" title="statement not covered" >        500</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    if (!this.config.tokenEndpoint.startsWith('https://')) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'TOKEN_EXCHANGE_INSECURE',</span>
+<span class="cstat-no" title="statement not covered" >        'Token endpoint must use HTTPS',</span>
+<span class="cstat-no" title="statement not covered" >        500</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    if (!this.config.clientId || !this.config.clientSecret) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'TOKEN_EXCHANGE_CONFIG_INVALID',</span>
+<span class="cstat-no" title="statement not covered" >        'Token exchange config missing clientId or clientSecret',</span>
+<span class="cstat-no" title="statement not covered" >        500</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Validate exchange parameters</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  private validateParams(params: TokenExchangeParams): void {</span>
+<span class="cstat-no" title="statement not covered" >    if (!params.subjectToken) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'TOKEN_EXCHANGE_INVALID_REQUEST',</span>
+<span class="cstat-no" title="statement not covered" >        'Subject token is required',</span>
+<span class="cstat-no" title="statement not covered" >        400</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    if (!params.tokenEndpoint.startsWith('https://')) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'TOKEN_EXCHANGE_INSECURE',</span>
+<span class="cstat-no" title="statement not covered" >        'Token endpoint must use HTTPS',</span>
+<span class="cstat-no" title="statement not covered" >        400</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    if (!params.audience) {</span>
+<span class="cstat-no" title="statement not covered" >      throw createSecurityError(</span>
+<span class="cstat-no" title="statement not covered" >        'TOKEN_EXCHANGE_INVALID_REQUEST',</span>
+<span class="cstat-no" title="statement not covered" >        'Audience is required',</span>
+<span class="cstat-no" title="statement not covered" >        400</span>
+<span class="cstat-no" title="statement not covered" >      );</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Build RFC 8693 request body</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  private buildRequestBody(params: TokenExchangeParams): Record&lt;string, string&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const body: Record&lt;string, string&gt; = {</span>
+<span class="cstat-no" title="statement not covered" >      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',</span>
+<span class="cstat-no" title="statement not covered" >      subject_token: params.subjectToken,</span>
+<span class="cstat-no" title="statement not covered" >      subject_token_type: params.subjectTokenType || 'urn:ietf:params:oauth:token-type:jwt',</span>
+<span class="cstat-no" title="statement not covered" >      audience: params.audience,</span>
+<span class="cstat-no" title="statement not covered" >      client_id: params.clientId,</span>
+<span class="cstat-no" title="statement not covered" >      client_secret: params.clientSecret,</span>
+<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    if (params.requestedTokenType) {</span>
+<span class="cstat-no" title="statement not covered" >      body.requested_token_type = params.requestedTokenType;</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    if (params.resource) {</span>
+<span class="cstat-no" title="statement not covered" >      body.resource = params.resource;</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    if (params.scope) {</span>
+<span class="cstat-no" title="statement not covered" >      body.scope = params.scope;</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    return body;</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  /**</span>
+<span class="cstat-no" title="statement not covered" >   * Log audit entry (Null Object Pattern)</span>
+<span class="cstat-no" title="statement not covered" >   */</span>
+<span class="cstat-no" title="statement not covered" >  private async logAudit(entry: AuditEntry): Promise&lt;void&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (this.auditService &amp;&amp; typeof this.auditService.log === 'function') {</span>
+<span class="cstat-no" title="statement not covered" >      try {</span>
+<span class="cstat-no" title="statement not covered" >        await this.auditService.log(entry);</span>
+<span class="cstat-no" title="statement not covered" >      } catch (error) {</span>
+<span class="cstat-no" title="statement not covered" >        // Silently fail - audit logging should never crash the service</span>
+<span class="cstat-no" title="statement not covered" >        console.error('Failed to log audit entry:', error);</span>
+<span class="cstat-no" title="statement not covered" >      }</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >export const jwtValidator = new JWTValidator();</span></pre></td></tr></table></pre>
+&nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-03T07:02:56.770Z
+                at 2025-10-08T08:18:44.389Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
