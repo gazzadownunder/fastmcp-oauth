@@ -26,16 +26,16 @@ const MCP_SERVER_URL = process.env.MCP_SERVER_URL || 'http://localhost:3000';
 const KEYCLOAK_TOKEN_ENDPOINT = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
 
 const TEST_USERS = {
-  alice: { username: 'alice', password: 'Test123!', legacyName: 'ALICE_ADMIN' },
-  bob: { username: 'bob', password: 'Test123!', legacyName: 'BOB_USER' },
-  charlie: { username: 'charlie', password: 'Test123!', legacyName: 'CHARLIE_USER' },
-  dave: { username: 'dave', password: 'Test123!', legacyName: null },
+  alice: { username: 'alice@test.local', password: 'Test123!', legacyName: 'ALICE_ADMIN' },
+  bob: { username: 'bob@test.local', password: 'Test123!', legacyName: 'BOB_USER' },
+  charlie: { username: 'charlie@test.local', password: 'Test123!', legacyName: 'CHARLIE_USER' },
+  dave: { username: 'dave@test.local', password: 'Test123!', legacyName: null },
 };
 
 const CLIENT_CREDENTIALS = {
   mcpOAuth: {
     clientId: process.env.MCP_OAUTH_CLIENT_ID || 'mcp-oauth',
-    clientSecret: process.env.MCP_OAUTH_CLIENT_SECRET || 'JUUA5xCJDQZdreWgEFYvfAqjJnGdTXXA',
+    clientSecret: process.env.MCP_OAUTH_CLIENT_SECRET || '9DQjCpm4D9wbzXxHa1ki51PhBbyxOXrg',
   },
 };
 
@@ -80,18 +80,65 @@ function decodeJWT(token: string): any {
 }
 
 /**
- * Call MCP tool with Bearer token
+ * Initialize MCP session and get session ID
+ */
+async function initializeMCPSession(bearerToken: string): Promise<string> {
+  const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
+      'Authorization': `Bearer ${bearerToken}`,
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: {
+          name: 'phase3-integration-test',
+          version: '1.0.0',
+        },
+      },
+      id: 1,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`MCP initialize failed: ${response.statusText} - ${text}`);
+  }
+
+  // Extract session ID from response header
+  const sessionId = response.headers.get('mcp-session-id');
+  if (!sessionId) {
+    throw new Error('No session ID returned from initialize');
+  }
+
+  return sessionId;
+}
+
+/**
+ * Call MCP tool with Bearer token (initializes session automatically)
+ * This follows the proper MCP protocol: initialize → get session ID → call tool
  */
 async function callMCPTool(
   tool: string,
   params: any,
   bearerToken: string
 ): Promise<any> {
+  // Step 1: Initialize MCP session (required by protocol)
+  const sessionId = await initializeMCPSession(bearerToken);
+
+  // Step 2: Call tool with session ID
   const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
       'Authorization': `Bearer ${bearerToken}`,
+      'Mcp-Session-Id': sessionId,
     },
     body: JSON.stringify({
       jsonrpc: '2.0',
@@ -109,7 +156,18 @@ async function callMCPTool(
     throw new Error(`MCP call failed: ${response.statusText} - ${text}`);
   }
 
-  return await response.json();
+  // Parse SSE response (Server-Sent Events)
+  const text = await response.text();
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const jsonData = line.substring(6); // Remove "data: " prefix
+      return JSON.parse(jsonData);
+    }
+  }
+
+  // Fallback to regular JSON if not SSE
+  throw new Error(`Failed to parse response: ${text.substring(0, 100)}...`);
 }
 
 /**
@@ -183,11 +241,11 @@ describe('Phase 3: Integration Tests', () => {
 
       expect(claims.iss).toContain(KEYCLOAK_REALM);
       expect(claims.aud).toContain(CLIENT_CREDENTIALS.mcpOAuth.clientId);
-      expect(claims.user_roles).toBeDefined();
+      expect(claims.roles).toBeDefined();
 
       console.log('✅ INT-002: Requestor JWT validated');
       console.log(`  - Audience: ${claims.aud}`);
-      console.log(`  - Roles: ${claims.user_roles}`);
+      console.log(`  - Roles: ${claims.roles}`);
     });
 
     it('should use TE-JWT for downstream resource access', async () => {
@@ -217,8 +275,8 @@ describe('Phase 3: Integration Tests', () => {
     it('should elevate privileges: user role in MCP → admin role in TE-JWT', async () => {
       // Alice has "user" role in MCP but "admin" in delegation
       const requestorClaims = decodeJWT(aliceToken);
-      expect(requestorClaims.user_roles).toContain('user');
-      expect(requestorClaims.user_roles).not.toContain('admin');
+      expect(requestorClaims.roles).toContain('user');
+      expect(requestorClaims.roles).not.toContain('admin');
 
       // Attempt admin operation via SQL delegation
       const sqlResponse = await callMCPTool(
@@ -240,7 +298,7 @@ describe('Phase 3: Integration Tests', () => {
     it('should reduce privileges: admin role in MCP → read-only in TE-JWT', async () => {
       // Bob has "admin" role in MCP but "read-only" in delegation
       const requestorClaims = decodeJWT(bobToken);
-      expect(requestorClaims.user_roles).toContain('admin');
+      expect(requestorClaims.roles).toContain('admin');
 
       // Read operation should succeed
       const readResponse = await callMCPTool(

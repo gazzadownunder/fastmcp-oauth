@@ -312,13 +312,9 @@ export class JWTValidator {
     };
 
     // Validate required claims
-    if (!claims.legacyUsername) {
-      throw createSecurityError(
-        'MISSING_LEGACY_USERNAME',
-        `Missing required claim: ${claimMappings.legacyUsername}`,
-        400
-      );
-    }
+    // NOTE: legacyUsername is OPTIONAL in requestor JWT
+    // It is only required in TE-JWT (Token Exchange result) for delegation
+    // The delegation module will validate it when needed
 
     if (!claims.userId) {
       throw createSecurityError(

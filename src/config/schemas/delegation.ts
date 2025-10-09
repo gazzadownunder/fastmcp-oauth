@@ -22,8 +22,14 @@ export const TokenExchangeConfigSchema = z.object({
   tokenEndpoint: z
     .string()
     .url()
-    .startsWith('https://')
-    .describe('IDP token endpoint URL (must be HTTPS)'),
+    .refine((url) => {
+      // Allow HTTP for development/testing environments
+      const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+      return isDev || url.startsWith('https://');
+    }, {
+      message: 'Token endpoint must use HTTPS (HTTP allowed in development/test)',
+    })
+    .describe('IDP token endpoint URL (HTTPS required in production)'),
   clientId: z.string().min(1).describe('Client ID for token exchange'),
   clientSecret: z.string().min(1).describe('Client secret for token exchange'),
   audience: z.string().optional().describe('Expected audience for delegation tokens'),

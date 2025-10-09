@@ -25,7 +25,7 @@ const MCP_SERVER_URL = process.env.MCP_SERVER_URL || 'http://localhost:3000';
 const KEYCLOAK_TOKEN_ENDPOINT = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
 
 const LOAD_TEST_USER = {
-  username: process.env.LOAD_TEST_USERNAME || 'loadtest',
+  username: process.env.LOAD_TEST_USERNAME || 'loadtest@test.local',
   password: process.env.LOAD_TEST_PASSWORD || 'LoadTest123!',
 };
 
@@ -59,6 +59,45 @@ async function getAccessToken(username: string, password: string): Promise<strin
   return data.access_token;
 }
 
+/**
+ * Initialize MCP session and get session ID
+ */
+async function initializeMCPSession(bearerToken: string): Promise<string> {
+  const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${bearerToken}`,
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: {
+          name: 'phase3-performance-test',
+          version: '1.0.0',
+        },
+      },
+      id: 1,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`MCP initialize failed: ${response.statusText} - ${text}`);
+  }
+
+  // Extract session ID from response header
+  const sessionId = response.headers.get('mcp-session-id');
+  if (!sessionId) {
+    throw new Error('No session ID returned from initialize');
+  }
+
+  return sessionId;
+}
+
 async function callMCPTool(
   tool: string,
   params: any,
@@ -66,11 +105,15 @@ async function callMCPTool(
 ): Promise<{ result: any; latencyMs: number }> {
   const start = performance.now();
 
+  // Initialize MCP session (required by protocol)
+  const sessionId = await initializeMCPSession(bearerToken);
+
   const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${bearerToken}`,
+      'Mcp-Session-Id': sessionId,
     },
     body: JSON.stringify({
       jsonrpc: '2.0',

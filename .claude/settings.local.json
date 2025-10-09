@@ -56,7 +56,11 @@
       "Bash(curl:*)",
       "Bash(git checkout:*)",
       "Bash(npm cache clean:*)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "Bash(ls:*)",
+      "Bash(npm run test:phase3:*)",
+      "Bash(chmod:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": []

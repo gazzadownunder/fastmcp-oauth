@@ -296,10 +296,12 @@ export class TokenExchangeService {
       );
     }
 
-    if (!this.config.tokenEndpoint.startsWith('https://')) {
+    // Allow HTTP in development/test mode only
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    if (!isDev && !this.config.tokenEndpoint.startsWith('https://')) {
       throw createSecurityError(
         'TOKEN_EXCHANGE_INSECURE',
-        'Token endpoint must use HTTPS',
+        'Token endpoint must use HTTPS in production',
         500
       );
     }
