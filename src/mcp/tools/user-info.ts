@@ -58,7 +58,7 @@ type UserInfoParams = z.infer<typeof userInfoSchema>;
 export const createUserInfoTool: ToolFactory = (context: CoreContext) => ({
   name: 'user-info',
   description:
-    'Get current authenticated user session information including role, permissions, and optional JWT claims.',
+    'Get current authenticated user session information including role, custom roles, and optional JWT claims.',
   schema: userInfoSchema,
 
   // Visibility filtering using canAccess (two-tier security)
@@ -84,7 +84,6 @@ export const createUserInfoTool: ToolFactory = (context: CoreContext) => ({
         userId: session.userId,
         username: session.username,
         role: session.role,
-        permissions: session.permissions,
         sessionVersion: session._version,
       };
 

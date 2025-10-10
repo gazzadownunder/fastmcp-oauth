@@ -60,27 +60,26 @@ type SqlDelegateParams = z.infer<typeof sqlDelegateSchema>;
 export const createSqlDelegateTool: ToolFactory = (context: CoreContext) => ({
   name: 'sql-delegate',
   description:
-    'Execute SQL operations (query, stored procedure, or function) on behalf of the authenticated user using their legacy Windows credentials. Requires sql:query, sql:procedure, or sql:function permission.',
+    'Execute SQL operations (query, stored procedure, or function) on behalf of the authenticated user using their legacy Windows credentials. Requires user or admin role.',
   schema: sqlDelegateSchema,
 
   // Visibility filtering using canAccess (two-tier security)
   canAccess: (mcpContext: MCPContext) => {
-    // Only show to authenticated users with sql permissions
+    // Only show to authenticated users with user or admin role
     const auth = new Authorization();
     if (!auth.isAuthenticated(mcpContext)) {
       return false;
     }
 
-    // Check if user has ANY sql permission (sql:query, sql:procedure, or sql:function)
-    return mcpContext.session.permissions.some(p => p.startsWith('sql:'));
+    // Check if user has user or admin role from JWT
+    return auth.hasAnyRole(mcpContext, ['user', 'admin']);
   },
 
   handler: async (params: SqlDelegateParams, mcpContext: MCPContext): Promise<LLMResponse> => {
     try {
-      // Require appropriate permission based on action
+      // Require user or admin role
       const auth = new Authorization();
-      const requiredPermission = `sql:${params.action}`;
-      auth.requirePermission(mcpContext, requiredPermission);
+      auth.requireAnyRole(mcpContext, ['user', 'admin']);
 
       // Validate action-specific parameters
       if (params.action === 'query' && !params.sql) {

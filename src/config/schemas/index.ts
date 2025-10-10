@@ -24,7 +24,6 @@ export {
   IDPConfigSchema,
   RateLimitConfigSchema,
   AuditConfigSchema,
-  PermissionConfigSchema,
   CoreAuthConfigSchema,
   type RoleMapping,
   type ClaimMappings,
@@ -32,7 +31,6 @@ export {
   type IDPConfig,
   type RateLimitConfig,
   type AuditConfig,
-  type PermissionConfig,
   type CoreAuthConfig,
 } from './core.js';
 

@@ -141,6 +141,12 @@ export interface AuthConfig {
  *
  * MANDATORY (GAP #1): rejected field tracks session rejection status
  * MANDATORY (GAP #6): _version field enables backward-compatible migrations
+ *
+ * Authorization is role-based from JWT claims, not static permissions.
+ *
+ * Multi-Delegation Support:
+ * - customClaims stores delegation-specific claims from TE-JWTs
+ * - e.g., { allowed_operations: ["read", "write"], allowed_services: ["fileserver"] }
  */
 export interface UserSession {
   /** MANDATORY (GAP #6): Schema version for backward-compatible migrations */
@@ -158,12 +164,8 @@ export interface UserSession {
   /** Primary role (can be UNASSIGNED_ROLE if mapping fails) */
   role: string;
 
-  /** Additional custom roles */
+  /** Additional custom roles from JWT */
   customRoles?: string[];
-
-  /** Permissions granted to this session */
-  /** CRITICAL: MUST be empty array [] if role is UNASSIGNED_ROLE */
-  permissions: string[];
 
   /** OAuth scopes */
   scopes?: string[];
@@ -173,6 +175,10 @@ export interface UserSession {
 
   /** MANDATORY (GAP #1): True if session was rejected due to role mapping failure */
   rejected?: boolean;
+
+  /** Custom claims from TE-JWT (delegation-specific) */
+  /** e.g., { allowed_operations: ["read"], allowed_services: ["fileserver"] } */
+  customClaims?: Record<string, any>;
 }
 
 /**

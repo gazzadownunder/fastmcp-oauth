@@ -35,8 +35,12 @@ export interface JWTPayload extends JoseJWTPayload {
 
 /**
  * IDP configuration for JWT validation
+ *
+ * Supports multiple IDPs with same issuer but different audiences
+ * (e.g., requestor JWT vs TE-JWTs for different delegations)
  */
 export interface IDPConfig {
+  name?: string;
   issuer: string;
   jwksUri: string;
   audience: string;
@@ -93,33 +97,78 @@ export interface JWTValidationResult {
  */
 export class JWTValidator {
   private jwksSets: Map<string, ReturnType<typeof createRemoteJWKSet>> = new Map();
-  private idpConfigs: Map<string, IDPConfig> = new Map();
+  private idpConfigs: IDPConfig[] = [];
   private initialized = false;
 
   /**
    * Initialize JWT validator with IDP configurations
+   *
+   * Supports multiple IDPs with same issuer but different audiences
+   * (e.g., requestor JWT + multiple TE-JWTs)
    *
    * @param idpConfigs - Array of trusted IDP configurations
    */
   async initialize(idpConfigs: IDPConfig[]): Promise<void> {
     if (this.initialized) return;
 
+    this.idpConfigs = idpConfigs;
+
+    // Create JWKS resolvers (one per unique issuer + jwksUri combo)
+    const jwksMap = new Map<string, string>(); // issuer -> jwksUri
+
     for (const idp of idpConfigs) {
       try {
-        const jwks = createRemoteJWKSet(new URL(idp.jwksUri), {
-          timeoutDuration: 5000,
-          cooldownDuration: 30000,
-          cacheMaxAge: 600000, // 10 minutes
-        });
+        const key = `${idp.issuer}|${idp.jwksUri}`;
 
-        this.jwksSets.set(idp.issuer, jwks);
-        this.idpConfigs.set(idp.issuer, idp);
+        if (!jwksMap.has(key)) {
+          const jwks = createRemoteJWKSet(new URL(idp.jwksUri), {
+            timeoutDuration: 5000,
+            cooldownDuration: 30000,
+            cacheMaxAge: 600000, // 10 minutes
+          });
+
+          this.jwksSets.set(idp.issuer, jwks);
+          jwksMap.set(key, idp.jwksUri);
+        }
       } catch (error) {
-        throw new Error(`Failed to initialize JWKS for IDP ${idp.issuer}: ${error}`);
+        const name = idp.name || idp.audience;
+        throw new Error(`Failed to initialize JWKS for IDP ${name}: ${error}`);
       }
     }
 
     this.initialized = true;
+  }
+
+  /**
+   * Find IDP configuration by JWT issuer and audience
+   *
+   * CRITICAL: Supports multiple IDPs for different delegation targets
+   *
+   * @param jwtPayload - Decoded JWT payload
+   * @returns Matching IDP config or throws error
+   */
+  private findIDPConfig(jwtPayload: JWTPayload): IDPConfig {
+    const { iss, aud } = jwtPayload;
+
+    // aud can be string or array
+    const audiences = Array.isArray(aud) ? aud : [aud];
+
+    // Find config where issuer matches AND audience is in aud array
+    const config = this.idpConfigs.find(idp =>
+      idp.issuer === iss && audiences.includes(idp.audience)
+    );
+
+    if (!config) {
+      throw createSecurityError(
+        'UNTRUSTED_ISSUER',
+        `No trusted IDP found for iss="${iss}", aud="${audiences.join(', ')}"`,
+        401
+      );
+    }
+
+    const name = config.name || config.audience;
+    console.log(`[JWTValidator] Matched IDP config: ${name} (iss: ${iss}, aud: ${config.audience})`);
+    return config;
   }
 
   /**
@@ -149,15 +198,17 @@ export class JWTValidator {
       // Extract issuer and audience from token
       const { issuer, audience } = await this.extractClaims(token);
 
-      // Get IDP configuration
-      const idpConfig = this.idpConfigs.get(issuer);
-      if (!idpConfig) {
-        throw createSecurityError(
-          'UNTRUSTED_ISSUER',
-          `Untrusted issuer: ${issuer}`,
-          401
-        );
+      // Decode JWT payload to get full iss + aud for matching
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        throw createSecurityError('INVALID_TOKEN_FORMAT', 'Invalid JWT format', 401);
       }
+
+      const payloadString = Buffer.from(parts[1], 'base64url').toString('utf-8');
+      const decodedPayload = JSON.parse(payloadString) as JWTPayload;
+
+      // Find IDP configuration by issuer + audience
+      const idpConfig = this.findIDPConfig(decodedPayload);
 
       // Get JWKS resolver
       const jwks = this.jwksSets.get(issuer);
@@ -350,7 +401,7 @@ export class JWTValidator {
    */
   destroy(): void {
     this.jwksSets.clear();
-    this.idpConfigs.clear();
+    this.idpConfigs = [];
     this.initialized = false;
   }
 }

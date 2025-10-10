@@ -41,7 +41,7 @@ export type { FastMCPRequest, FastMCPAuthResult } from './middleware.js';
 // Middleware
 // ============================================================================
 
-export { MCPAuthMiddleware, requireAuth, requireRole, requirePermission } from './middleware.js';
+export { MCPAuthMiddleware, requireAuth, requireRole } from './middleware.js';
 
 // ============================================================================
 // Orchestrator

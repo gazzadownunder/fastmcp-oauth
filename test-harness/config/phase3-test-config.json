@@ -2,6 +2,7 @@
   "auth": {
     "trustedIDPs": [
       {
+        "name": "requestor-jwt",
         "issuer": "http://localhost:8080/realms/mcp_security",
         "discoveryUrl": "http://localhost:8080/realms/mcp_security/.well-known/openid-configuration",
         "jwksUri": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/certs",
@@ -27,6 +28,32 @@
           "maxTokenAge": 3600,
           "requireNbf": false
         }
+      },
+      {
+        "name": "sql-delegation-te-jwt",
+        "issuer": "http://localhost:8080/realms/mcp_security",
+        "discoveryUrl": "http://localhost:8080/realms/mcp_security/.well-known/openid-configuration",
+        "jwksUri": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "audience": "urn:sql:database",
+        "algorithms": ["RS256"],
+        "claimMappings": {
+          "legacyUsername": "legacy_name",
+          "roles": "roles",
+          "scopes": "scope",
+          "userId": "sub",
+          "username": "preferred_username"
+        },
+        "roleMappings": {
+          "admin": ["admin"],
+          "user": ["user"],
+          "guest": ["guest"],
+          "defaultRole": "guest"
+        },
+        "security": {
+          "clockTolerance": 60,
+          "maxTokenAge": 3600,
+          "requireNbf": false
+        }
       }
     ],
     "rateLimiting": {
@@ -38,15 +65,6 @@
       "enabled": true,
       "logAllAttempts": true,
       "retentionDays": 90
-    },
-    "permissions": {
-      "adminPermissions": ["read", "write", "delete", "admin", "sql:query", "sql:procedure", "sql:function"],
-      "userPermissions": ["read", "write", "sql:query"],
-      "guestPermissions": ["read"],
-      "customPermissions": {
-        "write": ["sql:query", "sql:procedure"],
-        "read": ["sql:query"]
-      }
     }
   },
   "delegation": {

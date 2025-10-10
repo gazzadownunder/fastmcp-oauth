@@ -38,15 +38,6 @@
       "enabled": true,
       "logAllAttempts": true,
       "retentionDays": 90
-    },
-    "permissions": {
-      "adminPermissions": ["read", "write", "delete", "admin", "sql:query", "sql:procedure", "sql:function"],
-      "userPermissions": ["read", "write", "sql:query"],
-      "guestPermissions": ["read"],
-      "customPermissions": {
-        "write": ["sql:query", "sql:procedure"],
-        "read": ["sql:query"]
-      }
     }
   },
   "mcp": {

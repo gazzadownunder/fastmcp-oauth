@@ -26,7 +26,6 @@ import type {
 import { RoleMapper } from './role-mapper.js';
 import type { RoleMappingConfig } from './role-mapper.js';
 import { SessionManager } from './session-manager.js';
-import type { PermissionConfig } from './session-manager.js';
 import { AuditService } from './audit-service.js';
 
 // ============================================================================
@@ -35,6 +34,8 @@ import { AuditService } from './audit-service.js';
 
 /**
  * Authentication configuration
+ *
+ * Authorization is role-based from JWT claims, not static permissions.
  */
 export interface AuthConfig {
   /** Trusted IDP configurations for JWT validation */
@@ -42,9 +43,6 @@ export interface AuthConfig {
 
   /** Role mapping configuration (optional) */
   roleMappings?: RoleMappingConfig;
-
-  /** Permission mapping configuration (optional) */
-  permissions?: PermissionConfig;
 }
 
 /**
@@ -109,7 +107,7 @@ export class AuthenticationService {
     this.config = config;
     this.jwtValidator = new JWTValidator();
     this.roleMapper = new RoleMapper(config.roleMappings);
-    this.sessionManager = new SessionManager(config.permissions);
+    this.sessionManager = new SessionManager();
     this.auditService = auditService ?? new AuditService(); // Null Object Pattern
   }
 
@@ -232,16 +230,13 @@ export class AuthenticationService {
   }
 
   /**
-   * Update configuration (affects role mapping and permissions)
+   * Update configuration (affects role mapping)
    *
    * @param config - Partial configuration to update
    */
   updateConfig(config: Partial<AuthConfig>): void {
     if (config.roleMappings) {
       this.roleMapper.updateConfig(config.roleMappings);
-    }
-    if (config.permissions) {
-      this.sessionManager.updateConfig(config.permissions);
     }
     this.config = {
       ...this.config,

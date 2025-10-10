@@ -74,7 +74,6 @@ export function migrateConfig(oldConfig: LegacyConfig): UnifiedConfig {
       trustedIDPs: oldConfig.trustedIDPs,
       rateLimiting: oldConfig.rateLimiting,
       audit: oldConfig.audit,
-      permissions: oldConfig.permissions, // Migrate permissions if present
     };
 
     // Build delegation configuration if delegation modules exist

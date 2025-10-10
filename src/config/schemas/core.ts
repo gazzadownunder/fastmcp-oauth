@@ -75,8 +75,14 @@ export const SecurityConfigSchema = z.object({
  * Identity Provider (IDP) configuration
  *
  * Configuration for a single trusted OAuth 2.1 identity provider.
+ * Supports multiple IDPs for different JWT types (requestor JWT, TE-JWTs).
  */
 export const IDPConfigSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('Friendly name for this IDP config (e.g., "requestor-jwt", "sql-delegation-te-jwt")'),
   issuer: z
     .string()
     .url()
@@ -160,44 +166,6 @@ export const AuditConfigSchema = z.object({
     .describe('Audit log retention period in days'),
 });
 
-/**
- * Permission configuration
- *
- * Maps roles to their assigned permissions.
- * SECURITY: Framework does NOT provide defaults - users MUST explicitly configure permissions.
- * SECURITY (SEC-2): Rejects 'unassigned' in customPermissions to prevent config errors.
- */
-export const PermissionConfigSchema = z.object({
-  adminPermissions: z
-    .array(z.string())
-    .min(0)
-    .describe('Permissions granted to admin role'),
-  userPermissions: z
-    .array(z.string())
-    .min(0)
-    .describe('Permissions granted to user role'),
-  guestPermissions: z
-    .array(z.string())
-    .min(0)
-    .describe('Permissions granted to guest role'),
-  customPermissions: z
-    .record(z.array(z.string()))
-    .optional()
-    .default({})
-    .refine(
-      (customPerms) => {
-        // SECURITY (SEC-2): Prevent 'unassigned' in custom permissions
-        // UNASSIGNED_ROLE is a reserved role that must ALWAYS have empty permissions
-        // Allowing it in customPermissions could cause runtime assertion failures
-        return !Object.keys(customPerms || {}).includes('unassigned');
-      },
-      {
-        message: 'customPermissions must not include "unassigned" key - this is a reserved role with no permissions'
-      }
-    )
-    .describe('Custom role to permissions mapping'),
-});
-
 // ============================================================================
 // Core Authentication Configuration
 // ============================================================================
@@ -207,6 +175,8 @@ export const PermissionConfigSchema = z.object({
  *
  * This is the configuration for the Core layer (Phase 1).
  * Used by AuthenticationService, JWTValidator, RoleMapper, SessionManager, etc.
+ *
+ * Authorization is role-based from JWT claims, not static permissions.
  */
 export const CoreAuthConfigSchema = z.object({
   trustedIDPs: z
@@ -215,7 +185,6 @@ export const CoreAuthConfigSchema = z.object({
     .describe('List of trusted identity providers'),
   rateLimiting: RateLimitConfigSchema.optional().describe('Rate limiting settings'),
   audit: AuditConfigSchema.optional().describe('Audit logging settings'),
-  permissions: PermissionConfigSchema.describe('Role to permission mappings (REQUIRED - no framework defaults)'),
 });
 
 // ============================================================================
@@ -228,5 +197,4 @@ export type SecurityConfig = z.infer<typeof SecurityConfigSchema>;
 export type IDPConfig = z.infer<typeof IDPConfigSchema>;
 export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
 export type AuditConfig = z.infer<typeof AuditConfigSchema>;
-export type PermissionConfig = z.infer<typeof PermissionConfigSchema>;
 export type CoreAuthConfig = z.infer<typeof CoreAuthConfigSchema>;

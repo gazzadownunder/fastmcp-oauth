@@ -29,12 +29,6 @@
     "logFailedAttempts": true,
     "retentionDays": 90
   },
-  "permissions": {
-    "adminPermissions": ["read", "write", "delete", "admin", "sql:query", "sql:procedure", "sql:function"],
-    "userPermissions": ["read", "write", "sql:query"],
-    "guestPermissions": ["read"],
-    "customPermissions": {}
-  },
   "sql": {
     "server": "localhost",
     "database": "test_legacy_app",

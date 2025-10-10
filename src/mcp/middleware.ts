@@ -248,15 +248,3 @@ export function requireRole(context: MCPContext, requiredRole: string): void {
   auth.requireRole(context, requiredRole);
 }
 
-/**
- * Require specific permission for a tool handler
- *
- * @deprecated Import from './authorization.js' instead
- * @param context - MCP context
- * @param requiredPermission - Required permission (e.g., 'sql:query')
- * @throws {Error} If session lacks required permission
- */
-export function requirePermission(context: MCPContext, requiredPermission: string): void {
-  const auth = new Authorization();
-  auth.requirePermission(context, requiredPermission);
-}

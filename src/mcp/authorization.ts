@@ -1,23 +1,21 @@
 /**
  * MCP Authorization Helpers
  *
- * Provides both soft (boolean) and hard (throwing) authorization checks.
+ * Provides role-based authorization checks (no static permissions).
+ * Authorization is based on JWT roles, not server-side permission configuration.
  *
  * Usage Patterns:
  * 1. Hard checks (throw on failure) - Use in tool handlers:
  *    - requireAuth() - Ensures user is authenticated
  *    - requireRole() - Ensures user has specific role
  *    - requireAnyRole() - Ensures user has at least one of multiple roles
- *    - requirePermission() - Ensures user has specific permission
+ *    - requireAllRoles() - Ensures user has all of multiple roles
  *
  * 2. Soft checks (return boolean) - Use in canAccess() implementations:
  *    - isAuthenticated() - Check if user is authenticated
  *    - hasRole() - Check if user has specific role
  *    - hasAnyRole() - Check if user has any of multiple roles
  *    - hasAllRoles() - Check if user has all of multiple roles
- *    - hasPermission() - Check if user has specific permission
- *    - hasAnyPermission() - Check if user has any of multiple permissions
- *    - hasAllPermissions() - Check if user has all of multiple permissions
  *
  * @example Hard checks (tool handlers)
  * ```typescript
@@ -30,10 +28,10 @@
  * auth.requireRole(context, 'admin');
  *
  * // Require any of multiple roles
- * auth.requireAnyRole(context, ['admin', 'moderator']);
+ * auth.requireAnyRole(context, ['admin', 'user']);
  *
- * // Require specific permission
- * auth.requirePermission(context, 'sql:query');
+ * // Require all of multiple roles
+ * auth.requireAllRoles(context, ['admin', 'auditor']);
  * ```
  *
  * @example Soft checks (canAccess implementations)
@@ -53,12 +51,6 @@
  *
  * // Check any of multiple roles
  * if (auth.hasAnyRole(context, ['user', 'guest'])) {
- *   // Regular users can read
- *   return action === 'read';
- * }
- *
- * // Check permission
- * if (auth.hasPermission(context, 'sql:query')) {
  *   return true;
  * }
  *
@@ -169,75 +161,6 @@ export class Authorization {
     return roles.every(role => allUserRoles.includes(role));
   }
 
-  /**
-   * Check if session has specific permission
-   *
-   * @param context - MCP context
-   * @param permission - Required permission (e.g., 'sql:query')
-   * @returns True if session has the permission
-   */
-  hasPermission(context: MCPContext, permission: string): boolean {
-    if (!this.isAuthenticated(context)) {
-      return false;
-    }
-
-    return context.session.permissions.includes(permission);
-  }
-
-  /**
-   * Check if session has any of the specified permissions
-   *
-   * Useful for OR logic: "sql:query OR sql:execute OR sql:admin"
-   *
-   * @param context - MCP context
-   * @param permissions - Array of acceptable permissions
-   * @returns True if session has at least one of the permissions
-   *
-   * @example
-   * ```typescript
-   * // Allow if user has any SQL permission
-   * if (auth.hasAnyPermission(context, ['sql:query', 'sql:execute', 'sql:admin'])) {
-   *   return true;
-   * }
-   * ```
-   */
-  hasAnyPermission(context: MCPContext, permissions: string[]): boolean {
-    if (!this.isAuthenticated(context)) {
-      return false;
-    }
-
-    return permissions.some(permission =>
-      context.session.permissions.includes(permission)
-    );
-  }
-
-  /**
-   * Check if session has all of the specified permissions
-   *
-   * Useful for AND logic: "sql:query AND sql:execute"
-   *
-   * @param context - MCP context
-   * @param permissions - Array of required permissions
-   * @returns True if session has all of the permissions
-   *
-   * @example
-   * ```typescript
-   * // Require both read and write permissions
-   * if (auth.hasAllPermissions(context, ['sql:query', 'sql:execute'])) {
-   *   return true;
-   * }
-   * ```
-   */
-  hasAllPermissions(context: MCPContext, permissions: string[]): boolean {
-    if (!this.isAuthenticated(context)) {
-      return false;
-    }
-
-    return permissions.every(permission =>
-      context.session.permissions.includes(permission)
-    );
-  }
-
   // ==========================================================================
   // Hard Checks (Throw on Failure)
   // ==========================================================================
@@ -339,80 +262,6 @@ export class Authorization {
     }
   }
 
-  /**
-   * Require specific permission for a tool handler
-   *
-   * Throws an error if the session does not have the required permission.
-   *
-   * @param context - MCP context
-   * @param requiredPermission - Required permission (e.g., 'sql:query')
-   * @throws {OAuthSecurityError} If session lacks required permission
-   */
-  requirePermission(context: MCPContext, requiredPermission: string): void {
-    this.requireAuth(context);
-
-    if (!context.session.permissions.includes(requiredPermission)) {
-      throw createSecurityError(
-        'INSUFFICIENT_PERMISSIONS',
-        `This tool requires the '${requiredPermission}' permission. Your permissions: ${context.session.permissions.join(', ')}`,
-        403
-      );
-    }
-  }
-
-  /**
-   * Require any of the specified permissions for a tool handler
-   *
-   * Throws an error if the session does not have at least one of the permissions.
-   *
-   * @param context - MCP context
-   * @param permissions - Array of acceptable permissions
-   * @throws {OAuthSecurityError} If session lacks all permissions
-   *
-   * @example
-   * ```typescript
-   * // Require any SQL permission
-   * auth.requireAnyPermission(context, ['sql:query', 'sql:execute', 'sql:admin']);
-   * ```
-   */
-  requireAnyPermission(context: MCPContext, permissions: string[]): void {
-    this.requireAuth(context);
-
-    if (!this.hasAnyPermission(context, permissions)) {
-      throw createSecurityError(
-        'INSUFFICIENT_PERMISSIONS',
-        `This tool requires one of these permissions: ${permissions.join(', ')}. Your permissions: ${context.session.permissions.join(', ')}`,
-        403
-      );
-    }
-  }
-
-  /**
-   * Require all of the specified permissions for a tool handler
-   *
-   * Throws an error if the session does not have all of the permissions.
-   *
-   * @param context - MCP context
-   * @param permissions - Array of required permissions
-   * @throws {OAuthSecurityError} If session lacks any permission
-   *
-   * @example
-   * ```typescript
-   * // Require both read and write permissions
-   * auth.requireAllPermissions(context, ['sql:query', 'sql:execute']);
-   * ```
-   */
-  requireAllPermissions(context: MCPContext, permissions: string[]): void {
-    this.requireAuth(context);
-
-    if (!this.hasAllPermissions(context, permissions)) {
-      throw createSecurityError(
-        'INSUFFICIENT_PERMISSIONS',
-        `This tool requires all of these permissions: ${permissions.join(', ')}. Your permissions: ${context.session.permissions.join(', ')}`,
-        403
-      );
-    }
-  }
 }
 
 // ============================================================================
@@ -444,15 +293,3 @@ export function requireRole(context: MCPContext, requiredRole: string): void {
   auth.requireRole(context, requiredRole);
 }
 
-/**
- * Require specific permission for a tool handler
- *
- * @deprecated Use Authorization class instance methods instead
- * @param context - MCP context
- * @param requiredPermission - Required permission (e.g., 'sql:query')
- * @throws {OAuthSecurityError} If session lacks required permission
- */
-export function requirePermission(context: MCPContext, requiredPermission: string): void {
-  const auth = new Authorization();
-  auth.requirePermission(context, requiredPermission);
-}

@@ -23,7 +23,6 @@ export type {
 export { SessionManager } from './session-manager.js';
 export type {
   JWTPayload,
-  PermissionConfig,
 } from './session-manager.js';
 
 export { JWTValidator } from './jwt-validator.js';

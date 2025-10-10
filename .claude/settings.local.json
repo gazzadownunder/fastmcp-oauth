@@ -60,7 +60,10 @@
       "Bash(ls:*)",
       "Bash(npm run test:phase3:*)",
       "Bash(chmod:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(for file in keycloak-localhost.json keycloak-oauth-only.json keycloak-with-sql.json phase3-test-config.json v2-keycloak-oauth-only.json)",
+      "Bash(do echo \"Processing $file...\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

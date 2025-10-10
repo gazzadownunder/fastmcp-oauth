@@ -2,9 +2,9 @@
  * Session Manager - Session Creation and Migration
  *
  * This module manages UserSession creation and migration with critical safety policies:
- * - UNASSIGNED_ROLE sessions MUST have empty permissions array (GAP #2)
  * - Support version-based migration for backward compatibility (GAP #6)
  * - Track rejection status for audit trail (GAP #1)
+ * - Role-based authorization from JWT claims (no static permissions)
  *
  * @see Phase 1.6 of refactor.md
  */
@@ -34,23 +34,6 @@ export interface JWTPayload {
   [key: string]: any; // Additional claims
 }
 
-/**
- * Permission mapping configuration
- */
-export interface PermissionConfig {
-  /** Permissions for admin role */
-  adminPermissions?: string[];
-
-  /** Permissions for user role */
-  userPermissions?: string[];
-
-  /** Permissions for guest role */
-  guestPermissions?: string[];
-
-  /** Custom role to permissions mapping */
-  customPermissions?: Record<string, string[]>;
-}
-
 // ============================================================================
 // Session Manager Class
 // ============================================================================
@@ -59,14 +42,13 @@ export interface PermissionConfig {
  * Session Manager - Creates and migrates user sessions
  *
  * CRITICAL SAFETY POLICIES:
- * - UNASSIGNED_ROLE sessions MUST have [] permissions (GAP #2)
- * - Runtime assertion enforced on session creation
  * - Version-based migration for backward compatibility (GAP #6)
  * - Rejection tracking for audit trail (GAP #1)
+ * - Role-based authorization from JWT claims (no static permissions)
  *
  * Usage:
  * ```typescript
- * const manager = new SessionManager(permissionConfig);
+ * const manager = new SessionManager();
  * const session = manager.createSession(jwtPayload, roleResult);
  * if (session.rejected) {
  *   // Handle rejected session
@@ -75,47 +57,22 @@ export interface PermissionConfig {
  */
 export class SessionManager {
   private readonly SESSION_VERSION = 1; // Current schema version
-  private config: PermissionConfig;
 
-  constructor(config?: PermissionConfig) {
-    // SECURITY: No default permissions - users MUST explicitly configure
-    // Framework will not assign ANY permissions unless explicitly configured
-    this.config = {
-      adminPermissions: config?.adminPermissions || [],
-      userPermissions: config?.userPermissions || [],
-      guestPermissions: config?.guestPermissions || [],
-      customPermissions: config?.customPermissions || {},
-    };
+  constructor() {
+    // No configuration needed - roles come from JWT claims
   }
 
   /**
    * Create a user session from JWT payload and role mapping result
    *
-   * CRITICAL: Enforces UNASSIGNED_ROLE → [] permissions invariant (GAP #2)
-   *
    * @param jwtPayload - JWT payload with user claims
    * @param roleResult - Role mapping result
    * @returns UserSession with versioning and rejection tracking
-   * @throws Error if UNASSIGNED_ROLE has non-empty permissions (safety check)
    */
   createSession(
     jwtPayload: JWTPayload,
     roleResult: RoleMapperResult
   ): UserSession {
-    // Get permissions based on role (getPermissions handles UNASSIGNED_ROLE safely)
-    const permissions = this.getPermissions(roleResult.primaryRole);
-
-    // MANDATORY (GAP #2): Runtime assertion for UNASSIGNED_ROLE
-    // This catches configuration bugs where UNASSIGNED_ROLE is incorrectly mapped to permissions
-    if (
-      roleResult.primaryRole === UNASSIGNED_ROLE &&
-      permissions.length > 0
-    ) {
-      throw new Error(
-        'CRITICAL: UNASSIGNED_ROLE must have empty permissions array'
-      );
-    }
-
     // Convert scopes to array
     const scopes = Array.isArray(jwtPayload.scopes)
       ? jwtPayload.scopes
@@ -123,7 +80,7 @@ export class SessionManager {
         ? jwtPayload.scopes.split(' ')
         : [];
 
-    // Build session with versioning
+    // Build session with versioning (role-based authorization)
     const session: UserSession = {
       _version: this.SESSION_VERSION, // MANDATORY (GAP #6)
       userId: jwtPayload.sub,
@@ -131,7 +88,6 @@ export class SessionManager {
       legacyUsername: jwtPayload.legacy_sam_account,
       role: roleResult.primaryRole,
       customRoles: roleResult.customRoles,
-      permissions,
       scopes,
       claims: jwtPayload,
       rejected: roleResult.primaryRole === UNASSIGNED_ROLE, // MANDATORY (GAP #1)
@@ -174,7 +130,7 @@ export class SessionManager {
    * without crashes during deployment.
    *
    * Migration path:
-   * - v0 → v1: Add _version, rejected, ensure permissions=[] for UNASSIGNED_ROLE
+   * - v0 → v1: Add _version, rejected fields
    *
    * @param rawSession - Raw session object (potentially old schema)
    * @returns Migrated UserSession with current schema
@@ -196,20 +152,9 @@ export class SessionManager {
         rawSession.rejected = true;
       }
 
-      // Ensure UNASSIGNED_ROLE has empty permissions
-      if (
-        rawSession.role === UNASSIGNED_ROLE &&
-        !rawSession.permissions
-      ) {
-        rawSession.permissions = [];
-      }
-
-      // Ensure permissions array exists for all sessions
-      if (!rawSession.permissions) {
-        rawSession.permissions =
-          rawSession.role === UNASSIGNED_ROLE
-            ? []
-            : this.getPermissions(rawSession.role);
+      // Remove legacy permissions field if present
+      if ('permissions' in rawSession) {
+        delete rawSession.permissions;
       }
     }
 
@@ -220,65 +165,9 @@ export class SessionManager {
   }
 
   /**
-   * Get permissions for a given role
-   *
-   * SECURITY (SEC-2): UNASSIGNED_ROLE protection with early return
-   * - Returns [] immediately for UNASSIGNED_ROLE (config-independent)
-   * - Prevents configuration errors from causing authentication failures
-   * - Enforces fail-safe behavior: if role is UNASSIGNED, permissions are ALWAYS empty
-   *
-   * @param role - Role name
-   * @returns Array of permissions
-   */
-  private getPermissions(role: string): string[] {
-    // SECURITY (SEC-2): UNASSIGNED_ROLE always gets empty permissions
-    // This is a fail-safe that bypasses configuration lookup
-    // Prevents configuration errors from causing authentication failures
-    if (role === UNASSIGNED_ROLE) {
-      return []; // ✅ Early return, config-independent
-    }
-
-    // Standard roles - use configured permissions
-    if (role === ROLE_ADMIN) {
-      return this.config.adminPermissions || [];
-    }
-    if (role === ROLE_USER) {
-      return this.config.userPermissions || [];
-    }
-    if (role === ROLE_GUEST) {
-      return this.config.guestPermissions || [];
-    }
-
-    // Custom roles - look up in customPermissions map
-    if (this.config.customPermissions?.[role]) {
-      return this.config.customPermissions[role];
-    }
-
-    // Unknown role - return empty permissions
-    return [];
-  }
-
-  /**
    * Get the current session schema version
    */
   getSessionVersion(): number {
     return this.SESSION_VERSION;
-  }
-
-  /**
-   * Update permission configuration
-   */
-  updateConfig(config: Partial<PermissionConfig>): void {
-    this.config = {
-      ...this.config,
-      ...config,
-    };
-  }
-
-  /**
-   * Get current permission configuration
-   */
-  getConfig(): PermissionConfig {
-    return { ...this.config };
   }
 }

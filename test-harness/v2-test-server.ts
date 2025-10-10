@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 /**
- * v2 Test Server - New Modular Framework
+ * v2 Test Server - New Modular Framework with Multi-Delegation Support
  *
- * Purpose: Test harness for validating the new modular architecture (v2.0)
+ * Purpose: Test harness for validating the new modular architecture (v2.0+)
  *
  * Features:
  * - Uses MCPOAuthServer wrapper (simplified API)
  * - Unified config format (auth + delegation + mcp)
+ * - Multi-IDP support (requestor JWT + multiple TE-JWTs)
+ * - Role-based authorization (no static permissions)
  * - All available tools registered (sql-delegate, health-check, user-info)
  * - Graceful shutdown handling
+ *
+ * Multi-Delegation Architecture:
+ * - Supports multiple TrustedIDPs with same issuer, different audiences
+ * - Example: requestor JWT (aud: "mcp-oauth") + SQL TE-JWT (aud: "urn:sql:database")
+ * - JWT validation matches by issuer + audience
+ * - Delegation-specific claims stored in session.customClaims
  *
  * Usage:
  *   npm run build
@@ -16,7 +24,7 @@
  *
  * Environment:
  *   NODE_ENV=development
- *   CONFIG_PATH=./test-harness/config/v2-keycloak-oauth-only.json
+ *   CONFIG_PATH=./test-harness/config/phase3-test-config.json
  *   SERVER_PORT=3000
  */
 
@@ -68,10 +76,28 @@ async function main() {
     });
     console.log(`✓     Server started successfully\n`);
 
+    // Display Multi-IDP Configuration
+    const coreContext = server.getCoreContext();
+    const authConfig = coreContext.configManager.getAuthConfig();
+
+    if (authConfig?.trustedIDPs && authConfig.trustedIDPs.length > 1) {
+      console.log('Multi-IDP Configuration Detected:');
+      authConfig.trustedIDPs.forEach((idp, index) => {
+        const name = idp.name || `IDP ${index + 1}`;
+        console.log(`  ${index + 1}. ${name}`);
+        console.log(`     Issuer:   ${idp.issuer}`);
+        console.log(`     Audience: ${idp.audience}`);
+      });
+      console.log('');
+      console.log('JWT Validation:');
+      console.log('  • Matches by issuer + audience (supports same issuer, different audiences)');
+      console.log('  • Example: requestor JWT (mcp-oauth) vs TE-JWT (urn:sql:database)');
+      console.log('');
+    }
+
     // Step 3: Register delegation modules (AFTER start, optional)
     console.log('[3/3] Checking for delegation modules...');
 
-    const coreContext = server.getCoreContext();
     const delegationConfig = coreContext.configManager.getDelegationConfig();
 
     if (delegationConfig?.modules?.sql) {
@@ -121,11 +147,24 @@ async function main() {
     console.log('');
 
     console.log('Test Commands:');
-    console.log('  1. Get JWT from Keycloak (see test-harness/scripts/)');
-    console.log('  2. Call user-info tool:');
+    console.log('  1. Get requestor JWT from Keycloak (aud: mcp-oauth)');
+    console.log('     - Used for MCP tool access authorization');
+    console.log('     - Token must have "user" or "admin" role for sql-delegate tool');
+    console.log('');
+    console.log('  2. Call user-info tool (shows JWT details):');
     console.log('     curl -X POST http://localhost:3000/mcp \\');
-    console.log('       -H "Authorization: Bearer $TOKEN" \\');
+    console.log('       -H "Authorization: Bearer $REQUESTOR_JWT" \\');
     console.log('       -d \'{"method":"tools/call","params":{"name":"user-info","arguments":{}}}\'');
+    console.log('');
+
+    if (delegationConfig?.tokenExchange) {
+      console.log('  3. SQL delegation with token exchange:');
+      console.log('     - Framework exchanges requestor JWT for TE-JWT (aud: urn:sql:database)');
+      console.log('     - TE-JWT contains legacy_name for EXECUTE AS USER');
+      console.log('     - SQL Server checks primary authorization (legacy_name permissions)');
+      console.log('     - TE-JWT can optionally constrain with allowed_operations claim');
+      console.log('');
+    }
     console.log('');
 
     // Keep the process alive (FastMCP doesn't block on httpStream transport)
