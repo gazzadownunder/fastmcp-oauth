@@ -97,9 +97,11 @@ export class TokenExchangeService {
         const cacheKey = `te:${params.audience}`;
 
         // Try to get from cache
+        console.log('[TokenExchange] Checking cache for delegation token:', { sessionId, cacheKey });
         const cachedToken = this.cache.get(sessionId, cacheKey, params.subjectToken);
         if (cachedToken) {
           // Cache hit!
+          console.log('[TokenExchange] CACHE HIT - using cached delegation token');
           return {
             success: true,
             accessToken: cachedToken,
@@ -107,10 +109,17 @@ export class TokenExchangeService {
             issuedTokenType: 'urn:ietf:params:oauth:token-type:access_token',
           };
         }
+        console.log('[TokenExchange] Cache miss - will request new token from IDP');
       }
 
       // Build RFC 8693 request body
       const requestBody = this.buildRequestBody(params);
+      console.log('[TokenExchange] Making token exchange request to IDP:', {
+        tokenEndpoint: params.tokenEndpoint,
+        audience: params.audience,
+        clientId: params.clientId,
+        subjectTokenLength: params.subjectToken.length,
+      });
 
       // Make POST request to IDP token endpoint
       const response = await fetch(params.tokenEndpoint, {
@@ -122,11 +131,22 @@ export class TokenExchangeService {
         body: new URLSearchParams(requestBody).toString(),
       });
 
+      console.log('[TokenExchange] IDP response status:', response.status);
+
       // Parse response
       const responseData = await response.json();
+      console.log('[TokenExchange] IDP response data:', {
+        hasAccessToken: !!responseData.access_token,
+        tokenType: responseData.token_type,
+        expiresIn: responseData.expires_in,
+        error: responseData.error,
+        errorDescription: responseData.error_description,
+      });
 
       // Handle success
       if (response.ok && responseData.access_token) {
+        console.log('[TokenExchange] Token exchange SUCCESS - received delegation token');
+
         const result: TokenExchangeResult = {
           success: true,
           accessToken: responseData.access_token,
@@ -327,10 +347,12 @@ export class TokenExchangeService {
       );
     }
 
-    if (!params.tokenEndpoint.startsWith('https://')) {
+    // Allow HTTP in development/test mode only (same as validateConfig)
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    if (!isDev && !params.tokenEndpoint.startsWith('https://')) {
       throw createSecurityError(
         'TOKEN_EXCHANGE_INSECURE',
-        'Token endpoint must use HTTPS',
+        'Token endpoint must use HTTPS in production',
         400
       );
     }
@@ -351,7 +373,8 @@ export class TokenExchangeService {
     const body: Record<string, string> = {
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
       subject_token: params.subjectToken,
-      subject_token_type: params.subjectTokenType || 'urn:ietf:params:oauth:token-type:jwt',
+      // Default to access_token type (RFC 8693) - required by Keycloak and most IDPs
+      subject_token_type: params.subjectTokenType || 'urn:ietf:params:oauth:token-type:access_token',
       audience: params.audience,
       client_id: params.clientId,
       client_secret: params.clientSecret,

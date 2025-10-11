@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP OAuth Integration Test Client</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .grid-full {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .status.disconnected {
+            background: #fee;
+            color: #c33;
+        }
+
+        .status.connected {
+            background: #efe;
+            color: #3c3;
+        }
+
+        .status.exchanged {
+            background: #fef3cd;
+            color: #856404;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.secondary:hover:not(:disabled) {
+            background: #5a6268;
+        }
+
+        button.danger {
+            background: #dc3545;
+        }
+
+        button.danger:hover:not(:disabled) {
+            background: #c82333;
+        }
+
+        button.success {
+            background: #28a745;
+        }
+
+        button.success:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        .token-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            word-break: break-all;
+            margin-bottom: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+            color: #333;
+        }
+
+        .claims-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-bottom: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .claims-display pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .info-item {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 14px;
+        }
+
+        .response-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .log-console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 0;
+        }
+
+        .log-timestamp {
+            color: #858585;
+            margin-right: 8px;
+        }
+
+        .log-info { color: #4fc3f7; }
+        .log-success { color: #4caf50; }
+        .log-error { color: #f44336; }
+        .log-warning { color: #ff9800; }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .button-group button {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .tool-btn {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #dee2e6;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .tool-btn:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .tool-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .param-group {
+            margin-bottom: 15px;
+        }
+
+        .param-label {
+            font-weight: 600;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .param-description {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .param-type {
+            font-size: 10px;
+            color: #667eea;
+            background: #f0f0ff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 MCP OAuth Integration Test Client</h1>
+            <p class="subtitle">OAuth 2.1 Authentication + MCP Tool Testing (Keycloak → localhost:3000)</p>
+        </div>
+
+        <!-- Authentication & JWT Claims -->
+        <div class="grid">
+            <!-- Step 1: Authentication -->
+            <div class="card">
+                <h2>Step 1️⃣: Authentication</h2>
+                <span class="status disconnected" id="auth-status">Not Authenticated</span>
+
+                <div class="button-group">
+                    <button id="login-password-btn" onclick="loginWithPassword()">🔑 Password Grant</button>
+                    <button id="login-sso-btn" onclick="loginWithSSO()">🌐 SSO Redirect</button>
+                </div>
+
+                <button id="logout-btn" onclick="logout()" style="display:none;" class="danger">Logout</button>
+
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <button id="manual-jwt-btn" onclick="toggleManualJWT()" class="secondary">Manual JWT Import</button>
+                    <div id="manual-jwt-input" style="display:none; margin-top: 10px;">
+                        <textarea id="jwt-textarea" placeholder="Paste JWT token here..."></textarea>
+                        <button onclick="importManualJWT()" style="margin-top: 8px;">Import JWT</button>
+                    </div>
+                </div>
+
+                <div id="user-info" style="display:none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <div class="info-item">
+                        <div class="info-label">Subject (sub)</div>
+                        <div class="info-value" id="user-sub"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Email</div>
+                        <div class="info-value" id="user-email"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Access Token</div>
+                        <div class="token-display" id="subject-token"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JWT Claims Analysis -->
+            <div class="card">
+                <h2>🔍 JWT Claims Analysis</h2>
+                <div class="claims-display" id="subject-claims">Authenticate first...</div>
+            </div>
+        </div>
+
+        <!-- Step 2: MCP Server Interaction -->
+        <div class="card">
+            <h2>Step 2️⃣: MCP Server Interaction (localhost:3000/mcp)</h2>
+            <span class="status disconnected" id="mcp-status">Not Connected</span>
+
+            <div style="margin-bottom: 15px;">
+                <button onclick="initializeMCP()" id="init-mcp-btn" disabled class="success">Initialize MCP Session</button>
+                <button onclick="listTools()" id="list-tools-btn" disabled style="background: #17a2b8;">📋 List Available Tools</button>
+            </div>
+
+            <div id="tools-container" style="display:none;">
+                <div style="display: grid; grid-template-columns: 300px 1fr; gap: 20px; margin-top: 20px;">
+                    <!-- Left: Tool List -->
+                    <div>
+                        <h3 style="font-size: 14px; color: #666; margin-bottom: 10px; font-weight: 600;">Available Tools</h3>
+                        <div id="tool-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Tool buttons will be dynamically added here -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Tool Input Form & Response -->
+                    <div>
+                        <div id="tool-form-container" style="display:none;">
+                            <h3 style="font-size: 14px; color: #666; margin-bottom: 10px; font-weight: 600;">
+                                <span id="selected-tool-name"></span>
+                            </h3>
+                            <p id="selected-tool-description" style="font-size: 12px; color: #888; margin-bottom: 15px;"></p>
+
+                            <form id="tool-input-form" onsubmit="executeSelectedTool(event); return false;">
+                                <div id="tool-parameters"></div>
+                                <button type="submit" class="success" style="margin-top: 10px;">Execute Tool</button>
+                            </form>
+                        </div>
+
+                        <div id="no-tool-selected" style="padding: 20px; text-align: center; color: #999; border: 2px dashed #ddd; border-radius: 8px;">
+                            Select a tool from the list to configure and execute it
+                        </div>
+
+                        <div id="mcp-response" class="response-display" style="display:none; margin-top: 15px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="card">
+            <h2>📋 Activity Log</h2>
+            <button onclick="clearLog()" class="secondary" style="width: auto; padding: 8px 16px; font-size: 12px;">Clear Log</button>
+            <div class="log-console" id="log-console"></div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script src="mcp-client.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

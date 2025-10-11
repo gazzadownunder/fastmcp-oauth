@@ -27,12 +27,10 @@ import { handleToolError } from '../utils/error-helpers.js';
  * SQL delegation parameters schema
  */
 const sqlDelegateSchema = z.object({
-  action: z.enum(['query', 'procedure', 'function']).describe('SQL operation type'),
-  sql: z.string().optional().describe('SQL query string (for query action)'),
-  procedure: z.string().optional().describe('Stored procedure name (for procedure action)'),
-  functionName: z.string().optional().describe('Function name (for function action)'),
-  params: z.record(z.any()).optional().describe('Parameters for query/procedure/function'),
-  resource: z.string().optional().default('sql-database').describe('Resource identifier'),
+  action: z.enum(['query']).describe('SQL operation type (PostgreSQL only supports query)'),
+  sql: z.string().describe('SQL query string with positional parameters ($1, $2, etc.)'),
+  params: z.array(z.any()).optional().describe('Array of parameter values (for PostgreSQL $1, $2, etc.)'),
+  resource: z.string().optional().default('postgresql-database').describe('Resource identifier'),
 });
 
 type SqlDelegateParams = z.infer<typeof sqlDelegateSchema>;
@@ -60,7 +58,7 @@ type SqlDelegateParams = z.infer<typeof sqlDelegateSchema>;
 export const createSqlDelegateTool: ToolFactory = (context: CoreContext) => ({
   name: 'sql-delegate',
   description:
-    'Execute SQL operations (query, stored procedure, or function) on behalf of the authenticated user using their legacy Windows credentials. Requires user or admin role.',
+    'Execute PostgreSQL queries on behalf of the authenticated user using their delegated role. Use positional parameters ($1, $2, etc.). Requires user or admin role.',
   schema: sqlDelegateSchema,
 
   // Visibility filtering using canAccess (two-tier security)
@@ -90,31 +88,13 @@ export const createSqlDelegateTool: ToolFactory = (context: CoreContext) => ({
         };
       }
 
-      if (params.action === 'procedure' && !params.procedure) {
-        return {
-          status: 'failure',
-          code: 'INVALID_INPUT',
-          message: 'The "procedure" parameter is required for procedure action',
-        };
-      }
-
-      if (params.action === 'function' && !params.functionName) {
-        return {
-          status: 'failure',
-          code: 'INVALID_INPUT',
-          message: 'The "functionName" parameter is required for function action',
-        };
-      }
-
-      // Delegate to SQL module via DelegationRegistry
+      // Delegate to PostgreSQL module via DelegationRegistry
       const result = await context.delegationRegistry.delegate(
-        'sql', // module name
+        'postgresql', // module name
         mcpContext.session, // authenticated session
         params.action, // delegation action
         {
           sql: params.sql,
-          procedure: params.procedure,
-          functionName: params.functionName,
           params: params.params,
           resource: params.resource,
         }

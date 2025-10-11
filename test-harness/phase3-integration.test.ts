@@ -246,14 +246,14 @@ describe('Phase 3: Integration Tests', () => {
       console.log('✅ INT-001: Full flow completed successfully');
     });
 
-    it('should perform token exchange and SQL delegation', async () => {
+    it('should perform token exchange and PostgreSQL delegation', async () => {
       // Call sql-delegate tool (requires token exchange)
       const sqlResponse = await callMCPTool(
         'sql-delegate',
         {
           action: 'query',
-          sql: 'SELECT @@VERSION AS version',
-          params: {},
+          sql: 'SELECT version() AS version',
+          params: [],
         },
         aliceToken
       );
@@ -266,7 +266,7 @@ describe('Phase 3: Integration Tests', () => {
       expect(sqlResponse.result).toBeDefined();
       expect(sqlResponse.error).toBeUndefined();
 
-      console.log('✅ INT-001: Token exchange and SQL delegation successful');
+      console.log('✅ INT-001: Token exchange and PostgreSQL delegation successful');
     });
   });
 
@@ -286,14 +286,14 @@ describe('Phase 3: Integration Tests', () => {
 
     it('should use TE-JWT for downstream resource access', async () => {
       // This test requires inspection of server logs or audit trail
-      // to verify that TE-JWT (not requestor JWT) was used for SQL delegation
+      // to verify that TE-JWT (not requestor JWT) was used for PostgreSQL delegation
 
       const sqlResponse = await callMCPTool(
         'sql-delegate',
         {
           action: 'query',
-          sql: 'SELECT CURRENT_USER AS currentUser',
-          params: {},
+          sql: 'SELECT current_user AS currentUser',
+          params: [],
         },
         aliceToken
       );
@@ -314,13 +314,13 @@ describe('Phase 3: Integration Tests', () => {
       expect(requestorClaims.roles).toContain('user');
       expect(requestorClaims.roles).not.toContain('admin');
 
-      // Attempt admin operation via SQL delegation
+      // Attempt admin operation via PostgreSQL delegation
       const sqlResponse = await callMCPTool(
         'sql-delegate',
         {
           action: 'query',
-          sql: 'SELECT USER_NAME() AS userName, IS_MEMBER(\'db_owner\') AS isOwner',
-          params: {},
+          sql: 'SELECT current_user AS userName, current_database() AS dbName',
+          params: [],
         },
         aliceToken
       );
@@ -341,8 +341,8 @@ describe('Phase 3: Integration Tests', () => {
         'sql-delegate',
         {
           action: 'query',
-          sql: 'SELECT @@VERSION AS version',
-          params: {},
+          sql: 'SELECT version() AS version',
+          params: [],
         },
         bobToken
       );
@@ -367,8 +367,8 @@ describe('Phase 3: Integration Tests', () => {
             'sql-delegate',
             {
               action: 'query',
-              sql: 'SELECT GETDATE() AS currentTime',
-              params: {},
+              sql: 'SELECT now() AS currentTime',
+              params: [],
             },
             aliceToken
           )
@@ -410,8 +410,8 @@ describe('Phase 3: Integration Tests', () => {
             'sql-delegate',
             {
               action: 'query',
-              sql: 'SELECT GETDATE() AS currentTime',
-              params: {},
+              sql: 'SELECT now() AS currentTime',
+              params: [],
             },
             charlieToken
           )
@@ -448,7 +448,7 @@ describe('Phase 3: Integration Tests', () => {
           {
             action: 'query',
             sql: 'SELECT 1 AS test',
-            params: {},
+            params: [],
           },
           aliceToken
         )
@@ -461,7 +461,7 @@ describe('Phase 3: Integration Tests', () => {
           {
             action: 'query',
             sql: 'SELECT 1 AS test',
-            params: {},
+            params: [],
           },
           aliceToken
         )
@@ -477,7 +477,7 @@ describe('Phase 3: Integration Tests', () => {
           {
             action: 'query',
             sql: 'SELECT 1 AS test',
-            params: {},
+            params: [],
           },
           newToken
         )
@@ -506,9 +506,9 @@ describe('Phase 3: Integration Tests', () => {
 
       // For now, we'll test with the same audience multiple times
       const calls = await Promise.all([
-        callMCPTool('sql-delegate', { action: 'query', sql: 'SELECT 1', params: {} }, aliceToken),
-        callMCPTool('sql-delegate', { action: 'query', sql: 'SELECT 2', params: {} }, aliceToken),
-        callMCPTool('sql-delegate', { action: 'query', sql: 'SELECT 3', params: {} }, aliceToken),
+        callMCPTool('sql-delegate', { action: 'query', sql: 'SELECT 1', params: [] }, aliceToken),
+        callMCPTool('sql-delegate', { action: 'query', sql: 'SELECT 2', params: [] }, aliceToken),
+        callMCPTool('sql-delegate', { action: 'query', sql: 'SELECT 3', params: [] }, aliceToken),
       ]);
 
       calls.forEach((call) => {
@@ -548,6 +548,192 @@ describe('Phase 3: Integration Tests', () => {
     });
   });
 
+  describe('INT-005: PostgreSQL Schema Tools', () => {
+    it('should list database schema with sql-schema tool', async () => {
+      const schemaResponse = await callMCPTool(
+        'sql-schema',
+        {
+          schemaName: 'public',
+        },
+        aliceToken
+      );
+
+      expect(schemaResponse.result).toBeDefined();
+      expect(schemaResponse.error).toBeUndefined();
+
+      const content = JSON.parse(schemaResponse.result.content[0].text);
+      expect(content.schema).toBe('public');
+      expect(content.tables).toBeDefined();
+      expect(Array.isArray(content.tables)).toBe(true);
+
+      console.log('✅ INT-005: sql-schema tool successful');
+      console.log(`  - Schema: ${content.schema}`);
+      console.log(`  - Table count: ${content.tableCount}`);
+      console.log(`  - Tables: ${content.tables.map((t: any) => t.name).join(', ')}`);
+    });
+
+    it('should get table details with sql-table-details tool', async () => {
+      const tableResponse = await callMCPTool(
+        'sql-table-details',
+        {
+          tableName: 'general_table',
+          schemaName: 'public',
+        },
+        aliceToken
+      );
+
+      expect(tableResponse.result).toBeDefined();
+      expect(tableResponse.error).toBeUndefined();
+
+      const content = JSON.parse(tableResponse.result.content[0].text);
+      expect(content.table).toBe('general_table');
+      expect(content.columns).toBeDefined();
+      expect(Array.isArray(content.columns)).toBe(true);
+
+      console.log('✅ INT-005: sql-table-details tool successful');
+      console.log(`  - Table: ${content.table}`);
+      console.log(`  - Column count: ${content.columnCount}`);
+      console.log(`  - Columns: ${content.columns.map((c: any) => c.name).join(', ')}`);
+    });
+  });
+
+  describe('INT-006: Role-Based Table Authorization', () => {
+    it('Alice should access alice_table (role: alice)', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'SELECT * FROM alice_table LIMIT 1',
+          params: [],
+        },
+        aliceToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      console.log('✅ INT-006: Alice accessed alice_table successfully');
+    });
+
+    it('Alice should access general_table (unrestricted)', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'SELECT * FROM general_table LIMIT 1',
+          params: [],
+        },
+        aliceToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      console.log('✅ INT-006: Alice accessed general_table successfully');
+    });
+
+    it('Alice should be denied access to bob_table (role mismatch)', async () => {
+      try {
+        await callMCPTool(
+          'sql-delegate',
+          {
+            action: 'query',
+            sql: 'SELECT * FROM bob_table LIMIT 1',
+            params: [],
+          },
+          aliceToken
+        );
+
+        // Should not reach here
+        expect(true).toBe(false);
+      } catch (error: any) {
+        // Expect PostgreSQL permission denied error
+        expect(error.message).toBeDefined();
+        console.log('✅ INT-006: Alice denied access to bob_table (as expected)');
+        console.log(`  - Error: ${error.message.substring(0, 100)}...`);
+      }
+    });
+
+    it('Bob should access bob_table (role: bob)', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'SELECT * FROM bob_table LIMIT 1',
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      console.log('✅ INT-006: Bob accessed bob_table successfully');
+    });
+
+    it('Bob should access general_table (unrestricted)', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'SELECT * FROM general_table LIMIT 1',
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      console.log('✅ INT-006: Bob accessed general_table successfully');
+    });
+
+    it('Bob should be denied access to alice_table (role mismatch)', async () => {
+      try {
+        await callMCPTool(
+          'sql-delegate',
+          {
+            action: 'query',
+            sql: 'SELECT * FROM alice_table LIMIT 1',
+            params: [],
+          },
+          bobToken
+        );
+
+        // Should not reach here
+        expect(true).toBe(false);
+      } catch (error: any) {
+        // Expect PostgreSQL permission denied error
+        expect(error.message).toBeDefined();
+        console.log('✅ INT-006: Bob denied access to alice_table (as expected)');
+        console.log(`  - Error: ${error.message.substring(0, 100)}...`);
+      }
+    });
+  });
+
+  describe('INT-007: PostgreSQL Positional Parameters', () => {
+    it('should execute parameterized query with positional params ($1, $2)', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'SELECT $1::text AS param1, $2::integer AS param2',
+          params: ['test_value', 42],
+        },
+        aliceToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      const content = JSON.parse(sqlResponse.result.content[0].text);
+      expect(content.rows[0].param1).toBe('test_value');
+      expect(content.rows[0].param2).toBe(42);
+
+      console.log('✅ INT-007: Positional parameters work correctly');
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle missing legacy_name claim gracefully', async () => {
       // Dave has no legacyUsername attribute
@@ -557,7 +743,7 @@ describe('Phase 3: Integration Tests', () => {
           {
             action: 'query',
             sql: 'SELECT 1',
-            params: {},
+            params: [],
           },
           daveToken
         );

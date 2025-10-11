@@ -171,11 +171,18 @@ export class AuthenticationService {
 
       console.log('[AuthenticationService] RoleMapper result:', roleResult);
 
-      // Step 3: Create session
+      // Step 3: Create session (pass original token for token exchange)
       const session = this.sessionManager.createSession(
         validationResult.payload,
-        roleResult
+        roleResult,
+        token // Pass original JWT for token exchange (RFC 8693)
       );
+
+      console.log('[AuthenticationService] Session created with access_token:', {
+        userId: session.userId,
+        hasAccessToken: !!session.claims?.access_token,
+        tokenLength: session.claims?.access_token?.length,
+      });
 
       // Step 4: Enhancement v0.2 - Check if role is UNASSIGNED (GAP #1)
       const rejected = session.role === UNASSIGNED_ROLE;

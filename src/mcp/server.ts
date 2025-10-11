@@ -99,7 +99,9 @@ export class MCPOAuthServer {
       );
     }
 
-    await this.coreContext.delegationRegistry.register(name, module);
+    // DelegationRegistry.register() takes only the module parameter
+    // The module's .name property is used as the registration key
+    await this.coreContext.delegationRegistry.register(module);
     console.log(`[MCP OAuth Server] Registered delegation module: ${name}`);
   }
 

@@ -71,7 +71,8 @@ export class SessionManager {
    */
   createSession(
     jwtPayload: JWTPayload,
-    roleResult: RoleMapperResult
+    roleResult: RoleMapperResult,
+    accessToken?: string
   ): UserSession {
     // Convert scopes to array
     const scopes = Array.isArray(jwtPayload.scopes)
@@ -89,7 +90,12 @@ export class SessionManager {
       role: roleResult.primaryRole,
       customRoles: roleResult.customRoles,
       scopes,
-      claims: jwtPayload,
+      claims: {
+        ...jwtPayload,
+        // Store original access token for token exchange (RFC 8693)
+        // This is the subject token that will be exchanged for delegation tokens
+        access_token: accessToken,
+      },
       rejected: roleResult.primaryRole === UNASSIGNED_ROLE, // MANDATORY (GAP #1)
     };
 

@@ -29,7 +29,7 @@
  */
 
 import { MCPOAuthServer } from '../src/mcp/server.js';
-import { SQLDelegationModule } from '../src/delegation/sql/sql-module.js';
+import { PostgreSQLDelegationModule } from '../src/delegation/sql/postgresql-module.js';
 import { TokenExchangeService } from '../src/delegation/token-exchange.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -100,9 +100,14 @@ async function main() {
 
     const delegationConfig = coreContext.configManager.getDelegationConfig();
 
-    if (delegationConfig?.modules?.sql) {
-      console.log('      SQL delegation module detected in config');
-      const sqlModule = new SQLDelegationModule();
+    if (delegationConfig?.modules?.postgresql) {
+      console.log('      PostgreSQL delegation module detected in config');
+      const pgModule = new PostgreSQLDelegationModule();
+
+      // Initialize PostgreSQL module with connection config
+      console.log('      Initializing PostgreSQL connection...');
+      await pgModule.initialize(delegationConfig.modules.postgresql);
+      console.log('✓     PostgreSQL connection initialized');
 
       // Check if token exchange is configured
       if (delegationConfig?.tokenExchange) {
@@ -117,8 +122,8 @@ async function main() {
           coreContext.auditService
         );
 
-        // Inject into SQL module
-        sqlModule.setTokenExchangeService(tokenExchangeService, {
+        // Inject into PostgreSQL module
+        pgModule.setTokenExchangeService(tokenExchangeService, {
           tokenEndpoint: delegationConfig.tokenExchange.tokenEndpoint,
           clientId: delegationConfig.tokenExchange.clientId,
           clientSecret: delegationConfig.tokenExchange.clientSecret,
@@ -128,8 +133,8 @@ async function main() {
         console.log('✓     Token exchange service initialized');
       }
 
-      await server.registerDelegationModule('sql', sqlModule);
-      console.log('✓     SQL delegation module registered\n');
+      await server.registerDelegationModule('postgresql', pgModule);
+      console.log('✓     PostgreSQL delegation module registered\n');
     } else {
       console.log('      No delegation modules configured (OAuth-only mode)\n');
     }
@@ -139,10 +144,12 @@ async function main() {
     console.log('═══════════════════════════════════════════════════════════\n');
 
     console.log('Available Tools:');
-    console.log('  • health-check  - Check delegation service health');
-    console.log('  • user-info     - Get current user session info');
-    if (delegationConfig?.modules?.sql) {
-      console.log('  • sql-delegate  - Execute SQL on behalf of user');
+    console.log('  • health-check      - Check delegation service health');
+    console.log('  • user-info         - Get current user session info');
+    if (delegationConfig?.modules?.postgresql) {
+      console.log('  • sql-delegate      - Execute SQL queries with positional params ($1, $2, etc.)');
+      console.log('  • sql-schema        - Get list of tables in database schema');
+      console.log('  • sql-table-details - Get column details for a specific table');
     }
     console.log('');
 
@@ -158,11 +165,11 @@ async function main() {
     console.log('');
 
     if (delegationConfig?.tokenExchange) {
-      console.log('  3. SQL delegation with token exchange:');
+      console.log('  3. PostgreSQL delegation with token exchange:');
       console.log('     - Framework exchanges requestor JWT for TE-JWT (aud: urn:sql:database)');
-      console.log('     - TE-JWT contains legacy_name for EXECUTE AS USER');
-      console.log('     - SQL Server checks primary authorization (legacy_name permissions)');
-      console.log('     - TE-JWT can optionally constrain with allowed_operations claim');
+      console.log('     - TE-JWT contains legacy_name for SET ROLE');
+      console.log('     - PostgreSQL checks primary authorization (role permissions)');
+      console.log('     - Test tables: alice_table (alice only), bob_table (bob only), general_table (both)');
       console.log('');
     }
     console.log('');

@@ -67,6 +67,7 @@
     "kerberos": "^2.2.2",
     "@gazzadownunder/mcp-proxy": "github:gazzadownunder/mcp-proxy#chore/scope-package-name",
     "mssql": "^11.0.1",
+    "pg": "^8.13.1",
     "undici": "^7.13.0",
     "zod": "^3.25.76"
   },
