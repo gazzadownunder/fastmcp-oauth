@@ -519,17 +519,39 @@ Production Readiness:
 
 ---
 
-## Phase 5: OAuth 2.1 Redirect Flow (Authorization Code + PKCE)
+## Phase 5: MCP OAuth 2.1 Resource Server Role (Corrected)
 
 **Duration:** Week 7-8
-**Status:** ✅ Completed
-**Completion Date:** 2025-01-10
-**Goal:** Implement OAuth 2.1 authorization code flow with PKCE for clients without bearer tokens
-**Git Commit:** e568c82
+**Status:** ⚠️ Corrected - MCP-Compliant
+**Original Implementation:** 2025-01-10 (commit e568c82 - **violated MCP spec**)
+**Correction Date:** 2025-01-10 (commit 4015bdf)
+**Goal:** Implement MCP-compliant OAuth 2.1 resource server role
+**Git Commits:**
+- ~~e568c82~~ OAuth redirect flow (REMOVED - violated MCP specification)
+- 4015bdf MCP-compliant resource server implementation
+
+### ⚠️ Important Correction Notice
+
+The original Phase 5 implementation (commit e568c82) **violated the MCP OAuth 2.1 specification** by implementing OAuth authorization endpoints on the MCP server itself.
+
+**What Was Wrong:**
+- ❌ Implemented `/oauth/authorize` and `/oauth/callback` endpoints on MCP server
+- ❌ MCP server acting as OAuth authorization proxy
+- ❌ OAuth session management on MCP server
+
+**Per MCP Specification:**
+> "A protected MCP server acts as an OAuth 2.1 **resource server**, capable of accepting and responding to protected resource requests using access tokens."
+
+MCP servers MUST:
+- ✅ Act as Resource Servers ONLY (validate tokens)
+- ✅ Advertise OAuth metadata (RFC 9728)
+- ❌ NOT implement authorization endpoints
+
+See [Docs/PHASE-5-CORRECTED.md](PHASE-5-CORRECTED.md) for full details.
 
 ### Overview
 
-This phase adds OAuth redirect capability for clients that cannot obtain bearer tokens upfront (e.g., browser-based MCP clients, mobile apps). The implementation follows OAuth 2.1 best practices with PKCE for enhanced security.
+This phase ensures the MCP server correctly implements the OAuth 2.1 **Resource Server role** per the official MCP specification. The server validates bearer tokens issued by external authorization servers (IDPs), but does NOT participate in the OAuth authorization code flow.
 
 **Use Cases:**
 - Browser-based MCP clients (web applications)

@@ -531,158 +531,179 @@ See [Docs/oauth2 implementation.md](Docs/oauth2 implementation.md) for full dele
 
 ---
 
-### OAuth 2.1 Authorization Code Flow with PKCE (Phase 5)
+### MCP OAuth 2.1 Resource Server Role (Phase 5 - Corrected)
 
-**Status:** Implementation Complete | **Version:** v3.1 | **Completion Date:** 2025-01-10
+**Status:** MCP-Compliant Implementation | **Version:** v3.1 | **Corrected:** 2025-01-10
 
-The framework implements **OAuth 2.1 Authorization Code Flow with PKCE** for browser-based clients and applications that cannot obtain bearer tokens upfront. This enables interactive authentication flows for web applications, mobile apps, and development tools.
+Per the **MCP OAuth 2.1 specification**, this framework implements the **Resource Server role ONLY**. MCP servers validate bearer tokens issued by external authorization servers (IDPs), they do NOT handle OAuth authorization flows themselves.
 
-#### Use Cases
+#### MCP Server Role: Resource Server
 
-- **Browser-Based MCP Clients**: Web applications without direct access to client credentials
-- **Mobile Applications**: iOS/Android apps requiring user authentication
-- **Interactive Development Tools**: CLI tools and IDEs with user login flows
-- **Single-Page Applications (SPAs)**: JavaScript applications running in browsers
+**What MCP Servers Do:**
+✅ Validate bearer tokens from external IDPs
+✅ Extract user claims (userId, roles, permissions)
+✅ Enforce role-based access control on MCP tools
+✅ Advertise OAuth metadata to clients
 
-#### Authorization Flow
+**What MCP Servers Do NOT Do:**
+❌ Implement `/oauth/authorize` or `/oauth/callback` endpoints
+❌ Handle OAuth authorization code flow
+❌ Act as OAuth authorization proxy
+❌ Manage OAuth sessions or PKCE state
+
+#### Correct OAuth Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│               OAuth 2.1 Authorization Code Flow                  │
+│               MCP-Compliant OAuth 2.1 Flow                        │
 │                                                                   │
-│  1. Client → Server: Initiate Authorization                      │
-│     GET /oauth/authorize?redirect_uri=...                        │
-│     Server generates PKCE code challenge + state                 │
+│  1. MCP Client → Authorization Server (IDP)                      │
+│     GET /authorize?client_id=...&redirect_uri=...&              │
+│         code_challenge=...&response_type=code                    │
+│     (Client handles PKCE, state parameter)                       │
 │                                                                   │
-│  2. Server → IDP: Redirect with PKCE Challenge                   │
-│     https://idp.com/auth?code_challenge=...&state=...           │
-│                                                                   │
-│  3. User authenticates at IDP                                    │
+│  2. User authenticates at IDP                                    │
 │     User enters credentials, consents to scopes                  │
 │                                                                   │
-│  4. IDP → Server: Callback with Authorization Code               │
-│     GET /oauth/callback?code=ABC123&state=...                    │
-│     Server validates state parameter (CSRF protection)           │
+│  3. IDP → MCP Client                                             │
+│     Redirect: https://client.com/callback?code=ABC&state=...    │
 │                                                                   │
-│  5. Server → IDP: Exchange Code for Token (with PKCE)            │
+│  4. MCP Client → Authorization Server (IDP)                      │
 │     POST /token                                                   │
-│     code=ABC123&code_verifier=...                                │
-│     IDP validates PKCE code verifier                             │
+│     grant_type=authorization_code&code=ABC&                      │
+│     code_verifier=...&redirect_uri=...                           │
 │                                                                   │
-│  6. IDP → Server: Access Token                                   │
-│     { access_token, refresh_token, expires_in }                  │
+│  5. IDP → MCP Client                                             │
+│     { access_token, token_type: "Bearer", expires_in: 3600 }     │
 │                                                                   │
-│  7. Server → Client: Access Token                                │
-│     Client uses token as Bearer token for MCP requests           │
+│  6. MCP Client → MCP Server                                      │
+│     POST /mcp                                                     │
+│     Authorization: Bearer <access_token>                         │
+│     { jsonrpc: "2.0", method: "tools/call", ... }                │
+│                                                                   │
+│  7. MCP Server validates token:                                  │
+│     - Verify JWT signature using IDP's JWKS                      │
+│     - Validate issuer, audience, expiration                      │
+│     - Extract user claims and roles                              │
+│     - Enforce tool-level authorization                           │
+│     - Execute tool and return response                           │
 └──────────────────────────────────────────────────────────────────┘
+
+KEY: MCP Server NEVER participates in OAuth flow (steps 1-5)
+     MCP Server ONLY validates tokens (step 7)
 ```
 
-#### PKCE (Proof Key for Code Exchange)
+#### OAuth Protected Resource Metadata (RFC 9728)
 
-PKCE prevents authorization code interception attacks by cryptographically binding the authorization request to the token exchange request.
+MCP servers advertise OAuth configuration to clients via metadata.
 
-**Security Flow:**
-1. Client generates random `code_verifier` (43-128 characters)
-2. Client computes `code_challenge = BASE64URL(SHA256(code_verifier))`
-3. Authorization request includes `code_challenge` and `code_challenge_method=S256`
-4. IDP stores code challenge with authorization code
-5. Token exchange includes `code_verifier`
-6. IDP validates `SHA256(code_verifier) == stored_code_challenge`
+**Implementation:** [src/mcp/oauth-metadata.ts](src/mcp/oauth-metadata.ts)
 
-**Attack Prevention:**
-- **Authorization Code Interception**: Attacker cannot exchange intercepted code without code verifier
-- **CSRF Attacks**: State parameter validates callback originates from legitimate authorization request
-- **Replay Attacks**: Authorization codes are single-use only
-- **Code Substitution**: State parameter prevents attacker code injection
+**Key Functions:**
+- `generateProtectedResourceMetadata()` - Generate RFC 9728 metadata
+- `generateWWWAuthenticateHeader()` - Generate RFC 6750 WWW-Authenticate header
+- `extractSupportedScopes()` - List available OAuth scopes
 
-#### OAuthRedirectFlow Implementation
-
-**Location:** [src/oauth/redirect-flow.ts](src/oauth/redirect-flow.ts)
-
-**Key Methods:**
-- `authorize(params)` - Generate authorization URL with PKCE challenge and state
-- `callback(params)` - Validate callback, exchange code for token using PKCE verifier
-- `getMetrics()` - Get active session metrics
-
-**Security Features:**
-- **PKCE with SHA-256**: Always uses S256 method (plain method not supported)
-- **State Parameter Validation**: Prevents CSRF attacks
-- **Redirect URI Allowlist**: Prevents open redirect vulnerabilities
-- **Authorization Code Single-Use**: Sessions deleted after token exchange
-- **Session Timeout**: Default 5 minutes (configurable 1-10 minutes)
-- **Automatic Cleanup**: Expired sessions cleaned up automatically
-
-**Configuration Example:**
+**Metadata Example:**
 ```json
 {
-  "trustedIDPs": [{
-    "issuer": "https://auth.company.com/realms/mcp",
-    "jwksUri": "https://auth.company.com/realms/mcp/protocol/openid-connect/certs",
-    "audience": "mcp-oauth",
-
-    "oauthRedirect": {
-      "enabled": true,
-      "authorizeEndpoint": "https://auth.company.com/realms/mcp/protocol/openid-connect/auth",
-      "tokenEndpoint": "https://auth.company.com/realms/mcp/protocol/openid-connect/token",
-      "clientId": "mcp-web-client",
-      "clientSecret": "SECRET",
-      "pkce": {
-        "enabled": true,
-        "method": "S256"
-      },
-      "redirectUris": [
-        "http://localhost:3000/oauth/callback",
-        "https://app.company.com/oauth/callback"
-      ],
-      "sessionTTL": 300,
-      "defaultScopes": ["openid", "profile", "mcp:access"]
-    }
-  }]
+  "resource": "https://mcp-server.example.com",
+  "authorization_servers": [
+    "https://auth.example.com"
+  ],
+  "bearer_methods_supported": ["header"],
+  "resource_signing_alg_values_supported": ["RS256", "ES256"],
+  "scopes_supported": [
+    "mcp:read",
+    "mcp:write",
+    "mcp:admin",
+    "sql:query",
+    "sql:execute"
+  ]
 }
 ```
 
-#### Client Integration Example
+#### Token Validation Process
 
-**Browser-Based Client:**
+**Already Implemented** (Pre-Phase 5):
+
+1. **Extract Bearer Token** - From `Authorization: Bearer <token>` header
+2. **Fetch JWKS** - Download public keys from IDP
+3. **Verify Signature** - Using RS256 or ES256 algorithm
+4. **Validate Claims**:
+   - `iss` (issuer) matches trusted IDP
+   - `aud` (audience) includes this MCP server
+   - `exp` (expiration) is in the future
+   - `nbf` (not before) is in the past
+5. **Extract User Session** - Map claims to UserSession
+6. **Enforce Authorization** - Check role/permission requirements
+
+**Location:** [src/core/jwt-validator.ts](src/core/jwt-validator.ts)
+
+#### Client Implementation Guidance
+
+**For MCP Client Developers:**
+
+Clients are responsible for the OAuth authorization code flow with PKCE. The MCP server only validates the resulting access token.
+
+**Step 1: Discover Authorization Server**
 ```javascript
-// 1. Initiate authorization
-const authUrl = await fetch('http://localhost:3000/oauth/authorize', {
+// Option 1: Read from MCP server metadata (if exposed)
+const metadata = await fetch('https://mcp-server.com/.well-known/oauth-protected-resource');
+const authServer = metadata.authorization_servers[0];
+
+// Option 2: Use well-known IDP endpoint
+const authConfig = await fetch('https://auth.example.com/.well-known/openid-configuration');
+const { authorization_endpoint, token_endpoint } = await authConfig.json();
+```
+
+**Step 2: Perform OAuth Flow with PKCE**
+```javascript
+// Generate PKCE parameters
+const codeVerifier = generateRandomString(43); // 43-128 chars
+const codeChallenge = base64url(sha256(codeVerifier));
+
+// Redirect to IDP authorization endpoint
+const authUrl = `${authorization_endpoint}?` +
+  `response_type=code&` +
+  `client_id=mcp-client&` +
+  `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+  `code_challenge=${codeChallenge}&` +
+  `code_challenge_method=S256&` +
+  `scope=openid profile mcp:read mcp:write&` +
+  `state=${generateRandomString(16)}`;
+
+window.location.href = authUrl;
+```
+
+**Step 3: Handle Callback**
+```javascript
+// After IDP redirects back with authorization code
+const code = new URL(window.location).searchParams.get('code');
+
+// Exchange code for access token
+const tokenResponse = await fetch(token_endpoint, {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    redirectUri: 'http://localhost:3000/oauth/callback',
-    scopes: ['openid', 'profile', 'mcp:access']
-  })
-});
-
-const { authorizeUrl, sessionId, state } = await authUrl.json();
-
-// 2. Redirect user to IDP for authentication
-window.location.href = authorizeUrl;
-
-// 3. Handle callback (after IDP redirect)
-const urlParams = new URLSearchParams(window.location.search);
-const code = urlParams.get('code');
-const returnedState = urlParams.get('state');
-
-// 4. Exchange code for access token
-const tokenResponse = await fetch('http://localhost:3000/oauth/callback', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  body: new URLSearchParams({
+    grant_type: 'authorization_code',
     code,
-    state: returnedState,
-    sessionId
+    redirect_uri: redirectUri,
+    code_verifier: codeVerifier,
+    client_id: 'mcp-client'
   })
 });
 
-const { accessToken, expiresIn } = await tokenResponse.json();
+const { access_token, expires_in } = await tokenResponse.json();
+```
 
-// 5. Use access token for MCP requests
-const mcpResponse = await fetch('http://localhost:3000/mcp', {
+**Step 4: Use Access Token with MCP**
+```javascript
+// Send access token to MCP server as Bearer token
+const mcpResponse = await fetch('https://mcp-server.com/mcp', {
   method: 'POST',
   headers: {
-    'Authorization': `Bearer ${accessToken}`,
+    'Authorization': `Bearer ${access_token}`,
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
@@ -694,55 +715,42 @@ const mcpResponse = await fetch('http://localhost:3000/mcp', {
 });
 ```
 
-#### Testing
+#### Security Requirements
 
-**Unit Tests:** [tests/unit/oauth/redirect-flow.test.ts](tests/unit/oauth/redirect-flow.test.ts)
-- **Coverage:** 26 tests (RF-001 through RF-014)
-- **Test Categories:** Authorization URL generation, PKCE, state validation, redirect URI validation, token exchange, session management, audit logging
+**Per MCP Specification:**
+- ✅ Validate JWT signatures using JWKS from trusted IDPs
+- ✅ Validate token audience binding (token intended for this MCP server)
+- ✅ Validate token expiration and not-before claims
+- ✅ Support RS256 and ES256 signing algorithms
+- ✅ Return HTTP 401 with WWW-Authenticate header for invalid tokens
+- ✅ Advertise authorization server location in metadata
 
-**PKCE Security Tests:** [tests/unit/oauth/pkce-security.test.ts](tests/unit/oauth/pkce-security.test.ts)
-- **Coverage:** 17 tests (PKCE-001 through PKCE-007)
-- **Attack Scenarios:** Authorization code interception, CSRF, replay attacks, code substitution, insufficient entropy
+**Already Implemented:**
+- JWT validation with JWKS ([src/core/jwt-validator.ts](src/core/jwt-validator.ts))
+- Token audience binding validation
+- Role-based access control
+- Audit logging of authentication events
 
-**Test Results:**
-- All 43 tests passing (26 redirect flow + 17 PKCE security)
-- Authorization code interception attack prevention validated
-- CSRF attack prevention validated
-- Replay attack prevention validated
+#### Configuration
 
-#### Operational Considerations
+MCP servers only need to know about trusted authorization servers:
 
-**Session Management:**
-- Sessions stored in-memory (stateless after token exchange)
-- Default timeout: 5 minutes
-- Automatic cleanup runs every 60 seconds
-- Metrics available via `getMetrics()`
+```json
+{
+  "auth": {
+    "trustedIDPs": [
+      {
+        "issuer": "https://auth.company.com",
+        "jwksUri": "https://auth.company.com/.well-known/jwks.json",
+        "audience": "mcp-server-api",
+        "algorithms": ["RS256", "ES256"]
+      }
+    ]
+  }
+}
+```
 
-**Redirect URI Security:**
-- Strict allowlist validation (no wildcards)
-- Exact match required (case-sensitive)
-- Prevents open redirect vulnerabilities
-
-**Token Lifetime:**
-- Access token lifetime controlled by IDP
-- Refresh tokens optional (IDP-dependent)
-- Session expires before token exchange completes
-
-**Monitoring Metrics:**
-- Active OAuth sessions count
-- Oldest session age
-- Authorization initiation events
-- Callback success/failure events
-- Session cleanup events
-
-#### Why OAuth 2.1 Over OAuth 2.0?
-
-OAuth 2.1 consolidates best practices from OAuth 2.0 + PKCE (RFC 7636):
-- **PKCE Required**: Always enabled (no optional PKCE)
-- **Redirect URI Strict Matching**: No wildcards allowed
-- **Authorization Code Single-Use**: Enforced by design
-- **Simplified Flows**: Removes implicit and password grants
-- **Security by Default**: HTTPS required (except development)
+No OAuth redirect configuration needed - that's the client's responsibility.
 
 ---
 
