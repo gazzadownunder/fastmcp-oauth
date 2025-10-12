@@ -529,6 +529,223 @@ This implementation follows RFC 8693 (Token Exchange) for delegation:
 
 See [Docs/oauth2 implementation.md](Docs/oauth2 implementation.md) for full delegation flow details.
 
+---
+
+### OAuth 2.1 Authorization Code Flow with PKCE (Phase 5)
+
+**Status:** Implementation Complete | **Version:** v3.1 | **Completion Date:** 2025-01-10
+
+The framework implements **OAuth 2.1 Authorization Code Flow with PKCE** for browser-based clients and applications that cannot obtain bearer tokens upfront. This enables interactive authentication flows for web applications, mobile apps, and development tools.
+
+#### Use Cases
+
+- **Browser-Based MCP Clients**: Web applications without direct access to client credentials
+- **Mobile Applications**: iOS/Android apps requiring user authentication
+- **Interactive Development Tools**: CLI tools and IDEs with user login flows
+- **Single-Page Applications (SPAs)**: JavaScript applications running in browsers
+
+#### Authorization Flow
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│               OAuth 2.1 Authorization Code Flow                  │
+│                                                                   │
+│  1. Client → Server: Initiate Authorization                      │
+│     GET /oauth/authorize?redirect_uri=...                        │
+│     Server generates PKCE code challenge + state                 │
+│                                                                   │
+│  2. Server → IDP: Redirect with PKCE Challenge                   │
+│     https://idp.com/auth?code_challenge=...&state=...           │
+│                                                                   │
+│  3. User authenticates at IDP                                    │
+│     User enters credentials, consents to scopes                  │
+│                                                                   │
+│  4. IDP → Server: Callback with Authorization Code               │
+│     GET /oauth/callback?code=ABC123&state=...                    │
+│     Server validates state parameter (CSRF protection)           │
+│                                                                   │
+│  5. Server → IDP: Exchange Code for Token (with PKCE)            │
+│     POST /token                                                   │
+│     code=ABC123&code_verifier=...                                │
+│     IDP validates PKCE code verifier                             │
+│                                                                   │
+│  6. IDP → Server: Access Token                                   │
+│     { access_token, refresh_token, expires_in }                  │
+│                                                                   │
+│  7. Server → Client: Access Token                                │
+│     Client uses token as Bearer token for MCP requests           │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+#### PKCE (Proof Key for Code Exchange)
+
+PKCE prevents authorization code interception attacks by cryptographically binding the authorization request to the token exchange request.
+
+**Security Flow:**
+1. Client generates random `code_verifier` (43-128 characters)
+2. Client computes `code_challenge = BASE64URL(SHA256(code_verifier))`
+3. Authorization request includes `code_challenge` and `code_challenge_method=S256`
+4. IDP stores code challenge with authorization code
+5. Token exchange includes `code_verifier`
+6. IDP validates `SHA256(code_verifier) == stored_code_challenge`
+
+**Attack Prevention:**
+- **Authorization Code Interception**: Attacker cannot exchange intercepted code without code verifier
+- **CSRF Attacks**: State parameter validates callback originates from legitimate authorization request
+- **Replay Attacks**: Authorization codes are single-use only
+- **Code Substitution**: State parameter prevents attacker code injection
+
+#### OAuthRedirectFlow Implementation
+
+**Location:** [src/oauth/redirect-flow.ts](src/oauth/redirect-flow.ts)
+
+**Key Methods:**
+- `authorize(params)` - Generate authorization URL with PKCE challenge and state
+- `callback(params)` - Validate callback, exchange code for token using PKCE verifier
+- `getMetrics()` - Get active session metrics
+
+**Security Features:**
+- **PKCE with SHA-256**: Always uses S256 method (plain method not supported)
+- **State Parameter Validation**: Prevents CSRF attacks
+- **Redirect URI Allowlist**: Prevents open redirect vulnerabilities
+- **Authorization Code Single-Use**: Sessions deleted after token exchange
+- **Session Timeout**: Default 5 minutes (configurable 1-10 minutes)
+- **Automatic Cleanup**: Expired sessions cleaned up automatically
+
+**Configuration Example:**
+```json
+{
+  "trustedIDPs": [{
+    "issuer": "https://auth.company.com/realms/mcp",
+    "jwksUri": "https://auth.company.com/realms/mcp/protocol/openid-connect/certs",
+    "audience": "mcp-oauth",
+
+    "oauthRedirect": {
+      "enabled": true,
+      "authorizeEndpoint": "https://auth.company.com/realms/mcp/protocol/openid-connect/auth",
+      "tokenEndpoint": "https://auth.company.com/realms/mcp/protocol/openid-connect/token",
+      "clientId": "mcp-web-client",
+      "clientSecret": "SECRET",
+      "pkce": {
+        "enabled": true,
+        "method": "S256"
+      },
+      "redirectUris": [
+        "http://localhost:3000/oauth/callback",
+        "https://app.company.com/oauth/callback"
+      ],
+      "sessionTTL": 300,
+      "defaultScopes": ["openid", "profile", "mcp:access"]
+    }
+  }]
+}
+```
+
+#### Client Integration Example
+
+**Browser-Based Client:**
+```javascript
+// 1. Initiate authorization
+const authUrl = await fetch('http://localhost:3000/oauth/authorize', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    redirectUri: 'http://localhost:3000/oauth/callback',
+    scopes: ['openid', 'profile', 'mcp:access']
+  })
+});
+
+const { authorizeUrl, sessionId, state } = await authUrl.json();
+
+// 2. Redirect user to IDP for authentication
+window.location.href = authorizeUrl;
+
+// 3. Handle callback (after IDP redirect)
+const urlParams = new URLSearchParams(window.location.search);
+const code = urlParams.get('code');
+const returnedState = urlParams.get('state');
+
+// 4. Exchange code for access token
+const tokenResponse = await fetch('http://localhost:3000/oauth/callback', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    code,
+    state: returnedState,
+    sessionId
+  })
+});
+
+const { accessToken, expiresIn } = await tokenResponse.json();
+
+// 5. Use access token for MCP requests
+const mcpResponse = await fetch('http://localhost:3000/mcp', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    jsonrpc: '2.0',
+    method: 'tools/call',
+    params: { name: 'user-info', arguments: {} },
+    id: 1
+  })
+});
+```
+
+#### Testing
+
+**Unit Tests:** [tests/unit/oauth/redirect-flow.test.ts](tests/unit/oauth/redirect-flow.test.ts)
+- **Coverage:** 26 tests (RF-001 through RF-014)
+- **Test Categories:** Authorization URL generation, PKCE, state validation, redirect URI validation, token exchange, session management, audit logging
+
+**PKCE Security Tests:** [tests/unit/oauth/pkce-security.test.ts](tests/unit/oauth/pkce-security.test.ts)
+- **Coverage:** 17 tests (PKCE-001 through PKCE-007)
+- **Attack Scenarios:** Authorization code interception, CSRF, replay attacks, code substitution, insufficient entropy
+
+**Test Results:**
+- All 43 tests passing (26 redirect flow + 17 PKCE security)
+- Authorization code interception attack prevention validated
+- CSRF attack prevention validated
+- Replay attack prevention validated
+
+#### Operational Considerations
+
+**Session Management:**
+- Sessions stored in-memory (stateless after token exchange)
+- Default timeout: 5 minutes
+- Automatic cleanup runs every 60 seconds
+- Metrics available via `getMetrics()`
+
+**Redirect URI Security:**
+- Strict allowlist validation (no wildcards)
+- Exact match required (case-sensitive)
+- Prevents open redirect vulnerabilities
+
+**Token Lifetime:**
+- Access token lifetime controlled by IDP
+- Refresh tokens optional (IDP-dependent)
+- Session expires before token exchange completes
+
+**Monitoring Metrics:**
+- Active OAuth sessions count
+- Oldest session age
+- Authorization initiation events
+- Callback success/failure events
+- Session cleanup events
+
+#### Why OAuth 2.1 Over OAuth 2.0?
+
+OAuth 2.1 consolidates best practices from OAuth 2.0 + PKCE (RFC 7636):
+- **PKCE Required**: Always enabled (no optional PKCE)
+- **Redirect URI Strict Matching**: No wildcards allowed
+- **Authorization Code Single-Use**: Enforced by design
+- **Simplified Flows**: Removes implicit and password grants
+- **Security by Default**: HTTPS required (except development)
+
+---
+
 ## Configuration
 
 Configuration files use JSON format with Zod validation. Example structure:

@@ -83,12 +83,40 @@ export const SQLConfigSchema = z.object({
   }).passthrough(),
 });
 
+// OAuth 2.1 Redirect Flow Configuration (Authorization Code + PKCE)
+export const OAuthRedirectConfigSchema = z.object({
+  enabled: z.boolean().default(false), // Opt-in
+  authorizeEndpoint: z.string().url().refine((url) => {
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    return isDev || url.startsWith('https://');
+  }, {
+    message: 'Authorize endpoint must use HTTPS (HTTP allowed in development/test)',
+  }),
+  tokenEndpoint: z.string().url().refine((url) => {
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    return isDev || url.startsWith('https://');
+  }, {
+    message: 'Token endpoint must use HTTPS (HTTP allowed in development/test)',
+  }),
+  clientId: z.string().min(1),
+  clientSecret: z.string().min(1).optional(), // Optional for public clients
+  pkce: z.object({
+    enabled: z.boolean().default(true), // Always use PKCE in OAuth 2.1
+    method: z.enum(['S256']).default('S256'), // Only SHA-256 supported
+  }).optional().default({ enabled: true, method: 'S256' }),
+  redirectUris: z.array(z.string().url()).min(1), // Allowlist of valid redirect URIs
+  callbackPath: z.string().default('/oauth/callback'),
+  sessionTTL: z.number().min(60).max(600).default(300), // 1-10 minutes, default 5 minutes
+  defaultScopes: z.array(z.string()).default(['openid', 'profile']),
+}).optional();
+
 export const OAuthOBOConfigSchema = z.object({
   trustedIDPs: z.array(IDPConfigSchema).min(1),
   rateLimiting: RateLimitConfigSchema,
   audit: AuditConfigSchema,
   kerberos: KerberosConfigSchema.optional(),
   sql: SQLConfigSchema.optional(),
+  oauthRedirect: OAuthRedirectConfigSchema.optional(),
 });
 
 // Environment variable validation
