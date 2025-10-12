@@ -62,6 +62,7 @@ function updateAuthUI() {
     const authStatus = document.getElementById('auth-status');
     const loginPasswordBtn = document.getElementById('login-password-btn');
     const loginSsoBtn = document.getElementById('login-sso-btn');
+    const loginMcpOAuthBtn = document.getElementById('login-mcp-oauth-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const userInfo = document.getElementById('user-info');
     const initMcpBtn = document.getElementById('init-mcp-btn');
@@ -72,6 +73,7 @@ function updateAuthUI() {
 
         loginPasswordBtn.style.display = 'none';
         loginSsoBtn.style.display = 'none';
+        loginMcpOAuthBtn.style.display = 'none';
         logoutBtn.style.display = 'block';
         userInfo.style.display = 'block';
 
@@ -91,6 +93,7 @@ function updateAuthUI() {
 
         loginPasswordBtn.style.display = 'inline-block';
         loginSsoBtn.style.display = 'inline-block';
+        loginMcpOAuthBtn.style.display = 'block';
         logoutBtn.style.display = 'none';
         userInfo.style.display = 'none';
 
@@ -348,9 +351,26 @@ async function loginWithPassword() {
 
 /**
  * Login with SSO redirect
+ * Force login prompt to bypass SSO cookies (prevents auto-login after logout)
  */
 function loginWithSSO() {
-    authManager.redirectToSSO();
+    // Always force login prompt to prevent auto-login with cached SSO session
+    authManager.redirectToSSO(true);
+}
+
+/**
+ * Login with MCP OAuth Discovery
+ * Discovers OAuth endpoints from MCP server and redirects
+ * Force login prompt to bypass SSO cookies (prevents auto-login after logout)
+ */
+async function loginWithMCPOAuth() {
+    try {
+        // Always force login prompt to prevent auto-login with cached SSO session
+        await authManager.redirectToMCPOAuth(true);
+    } catch (error) {
+        log('error', `MCP OAuth discovery failed: ${error.message}`);
+        alert(`MCP OAuth discovery failed: ${error.message}\n\nMake sure the MCP server is running on ${CONFIG.mcp.baseUrl}`);
+    }
 }
 
 /**
@@ -500,11 +520,22 @@ window.addEventListener('DOMContentLoaded', () => {
     log('info', `MCP Server: ${CONFIG.mcp.baseUrl}${CONFIG.mcp.endpoint}`);
     log('info', `OAuth Realm: ${CONFIG.oauth.realm}`);
 
-    // Check for SSO callback (authorization code in URL)
+    // Check for logged_out parameter (returning from Keycloak logout)
     const urlParams = new URLSearchParams(window.location.search);
+    const loggedOut = urlParams.has('logged_out');
     const code = urlParams.get('code');
 
-    if (code) {
+    if (loggedOut) {
+        log('success', '✓ Logout complete - returned from Keycloak');
+        log('info', 'Session terminated at IDP');
+        log('info', 'Click "Login with SSO" to authenticate again');
+
+        // Clear URL parameter
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        console.log('[APP] Logout complete - ready for fresh authentication');
+    } else if (code) {
+        // Check for SSO callback (authorization code in URL)
         log('info', 'SSO callback detected, processing authorization code...');
         authManager.handleSSOCallback(code)
             .then(() => {

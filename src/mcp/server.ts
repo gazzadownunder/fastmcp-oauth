@@ -17,7 +17,7 @@
  * ```
  */
 
-import { FastMCP } from '@gazzadownunder/fastmcp';
+import { FastMCP } from 'fastmcp';
 import { ConfigManager } from '../config/manager.js';
 import { ConfigOrchestrator } from './orchestrator.js';
 import { MCPAuthMiddleware } from './middleware.js';
@@ -106,6 +106,84 @@ export class MCPOAuthServer {
   }
 
   /**
+   * Build OAuth configuration for FastMCP
+   *
+   * Generates RFC 8414 Authorization Server Metadata and RFC 9728 Protected Resource Metadata
+   * from the trusted IDP configuration.
+   *
+   * @param port - Server port for resource URL
+   * @returns OAuth configuration object or { enabled: false } if no IDPs configured
+   *
+   * @private
+   */
+  private buildOAuthConfig(port: number): any {
+    if (!this.coreContext) {
+      return { enabled: false };
+    }
+
+    const authConfig = this.coreContext.configManager.getAuthConfig();
+    const delegationConfig = this.coreContext.configManager.getDelegationConfig();
+    const primaryIDP = authConfig.trustedIDPs[0];
+
+    if (!primaryIDP) {
+      console.log('[MCP OAuth Server] No trusted IDPs configured, OAuth metadata disabled');
+      return { enabled: false };
+    }
+
+    const serverUrl = process.env.SERVER_URL || `http://localhost:${port}`;
+
+    console.log('[MCP OAuth Server] Building OAuth configuration...');
+    console.log(`[MCP OAuth Server]   Primary IDP: ${primaryIDP.issuer}`);
+    console.log(`[MCP OAuth Server]   Resource URL: ${serverUrl}`);
+
+    return {
+      enabled: true,
+      authorizationServer: {
+        issuer: primaryIDP.issuer,
+        authorizationEndpoint: `${primaryIDP.issuer}/protocol/openid-connect/auth`,
+        tokenEndpoint: `${primaryIDP.issuer}/protocol/openid-connect/token`,
+        jwksUri: primaryIDP.jwksUri,
+        responseTypesSupported: ['code'],
+        grantTypesSupported: ['authorization_code', 'refresh_token'],
+        codeChallengeMethodsSupported: ['S256'],
+        scopesSupported: ['openid', 'profile', 'email'],
+        tokenEndpointAuthMethodsSupported: ['client_secret_basic', 'client_secret_post'],
+      },
+      protectedResource: {
+        resource: serverUrl,
+        authorizationServers: authConfig.trustedIDPs.map((idp) => idp.issuer),
+        scopesSupported: this.extractSupportedScopes(delegationConfig),
+        bearerMethodsSupported: ['header'],
+        resourceSigningAlgValuesSupported: primaryIDP.algorithms || ['RS256', 'ES256'],
+        resourceDocumentation: `${serverUrl}/docs`,
+        // MCP HTTP with SSE transport supports both JSON-RPC and SSE streaming
+        acceptTypesSupported: ['application/json', 'text/event-stream'],
+      },
+    };
+  }
+
+  /**
+   * Extract supported scopes from delegation configuration
+   *
+   * @param delegationConfig - Delegation configuration object
+   * @returns Array of supported scope strings
+   *
+   * @private
+   */
+  private extractSupportedScopes(delegationConfig: any): string[] {
+    const scopes = new Set<string>(['mcp:read', 'mcp:write', 'mcp:admin']);
+
+    if (delegationConfig?.modules?.sql) {
+      scopes.add('sql:query');
+      scopes.add('sql:execute');
+      scopes.add('sql:read');
+      scopes.add('sql:write');
+    }
+
+    return Array.from(scopes).sort();
+  }
+
+  /**
    * Start the MCP OAuth server
    *
    * This will:
@@ -158,7 +236,11 @@ export class MCPOAuthServer {
     // 5. Create authentication middleware
     const authMiddleware = new MCPAuthMiddleware(this.coreContext.authService);
 
-    // 6. Create FastMCP server
+    // 6. Determine transport and port (needed for OAuth config)
+    const transport = options.transport || mcpConfig?.transport || 'httpStream';
+    const port = options.port || mcpConfig?.port || 3000;
+
+    // 7. Create FastMCP server
     const serverName = mcpConfig?.serverName || 'MCP OAuth Server';
     const serverVersion = mcpConfig?.version || '2.0.0';
 
@@ -167,9 +249,10 @@ export class MCPOAuthServer {
       name: serverName,
       version: serverVersion,
       authenticate: authMiddleware.authenticate.bind(authMiddleware),
+      oauth: this.buildOAuthConfig(port),
     });
 
-    // 7. Register all tools
+    // 8. Register all tools
     const toolFactories = getAllToolFactories();
     console.log(`[MCP OAuth Server] Registering ${toolFactories.length} tools...`);
 
@@ -231,10 +314,7 @@ export class MCPOAuthServer {
 
     console.log(`[MCP OAuth Server] ✓ Registered ${toolFactories.length} tools`);
 
-    // 8. Start server
-    const transport = options.transport || mcpConfig?.transport || 'httpStream';
-    const port = options.port || mcpConfig?.port || 3000;
-
+    // 9. Start server
     console.log('[MCP OAuth Server] Starting FastMCP server...');
     await this.mcpServer.start({
       transportType: transport as any,
@@ -245,7 +325,7 @@ export class MCPOAuthServer {
 
     this.isRunning = true;
 
-    // 9. Log startup summary
+    // 10. Log startup summary
     console.log('\n' + '='.repeat(60));
     console.log('[MCP OAuth Server] ✓ Server started successfully');
     console.log('='.repeat(60));
@@ -256,6 +336,8 @@ export class MCPOAuthServer {
       console.log(`  Port:             ${port}`);
       console.log(`  Endpoint:         /mcp`);
       console.log(`  URL:              http://localhost:${port}/mcp`);
+      console.log(`  OAuth Metadata:   http://localhost:${port}/.well-known/oauth-authorization-server`);
+      console.log(`  Resource Metadata: http://localhost:${port}/.well-known/oauth-protected-resource`);
     }
     console.log(`  Authentication:   OAuth 2.1 with JWT`);
     console.log(`  Tools Registered: ${toolFactories.length}`);

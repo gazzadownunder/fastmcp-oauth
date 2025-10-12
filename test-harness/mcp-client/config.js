@@ -13,6 +13,7 @@ const CONFIG = {
         realm: 'mcp_security',
         authEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/auth',
         tokenEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/token',
+        logoutEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/logout',
 
         // Client credentials
         clientId: 'mcp-oauth',
@@ -27,7 +28,14 @@ const CONFIG = {
         // OAuth settings
         scope: 'email openid',
         responseType: 'code',
-        redirectUri: window.location.origin + window.location.pathname
+        redirectUri: window.location.origin + window.location.pathname,
+
+        // PKCE (Proof Key for Code Exchange) - RFC 7636
+        // Required by some IDPs for authorization code flow security
+        pkce: {
+            enabled: true,
+            codeChallengeMethod: 'S256' // S256 (SHA-256) or plain
+        }
     },
 
     // MCP Server Configuration
@@ -65,6 +73,7 @@ const CONFIG = {
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.oauth);
 Object.freeze(CONFIG.oauth.testUser);
+Object.freeze(CONFIG.oauth.pkce);
 Object.freeze(CONFIG.mcp);
 Object.freeze(CONFIG.mcp.clientInfo);
 Object.freeze(CONFIG.ui);

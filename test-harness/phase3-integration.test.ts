@@ -727,10 +727,415 @@ describe('Phase 3: Integration Tests', () => {
       expect(sqlResponse.error).toBeUndefined();
 
       const content = JSON.parse(sqlResponse.result.content[0].text);
-      expect(content.rows[0].param1).toBe('test_value');
-      expect(content.rows[0].param2).toBe(42);
+      expect(content[0].param1).toBe('test_value');
+      expect(content[0].param2).toBe(42);
 
       console.log('✅ INT-007: Positional parameters work correctly');
+    });
+  });
+
+  describe('INT-008: PostgreSQL Role-Based SQL Command Controls', () => {
+    // Test sql-read role (SELECT only)
+    it('sql-read role should allow SELECT commands', async () => {
+      // Assuming Alice has sql-read role in TE-JWT
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'SELECT * FROM general_table LIMIT 1',
+          params: [],
+        },
+        aliceToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      console.log('✅ INT-008: sql-read role allowed SELECT command');
+    });
+
+    it('sql-read role should block INSERT commands', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "INSERT INTO general_table (data) VALUES ('test')",
+          params: [],
+        },
+        aliceToken
+      );
+
+      // Should return error, not throw
+      expect(sqlResponse.error).toBeDefined();
+      expect(sqlResponse.result).toBeUndefined();
+
+      const errorMsg = sqlResponse.error.message.toLowerCase();
+      expect(errorMsg).toContain('insufficient permissions');
+      expect(errorMsg).not.toContain('sql-write'); // Should NOT leak role info
+      expect(errorMsg).not.toContain('sql-admin');
+
+      console.log('✅ INT-008: sql-read role blocked INSERT command');
+      console.log(`  - Error message (no role leakage): ${sqlResponse.error.message}`);
+    });
+
+    it('sql-read role should block UPDATE commands', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "UPDATE general_table SET data = 'updated' WHERE id = 1",
+          params: [],
+        },
+        aliceToken
+      );
+
+      expect(sqlResponse.error).toBeDefined();
+      const errorMsg = sqlResponse.error.message.toLowerCase();
+      expect(errorMsg).toContain('insufficient permissions');
+      expect(errorMsg).not.toContain('sql-write');
+
+      console.log('✅ INT-008: sql-read role blocked UPDATE command');
+    });
+
+    it('sql-read role should block DELETE commands', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'DELETE FROM general_table WHERE id = 999',
+          params: [],
+        },
+        aliceToken
+      );
+
+      expect(sqlResponse.error).toBeDefined();
+      const errorMsg = sqlResponse.error.message.toLowerCase();
+      expect(errorMsg).toContain('insufficient permissions');
+      expect(errorMsg).not.toContain('sql-write');
+
+      console.log('✅ INT-008: sql-read role blocked DELETE command');
+    });
+
+    // Test sql-write role (SELECT, INSERT, UPDATE, DELETE)
+    it('sql-write role should allow INSERT commands', async () => {
+      // Assuming Bob has sql-write role in TE-JWT
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "INSERT INTO general_table (data) VALUES ('test_insert')",
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      const content = JSON.parse(sqlResponse.result.content[0].text);
+      expect(content.success).toBe(true);
+      expect(content.rowCount).toBeGreaterThan(0);
+      expect(content.command).toBe('INSERT');
+      expect(content.message).toContain('Successfully inserted');
+
+      console.log('✅ INT-008: sql-write role allowed INSERT command');
+      console.log(`  - Row count: ${content.rowCount}`);
+      console.log(`  - Message: ${content.message}`);
+    });
+
+    it('sql-write role should allow UPDATE commands', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "UPDATE general_table SET data = 'updated_value' WHERE id = 1",
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      const content = JSON.parse(sqlResponse.result.content[0].text);
+      expect(content.success).toBe(true);
+      expect(content.rowCount).toBeGreaterThanOrEqual(0);
+      expect(content.command).toBe('UPDATE');
+      expect(content.message).toContain('Successfully updated');
+
+      console.log('✅ INT-008: sql-write role allowed UPDATE command');
+      console.log(`  - Row count: ${content.rowCount}`);
+    });
+
+    it('sql-write role should allow DELETE commands', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "DELETE FROM general_table WHERE data = 'test_delete_me'",
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      const content = JSON.parse(sqlResponse.result.content[0].text);
+      expect(content.success).toBe(true);
+      expect(content.rowCount).toBeGreaterThanOrEqual(0);
+      expect(content.command).toBe('DELETE');
+      expect(content.message).toContain('Successfully deleted');
+
+      console.log('✅ INT-008: sql-write role allowed DELETE command');
+    });
+
+    it('sql-write role should block CREATE commands', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'CREATE TABLE test_table (id SERIAL PRIMARY KEY)',
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.error).toBeDefined();
+      const errorMsg = sqlResponse.error.message.toLowerCase();
+      expect(errorMsg).toContain('insufficient permissions');
+      expect(errorMsg).not.toContain('sql-admin'); // No role leakage
+
+      console.log('✅ INT-008: sql-write role blocked CREATE command');
+    });
+
+    // Test sql-admin role (all except dangerous)
+    it('sql-admin role should allow CREATE commands', async () => {
+      // Assuming Charlie has sql-admin role
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'CREATE TEMPORARY TABLE temp_test (id INTEGER)',
+          params: [],
+        },
+        charlieToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      expect(sqlResponse.error).toBeUndefined();
+
+      console.log('✅ INT-008: sql-admin role allowed CREATE command');
+    });
+
+    it('sql-admin role should block DROP commands', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'DROP TABLE IF EXISTS nonexistent_table',
+          params: [],
+        },
+        charlieToken
+      );
+
+      expect(sqlResponse.error).toBeDefined();
+      const errorMsg = sqlResponse.error.message.toLowerCase();
+      expect(errorMsg).toContain('insufficient permissions');
+      expect(errorMsg).not.toContain('admin'); // No role leakage
+
+      console.log('✅ INT-008: sql-admin role blocked DROP command');
+    });
+
+    // Test admin role (all commands including dangerous)
+    it('admin role should allow DROP commands', async () => {
+      // This test requires a user with admin role
+      // Skip if admin user not configured
+      console.log('⚠ INT-008: admin role DROP test requires admin user configuration');
+    });
+  });
+
+  describe('INT-009: INSERT/UPDATE/DELETE Response Validation', () => {
+    it('INSERT should return success metadata with rowCount', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "INSERT INTO general_table (data) VALUES ('metadata_test')",
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      const content = JSON.parse(sqlResponse.result.content[0].text);
+
+      // Validate metadata structure
+      expect(content).toHaveProperty('success');
+      expect(content).toHaveProperty('rowCount');
+      expect(content).toHaveProperty('command');
+      expect(content).toHaveProperty('message');
+
+      expect(content.success).toBe(true);
+      expect(content.rowCount).toBe(1);
+      expect(content.command).toBe('INSERT');
+      expect(content.message).toBe('Successfully inserted 1 row');
+
+      console.log('✅ INT-009: INSERT returns proper metadata');
+      console.log(`  - success: ${content.success}`);
+      console.log(`  - rowCount: ${content.rowCount}`);
+      console.log(`  - command: ${content.command}`);
+      console.log(`  - message: ${content.message}`);
+    });
+
+    it('UPDATE with 0 rows should return rowCount 0', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "UPDATE general_table SET data = 'never_match' WHERE id = -999999",
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      const content = JSON.parse(sqlResponse.result.content[0].text);
+
+      expect(content.success).toBe(true);
+      expect(content.rowCount).toBe(0);
+      expect(content.command).toBe('UPDATE');
+      expect(content.message).toBe('Successfully updated 0 rows');
+
+      console.log('✅ INT-009: UPDATE with 0 rows returns correct metadata');
+    });
+
+    it('DELETE multiple rows should return correct rowCount', async () => {
+      // First insert multiple rows
+      await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "INSERT INTO general_table (data) VALUES ('delete_me_1'), ('delete_me_2'), ('delete_me_3')",
+          params: [],
+        },
+        bobToken
+      );
+
+      // Then delete them
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "DELETE FROM general_table WHERE data LIKE 'delete_me_%'",
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      const content = JSON.parse(sqlResponse.result.content[0].text);
+
+      expect(content.success).toBe(true);
+      expect(content.rowCount).toBeGreaterThanOrEqual(3);
+      expect(content.command).toBe('DELETE');
+      expect(content.message).toContain('Successfully deleted');
+      expect(content.message).toContain('rows'); // Plural
+
+      console.log('✅ INT-009: DELETE multiple rows returns correct metadata');
+      console.log(`  - Rows deleted: ${content.rowCount}`);
+    });
+
+    it('SELECT query should still return rows array', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'SELECT * FROM general_table LIMIT 1',
+          params: [],
+        },
+        aliceToken
+      );
+
+      expect(sqlResponse.result).toBeDefined();
+      const content = JSON.parse(sqlResponse.result.content[0].text);
+
+      // SELECT returns rows array, not metadata
+      expect(Array.isArray(content)).toBe(true);
+      expect(content.length).toBeGreaterThan(0);
+
+      console.log('✅ INT-009: SELECT still returns rows array (not metadata)');
+    });
+  });
+
+  describe('INT-010: Security - Error Message Validation', () => {
+    it('authorization errors should not leak role information', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: "INSERT INTO general_table (data) VALUES ('test')",
+          params: [],
+        },
+        aliceToken
+      );
+
+      expect(sqlResponse.error).toBeDefined();
+      const errorMsg = sqlResponse.error.message.toLowerCase();
+
+      // Should contain generic error
+      expect(errorMsg).toContain('insufficient permissions');
+
+      // Should NOT contain role names
+      expect(errorMsg).not.toContain('sql-read');
+      expect(errorMsg).not.toContain('sql-write');
+      expect(errorMsg).not.toContain('sql-admin');
+      expect(errorMsg).not.toContain('admin');
+      expect(errorMsg).not.toContain('required role');
+
+      console.log('✅ INT-010: Error message does not leak role information');
+      console.log(`  - Error: ${sqlResponse.error.message}`);
+    });
+
+    it('dangerous operation errors should not leak role requirements', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'DROP TABLE general_table',
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.error).toBeDefined();
+      const errorMsg = sqlResponse.error.message.toLowerCase();
+
+      expect(errorMsg).toContain('insufficient permissions');
+      expect(errorMsg).not.toContain('admin');
+      expect(errorMsg).not.toContain('requires');
+
+      console.log('✅ INT-010: Dangerous operation error does not leak role info');
+    });
+
+    it('unknown command errors should not leak role requirements', async () => {
+      const sqlResponse = await callMCPTool(
+        'sql-delegate',
+        {
+          action: 'query',
+          sql: 'ANALYZE general_table',
+          params: [],
+        },
+        bobToken
+      );
+
+      expect(sqlResponse.error).toBeDefined();
+      const errorMsg = sqlResponse.error.message.toLowerCase();
+
+      expect(errorMsg).toContain('insufficient permissions');
+      expect(errorMsg).not.toContain('sql-admin');
+
+      console.log('✅ INT-010: Unknown command error does not leak role info');
     });
   });
 
@@ -766,8 +1171,10 @@ describe('Phase 3: Integration Tests', () => {
         await callMCPTool('user-info', {}, expiredToken);
         expect(true).toBe(false);
       } catch (error: any) {
-        expect(error.message).toContain('401');
-        console.log('✅ Expired token rejected with 401');
+        const errorMsg = error.message.toLowerCase();
+        expect(errorMsg).toMatch(/401|unauthorized|expired/);
+        console.log('✅ Expired token rejected');
+        console.log(`  - Error: ${error.message}`);
       }
     });
 
@@ -776,8 +1183,10 @@ describe('Phase 3: Integration Tests', () => {
         await callMCPTool('user-info', {}, 'invalid.jwt.token');
         expect(true).toBe(false);
       } catch (error: any) {
-        expect(error.message).toContain('401');
-        console.log('✅ Invalid token rejected with 401');
+        const errorMsg = error.message.toLowerCase();
+        expect(errorMsg).toMatch(/401|unauthorized|invalid/);
+        console.log('✅ Invalid token rejected');
+        console.log(`  - Error: ${error.message}`);
       }
     });
   });

@@ -33,8 +33,63 @@ async function init() {
         console.log('Keycloak config:', keycloakConfig);
         console.log('Keycloak auth URL will be:', `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/auth`);
 
-        // Initialize Keycloak with error handling (EXACT pattern from Sample-client-auth)
-        const authenticated = await keycloak.init(appConfig.initOptions).catch((error) => {
+        // Check if we're returning from a logout operation
+        const urlParams = new URLSearchParams(window.location.search);
+        const isLoggedOut = urlParams.has('logged_out');
+
+        if (isLoggedOut) {
+            log('Returning from Keycloak logout - cleaning up session', 'info');
+
+            // Clear ALL storage to ensure no tokens remain
+            localStorage.clear();
+            sessionStorage.clear();
+
+            // Clear all application state
+            exchangedToken = null;
+            subjectToken = null;
+            manualJWT = null;
+            mcpClient = null;
+
+            // Reset UI to logged-out state
+            document.getElementById('auth-status').textContent = 'Disconnected';
+            document.getElementById('auth-status').className = 'status disconnected';
+            document.getElementById('mcp-status').textContent = 'Disconnected';
+            document.getElementById('mcp-status').className = 'status disconnected';
+            document.getElementById('exchange-status').textContent = 'Not Exchanged';
+            document.getElementById('exchange-status').className = 'status disconnected';
+
+            document.getElementById('login-btn').style.display = 'block';
+            document.getElementById('logout-btn').style.display = 'none';
+            document.getElementById('user-info').style.display = 'none';
+            document.getElementById('exchange-info').style.display = 'none';
+            document.getElementById('mcp-response').style.display = 'none';
+
+            // Disable all tool buttons
+            document.getElementById('exchange-btn').disabled = true;
+            document.getElementById('skip-exchange-btn').disabled = true;
+            document.getElementById('list-tools-btn').disabled = true;
+            document.getElementById('user-info-btn').disabled = true;
+            document.getElementById('health-btn').disabled = true;
+            document.getElementById('sql-btn').disabled = true;
+
+            // Clear the URL parameter without page reload
+            window.history.replaceState({}, document.title, window.location.pathname);
+
+            log('✓ Logout complete - ready for new login', 'success');
+            log('⚠ SSO check disabled - manual login required', 'warning');
+            return; // Skip Keycloak initialization completely
+        }
+
+        // Prepare init options with SSO check enabled (normal flow)
+        const initOptions = {
+            ...appConfig.initOptions,
+            onLoad: appConfig.ssoCheckMode // Use check-sso for normal initialization
+        };
+
+        log(`Initializing Keycloak with onLoad: ${initOptions.onLoad}`, 'info');
+
+        // Initialize Keycloak with error handling
+        const authenticated = await keycloak.init(initOptions).catch((error) => {
             console.error('Keycloak init error:', error);
             log('SSO check completed (no existing session)', 'info');
             // If SSO check fails, continue without authentication
@@ -56,15 +111,17 @@ async function init() {
 
         // Set up automatic token refresh (from Sample-client-auth)
         setInterval(() => {
-            keycloak.updateToken(appConfig.minValidity).then((refreshed) => {
-                if (refreshed) {
-                    console.log('Token was refreshed');
-                    log('Token automatically refreshed', 'success');
-                }
-            }).catch(() => {
-                console.error('Failed to refresh token');
-                log('Session expired. Please login again.', 'error');
-            });
+            if (keycloak && keycloak.token) {
+                keycloak.updateToken(appConfig.minValidity).then((refreshed) => {
+                    if (refreshed) {
+                        console.log('Token was refreshed');
+                        log('Token automatically refreshed', 'success');
+                    }
+                }).catch(() => {
+                    console.error('Failed to refresh token');
+                    log('Session expired. Please login again.', 'error');
+                });
+            }
         }, 60000); // Check every minute
 
     } catch (error) {
@@ -77,20 +134,25 @@ async function init() {
 async function login() {
     try {
         log('Redirecting to Keycloak SSO login...', 'info');
+        log('⚠ Forcing login prompt (bypassing SSO cookies)', 'warning');
+
+        // CRITICAL: Use prompt=login to force Keycloak to show login form
+        // This bypasses SSO cookies and requires fresh authentication
+        const loginOptions = {
+            redirectUri: window.location.href,
+            prompt: 'login', // Force login prompt (CRITICAL for cookie bypass)
+            maxAge: 0  // Don't use cached authentication (must be fresh)
+        };
 
         // Create login URL for debugging
-        const loginUrl = keycloak.createLoginUrl({
-            redirectUri: window.location.href,
-            prompt: 'login'
-        });
+        const loginUrl = keycloak.createLoginUrl(loginOptions);
         console.log('Login URL:', loginUrl);
+        console.log('Login options:', loginOptions);
         console.log('Redirecting to Keycloak login page...');
+        console.log('Note: prompt=login will force fresh authentication');
 
         // Perform the redirect
-        keycloak.login({
-            redirectUri: window.location.href,
-            prompt: 'login'
-        });
+        keycloak.login(loginOptions);
     } catch (error) {
         const errorMessage = error?.message || String(error) || 'Unknown error';
         log(`✗ Login error: ${errorMessage}`, 'error');
@@ -101,13 +163,111 @@ async function login() {
 // Logout
 async function logout() {
     try {
-        log('Logging out...', 'info');
-        console.log('Logging out and redirecting to Keycloak...');
-        await keycloak.logout({
-            redirectUri: window.location.origin + window.location.pathname
-        });
+        log('Logging out from Keycloak IDP...', 'info');
+        console.log('========== LOGOUT DEBUG ==========');
+        console.log('Starting OIDC logout process...');
+
+        // Check if Keycloak is initialized and has a token
+        if (!keycloak || !keycloak.authenticated) {
+            log('Not authenticated - clearing local state only', 'warning');
+            console.log('Keycloak not authenticated, redirecting to logged_out state');
+            window.location.href = window.location.origin + window.location.pathname + '?logged_out=true';
+            return;
+        }
+
+        // Log current Keycloak state for debugging
+        console.log('Keycloak State:');
+        console.log('  authenticated:', keycloak.authenticated);
+        console.log('  token:', keycloak.token ? keycloak.token.substring(0, 50) + '...' : 'MISSING');
+        console.log('  idToken:', keycloak.idToken ? keycloak.idToken.substring(0, 50) + '...' : 'MISSING');
+        console.log('  refreshToken:', keycloak.refreshToken ? keycloak.refreshToken.substring(0, 50) + '...' : 'MISSING');
+        console.log('  sessionId:', keycloak.sessionId || 'NONE');
+        console.log('  subject:', keycloak.subject || 'NONE');
+
+        // CRITICAL: id_token_hint is REQUIRED for proper logout
+        if (!keycloak.idToken) {
+            console.error('✗ CRITICAL: No idToken available!');
+            console.error('   Cannot perform proper OIDC logout without id_token_hint');
+            console.error('   Keycloak will NOT delete SSO cookies');
+            log('⚠ WARNING: Missing id_token - logout may not clear SSO session', 'warning');
+        }
+
+        // Build OIDC logout URL according to spec:
+        // GET /realms/{realm-name}/protocol/openid-connect/logout
+        // Required parameters:
+        //   - id_token_hint (REQUIRED for session identification)
+        //   - post_logout_redirect_uri (where to redirect after logout)
+        //   - client_id (which client is logging out)
+
+        const redirectUri = window.location.origin + window.location.pathname + '?logged_out=true';
+        const logoutEndpoint = `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/logout`;
+
+        // Build URL parameters
+        const params = new URLSearchParams();
+        params.append('post_logout_redirect_uri', redirectUri);
+        params.append('client_id', keycloakConfig.clientId);
+
+        // CRITICAL: Include id_token_hint for proper session termination
+        if (keycloak.idToken) {
+            params.append('id_token_hint', keycloak.idToken);
+            console.log('✓ id_token_hint will be included in logout request');
+        } else {
+            console.error('✗ id_token_hint MISSING - logout may fail');
+        }
+
+        const logoutUrl = `${logoutEndpoint}?${params.toString()}`;
+
+        console.log('OIDC Logout URL (GET request):');
+        console.log('  Endpoint:', logoutEndpoint);
+        console.log('  Full URL:', logoutUrl);
+        console.log('  Method: GET');
+        console.log('  Parameters:');
+        console.log('    - post_logout_redirect_uri:', redirectUri);
+        console.log('    - client_id:', keycloakConfig.clientId);
+        console.log('    - id_token_hint:', keycloak.idToken ? 'PRESENT (length: ' + keycloak.idToken.length + ')' : 'MISSING ❌');
+
+        // Disconnect MCP client before logout
+        if (mcpClient) {
+            console.log('Disconnecting MCP client...');
+            mcpClient.disconnect();
+            mcpClient = null;
+        }
+
+        // Clear application state
+        console.log('Clearing application state...');
+        exchangedToken = null;
+        subjectToken = null;
+        manualJWT = null;
+
+        log('Redirecting to Keycloak OIDC logout endpoint via GET...', 'info');
+        log('⚠ Watch browser Network tab for:', 'warning');
+        log('  1. GET request to /protocol/openid-connect/logout', 'info');
+        log('  2. Set-Cookie headers with Max-Age=0 (deleting cookies)', 'info');
+        log('  3. 302 redirect back to app', 'info');
+
+        console.log('Expected OIDC logout flow:');
+        console.log('  1. Browser sends GET to /protocol/openid-connect/logout');
+        console.log('  2. Keycloak validates id_token_hint parameter');
+        console.log('  3. Keycloak identifies and terminates the session');
+        console.log('  4. Keycloak sends Set-Cookie headers to DELETE cookies:');
+        console.log('     - AUTH_SESSION_ID (Max-Age=0)');
+        console.log('     - KEYCLOAK_SESSION (Max-Age=0)');
+        console.log('     - KEYCLOAK_IDENTITY (Max-Age=0)');
+        console.log('  5. Keycloak sends 302 redirect to post_logout_redirect_uri');
+        console.log('  6. Browser loads app with ?logged_out=true');
+        console.log('========== END LOGOUT DEBUG ==========');
+
+        // Perform GET request to OIDC logout endpoint by redirecting
+        // This is the CORRECT way according to OIDC spec
+        window.location.href = logoutUrl;
+
     } catch (error) {
         log(`✗ Logout error: ${error.message}`, 'error');
+        console.error('Logout error:', error);
+        console.error('Error stack:', error.stack);
+
+        // Even if logout fails, redirect to clear the page
+        window.location.href = window.location.origin + window.location.pathname + '?logged_out=true';
     }
 }
 

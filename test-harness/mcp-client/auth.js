@@ -11,7 +11,54 @@
 class AuthenticationManager {
     constructor() {
         this.accessToken = null;
+        this.idToken = null;  // Store id_token for logout
         this.claims = null;
+        this.pkceCodeVerifier = null;  // Store PKCE code_verifier for token exchange
+    }
+
+    /**
+     * Generate cryptographically secure random string for PKCE code_verifier
+     * @returns {string} Base64URL encoded random string (43-128 characters)
+     */
+    generateCodeVerifier() {
+        // Generate 32 random bytes (256 bits)
+        const randomBytes = new Uint8Array(32);
+        crypto.getRandomValues(randomBytes);
+
+        // Convert to base64url encoding (RFC 7636 Section 4.1)
+        return this.base64UrlEncode(randomBytes);
+    }
+
+    /**
+     * Generate code_challenge from code_verifier using SHA-256
+     * @param {string} codeVerifier - PKCE code verifier
+     * @returns {Promise<string>} Base64URL encoded SHA-256 hash
+     */
+    async generateCodeChallenge(codeVerifier) {
+        // SHA-256 hash the code_verifier
+        const encoder = new TextEncoder();
+        const data = encoder.encode(codeVerifier);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+
+        // Convert to base64url encoding
+        const hashArray = new Uint8Array(hashBuffer);
+        return this.base64UrlEncode(hashArray);
+    }
+
+    /**
+     * Base64URL encode (RFC 7636 Appendix A)
+     * @param {Uint8Array} buffer - Bytes to encode
+     * @returns {string} Base64URL encoded string
+     */
+    base64UrlEncode(buffer) {
+        // Convert to base64
+        const base64 = btoa(String.fromCharCode(...buffer));
+
+        // Convert base64 to base64url (RFC 4648 Section 5)
+        return base64
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
     }
 
     /**
@@ -69,13 +116,19 @@ class AuthenticationManager {
 
         log('success', 'Password grant successful');
         this.setAccessToken(data.access_token);
+        // Store id_token if present (needed for logout)
+        if (data.id_token) {
+            this.idToken = data.id_token;
+            log('info', 'ID token stored for logout');
+        }
         return data;
     }
 
     /**
      * SSO Redirect Flow (Authorization Code)
+     * @param {boolean} forceLogin - If true, force login prompt (bypass SSO cookies)
      */
-    redirectToSSO() {
+    async redirectToSSO(forceLogin = false) {
         log('info', 'Redirecting to Keycloak SSO...');
 
         const params = new URLSearchParams({
@@ -85,10 +138,138 @@ class AuthenticationManager {
             scope: CONFIG.oauth.scope
         });
 
+        // PKCE support (RFC 7636)
+        if (CONFIG.oauth.pkce.enabled) {
+            log('info', '🔐 PKCE enabled - Generating code_verifier and code_challenge...');
+
+            // Generate code_verifier and store it
+            this.pkceCodeVerifier = this.generateCodeVerifier();
+            console.log('[AUTH] PKCE code_verifier generated (length:', this.pkceCodeVerifier.length, ')');
+
+            // Generate code_challenge from code_verifier
+            const codeChallenge = await this.generateCodeChallenge(this.pkceCodeVerifier);
+            console.log('[AUTH] PKCE code_challenge generated (SHA-256)');
+
+            // Add PKCE parameters to authorization request
+            params.append('code_challenge', codeChallenge);
+            params.append('code_challenge_method', CONFIG.oauth.pkce.codeChallengeMethod);
+
+            log('success', `✓ PKCE parameters added (method: ${CONFIG.oauth.pkce.codeChallengeMethod})`);
+
+            // Store code_verifier in sessionStorage for callback
+            sessionStorage.setItem('pkce_code_verifier', this.pkceCodeVerifier);
+        }
+
+        // Add prompt=login to force fresh authentication (bypass SSO cookies)
+        if (forceLogin) {
+            params.append('prompt', 'login');
+            params.append('max_age', '0');
+            log('warning', '⚠ Forcing login prompt (bypassing SSO cookies)');
+            console.log('[AUTH] prompt=login added to bypass SSO session');
+        }
+
         const authUrl = `${CONFIG.oauth.authEndpoint}?${params.toString()}`;
         log('info', `Redirect URL: ${authUrl}`);
+        console.log('[AUTH] SSO URL:', authUrl);
 
         window.location.href = authUrl;
+    }
+
+    /**
+     * Discover OAuth authorization endpoint from MCP server
+     * Fetches /.well-known/oauth-authorization-server from MCP server
+     * @returns {Promise<object>} Authorization server metadata
+     */
+    async discoverOAuthEndpoints() {
+        log('info', '🔍 Discovering OAuth endpoints from MCP server...');
+
+        const discoveryUrl = `${CONFIG.mcp.baseUrl}/.well-known/oauth-authorization-server`;
+        log('info', `Discovery URL: ${discoveryUrl}`);
+
+        try {
+            const response = await fetch(discoveryUrl);
+
+            if (!response.ok) {
+                throw new Error(`Discovery failed: HTTP ${response.status}`);
+            }
+
+            const metadata = await response.json();
+            log('success', `✓ Discovered authorization endpoint: ${metadata.authorization_endpoint}`);
+            console.log('[AUTH] OAuth Server Metadata:', metadata);
+
+            return metadata;
+        } catch (error) {
+            log('error', `OAuth discovery failed: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * MCP OAuth Discovery Flow
+     * Discovers authorization endpoint from MCP server and redirects to it
+     * @param {boolean} forceLogin - If true, force login prompt (bypass SSO cookies)
+     */
+    async redirectToMCPOAuth(forceLogin = false) {
+        log('info', '🔗 Starting MCP OAuth Discovery flow...');
+
+        try {
+            // Discover OAuth endpoints from MCP server
+            const metadata = await this.discoverOAuthEndpoints();
+
+            // Use discovered authorization endpoint
+            const authEndpoint = metadata.authorization_endpoint;
+
+            const params = new URLSearchParams({
+                client_id: CONFIG.oauth.clientId,
+                redirect_uri: CONFIG.oauth.redirectUri,
+                response_type: CONFIG.oauth.responseType,
+                scope: CONFIG.oauth.scope
+            });
+
+            // PKCE support (RFC 7636)
+            if (CONFIG.oauth.pkce.enabled) {
+                log('info', '🔐 PKCE enabled - Generating code_verifier and code_challenge...');
+
+                // Generate code_verifier and store it
+                this.pkceCodeVerifier = this.generateCodeVerifier();
+                console.log('[AUTH] PKCE code_verifier generated (length:', this.pkceCodeVerifier.length, ')');
+
+                // Generate code_challenge from code_verifier
+                const codeChallenge = await this.generateCodeChallenge(this.pkceCodeVerifier);
+                console.log('[AUTH] PKCE code_challenge generated (SHA-256)');
+
+                // Add PKCE parameters to authorization request
+                params.append('code_challenge', codeChallenge);
+                params.append('code_challenge_method', CONFIG.oauth.pkce.codeChallengeMethod);
+
+                log('success', `✓ PKCE parameters added (method: ${CONFIG.oauth.pkce.codeChallengeMethod})`);
+
+                // Store code_verifier in sessionStorage for callback
+                sessionStorage.setItem('pkce_code_verifier', this.pkceCodeVerifier);
+            }
+
+            // Add prompt=login to force fresh authentication (bypass SSO cookies)
+            if (forceLogin) {
+                params.append('prompt', 'login');
+                params.append('max_age', '0');
+                log('warning', '⚠ Forcing login prompt (bypassing SSO cookies)');
+                console.log('[AUTH] prompt=login added to bypass SSO session');
+            }
+
+            // Add state parameter to track MCP OAuth flow
+            const state = btoa(JSON.stringify({ flow: 'mcp-oauth', timestamp: Date.now() }));
+            params.append('state', state);
+
+            const authUrl = `${authEndpoint}?${params.toString()}`;
+            log('info', `Redirecting to discovered endpoint: ${authEndpoint}`);
+            log('info', `Full URL: ${authUrl}`);
+            console.log('[AUTH] MCP OAuth URL:', authUrl);
+
+            window.location.href = authUrl;
+        } catch (error) {
+            log('error', `MCP OAuth discovery failed: ${error.message}`);
+            throw error;
+        }
     }
 
     /**
@@ -110,6 +291,25 @@ class AuthenticationManager {
         formData.append('client_id', CONFIG.oauth.clientId);
         formData.append('client_secret', CONFIG.oauth.clientSecret);
 
+        // PKCE support - Include code_verifier if PKCE was used
+        if (CONFIG.oauth.pkce.enabled) {
+            // Retrieve code_verifier from sessionStorage
+            const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+
+            if (codeVerifier) {
+                formData.append('code_verifier', codeVerifier);
+                log('info', '🔐 PKCE code_verifier included in token exchange');
+                console.log('[AUTH] code_verifier retrieved from sessionStorage (length:', codeVerifier.length, ')');
+
+                // Clear code_verifier from storage after use (one-time use)
+                sessionStorage.removeItem('pkce_code_verifier');
+                this.pkceCodeVerifier = null;
+            } else {
+                log('warning', '⚠ PKCE enabled but code_verifier not found in sessionStorage');
+                console.warn('[AUTH] PKCE code_verifier missing - token exchange may fail');
+            }
+        }
+
         const response = await fetch(CONFIG.oauth.tokenEndpoint, {
             method: 'POST',
             headers: {
@@ -127,6 +327,11 @@ class AuthenticationManager {
 
         log('success', 'Authorization code exchanged successfully');
         this.setAccessToken(data.access_token);
+        // Store id_token if present (needed for logout)
+        if (data.id_token) {
+            this.idToken = data.id_token;
+            log('info', 'ID token stored for logout');
+        }
         return data;
     }
 
@@ -157,13 +362,72 @@ class AuthenticationManager {
     }
 
     /**
-     * Logout and clear all tokens
+     * Logout - Redirect to Keycloak OIDC logout endpoint
+     * Uses GET /realms/{realm}/protocol/openid-connect/logout
+     * Required parameters:
+     *   - id_token_hint (for session identification)
+     *   - post_logout_redirect_uri (where to redirect after logout)
+     *   - client_id (which client is logging out)
      */
     logout() {
-        log('info', 'Logging out...');
+        log('info', '========== OIDC LOGOUT ==========');
+        log('info', 'Starting Keycloak OIDC logout...');
+
+        console.log('[AUTH] Logout State:');
+        console.log('  accessToken:', this.accessToken ? this.accessToken.substring(0, 50) + '...' : 'NONE');
+        console.log('  idToken:', this.idToken ? this.idToken.substring(0, 50) + '...' : 'NONE');
+
+        if (!this.idToken) {
+            log('warning', '⚠ No ID token available - logout may not clear SSO cookies');
+            console.warn('[AUTH] Missing id_token - Keycloak may not terminate SSO session');
+        }
+
+        // Build OIDC logout URL
+        const logoutEndpoint = CONFIG.oauth.logoutEndpoint;
+        const redirectUri = window.location.origin + window.location.pathname + '?logged_out=true';
+
+        const params = new URLSearchParams();
+        params.append('post_logout_redirect_uri', redirectUri);
+        params.append('client_id', CONFIG.oauth.clientId);
+
+        // CRITICAL: Include id_token_hint for proper session termination
+        if (this.idToken) {
+            params.append('id_token_hint', this.idToken);
+            log('info', '✓ id_token_hint will be included in logout request');
+            console.log('[AUTH] ✓ id_token_hint present (length:', this.idToken.length, ')');
+        } else {
+            log('error', '✗ id_token_hint MISSING - SSO cookies may persist');
+            console.error('[AUTH] ✗ id_token_hint MISSING');
+        }
+
+        const logoutUrl = `${logoutEndpoint}?${params.toString()}`;
+
+        console.log('[AUTH] OIDC Logout URL (GET request):');
+        console.log('  Endpoint:', logoutEndpoint);
+        console.log('  Method: GET');
+        console.log('  Parameters:');
+        console.log('    - post_logout_redirect_uri:', redirectUri);
+        console.log('    - client_id:', CONFIG.oauth.clientId);
+        console.log('    - id_token_hint:', this.idToken ? 'PRESENT' : 'MISSING ❌');
+
+        log('info', 'Redirecting to: ' + logoutEndpoint);
+        log('info', 'Expected flow:');
+        log('info', '  1. GET → /protocol/openid-connect/logout');
+        log('info', '  2. Keycloak validates id_token_hint');
+        log('info', '  3. Keycloak terminates session');
+        log('info', '  4. Keycloak deletes SSO cookies (Set-Cookie: Max-Age=0)');
+        log('info', '  5. Keycloak redirects back to app');
+        log('info', '========== END OIDC LOGOUT ==========');
+
+        console.log('[AUTH] Full logout URL:', logoutUrl);
+
+        // Clear local tokens before redirect
         this.accessToken = null;
+        this.idToken = null;
         this.claims = null;
-        log('success', 'Logout successful');
+
+        // Redirect to Keycloak logout (GET request)
+        window.location.href = logoutUrl;
     }
 
     /**

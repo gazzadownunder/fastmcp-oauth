@@ -201,7 +201,7 @@ export class JWTValidator {
       // Decode JWT payload to get full iss + aud for matching
       const parts = token.split('.');
       if (parts.length !== 3) {
-        throw createSecurityError('INVALID_TOKEN_FORMAT', 'Invalid JWT format', 401);
+        throw createSecurityError('INVALID_TOKEN_FORMAT', 'Invalid JWT: Token format is invalid', 401);
       }
 
       const payloadString = Buffer.from(parts[1], 'base64url').toString('utf-8');
@@ -332,17 +332,17 @@ export class JWTValidator {
     }
 
     if (payload.nbf && payload.nbf > now + idpConfig.security.clockTolerance) {
-      throw createSecurityError('TOKEN_NOT_YET_VALID', 'Token not yet valid', 401);
+      throw createSecurityError('TOKEN_NOT_YET_VALID', 'Unauthorized: Token not yet valid', 401);
     }
 
     // Validate token age
     if (payload.iat && now - payload.iat > idpConfig.security.maxTokenAge) {
-      throw createSecurityError('TOKEN_TOO_OLD', 'Token exceeds maximum age', 401);
+      throw createSecurityError('TOKEN_TOO_OLD', 'Unauthorized: Token exceeds maximum age', 401);
     }
 
     // Additional security checks
     if (payload.exp && payload.exp < now - idpConfig.security.clockTolerance) {
-      throw createSecurityError('TOKEN_EXPIRED', 'Token has expired', 401);
+      throw createSecurityError('TOKEN_EXPIRED', 'Unauthorized: Token has expired', 401);
     }
   }
 

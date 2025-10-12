@@ -210,6 +210,7 @@ export class PostgreSQLDelegationModule implements DelegationModule {
 
     // PHASE 1: Token Exchange (if configured)
     let effectiveLegacyUsername = session.legacyUsername;
+    let teRoles: string[] | undefined = undefined;
 
     console.log('[PostgreSQL] Token Exchange Check:', {
       hasTokenExchangeService: !!this.tokenExchangeService,
@@ -327,24 +328,20 @@ export class PostgreSQLDelegationModule implements DelegationModule {
           };
         }
 
-        // Check TE-JWT roles for authorization (not requestor JWT roles)
-        // The TE-JWT roles define what operations the user can perform on the database
-        const teRoles = Array.isArray(teClaims.roles) ? teClaims.roles : [];
-        console.log('[PostgreSQL] Checking TE-JWT roles for authorization:', { teRoles, action });
+        // Extract TE-JWT roles for command-level authorization
+        teRoles = Array.isArray(teClaims.roles) ? teClaims.roles : [];
+        console.log('[PostgreSQL] Extracted TE-JWT roles for command authorization:', { teRoles, action });
 
         // Determine required role based on action
         const hasReadAccess = teRoles.some((role: string) =>
           ['sql-read', 'sql-write', 'sql-admin', 'admin'].includes(role)
-        );
-        const hasWriteAccess = teRoles.some((role: string) =>
-          ['sql-write', 'sql-admin', 'admin'].includes(role)
         );
 
         // Schema and table-details are read operations
         if ((action === 'schema' || action === 'table-details') && !hasReadAccess) {
           return {
             success: false,
-            error: "You don't have rights to perform that operation. Required role: sql-read, sql-write, or admin.",
+            error: "Insufficient permissions to perform this operation.",
             auditTrail: {
               timestamp: new Date(),
               source: 'delegation:postgresql',
@@ -356,12 +353,11 @@ export class PostgreSQLDelegationModule implements DelegationModule {
           };
         }
 
-        // Query action can be read or write depending on SQL content
-        // For now, require at least read access for queries
+        // Query action - roles will be checked at SQL command level by validateSQL
         if (action === 'query' && !hasReadAccess) {
           return {
             success: false,
-            error: "You don't have rights to perform that operation. Required role: sql-read, sql-write, or admin.",
+            error: "Insufficient permissions to perform this operation.",
             auditTrail: {
               timestamp: new Date(),
               source: 'delegation:postgresql',
@@ -373,7 +369,7 @@ export class PostgreSQLDelegationModule implements DelegationModule {
           };
         }
 
-        console.log('[PostgreSQL] Authorization check PASSED:', { action, teRoles });
+        console.log('[PostgreSQL] Action-level authorization check PASSED:', { action, teRoles });
 
         // Use legacy_name from TE-JWT for SET ROLE
         effectiveLegacyUsername = teClaims.legacy_name;
@@ -426,8 +422,8 @@ export class PostgreSQLDelegationModule implements DelegationModule {
 
       switch (action) {
         case 'query':
-          console.log('[PostgreSQL] Routing to executeQuery handler');
-          result = await this.executeQuery(effectiveLegacyUsername, params);
+          console.log('[PostgreSQL] Routing to executeQuery handler with roles:', teRoles);
+          result = await this.executeQuery(effectiveLegacyUsername, params, teRoles);
           break;
 
         case 'schema':
@@ -535,14 +531,15 @@ export class PostgreSQLDelegationModule implements DelegationModule {
    */
   private async executeQuery<T>(
     roleName: string,
-    params: { sql: string; params?: any[] }
+    params: { sql: string; params?: any[] },
+    teJwtRoles?: string[]
   ): Promise<T> {
     if (!this.pool) {
       throw new Error('PostgreSQL pool not initialized');
     }
 
-    // Validate SQL
-    this.validateSQL(params.sql);
+    // Validate SQL with role-based authorization
+    this.validateSQL(params.sql, teJwtRoles);
 
     // Validate identifier
     this.validateIdentifier(roleName);
@@ -560,7 +557,22 @@ export class PostgreSQLDelegationModule implements DelegationModule {
       await client.query('RESET ROLE');
 
       client.release();
-      return result.rows as T;
+
+      // For data modification commands (INSERT/UPDATE/DELETE), always return metadata
+      // For SELECT and other commands, return rows
+      const dataModificationCommands = ['INSERT', 'UPDATE', 'DELETE'];
+      if (dataModificationCommands.includes(result.command)) {
+        // Return operation metadata for INSERT/UPDATE/DELETE
+        return {
+          success: true,
+          rowCount: result.rowCount || 0,
+          command: result.command,
+          message: this.getOperationMessage(result.command, result.rowCount || 0),
+        } as T;
+      } else {
+        // For SELECT and other commands, return rows
+        return result.rows as T;
+      }
     } catch (error) {
       // Ensure role is reset even on error
       try {
@@ -570,6 +582,22 @@ export class PostgreSQLDelegationModule implements DelegationModule {
       }
       client.release();
       throw error;
+    }
+  }
+
+  /**
+   * Generate user-friendly message for SQL operations
+   */
+  private getOperationMessage(command: string, rowCount: number): string {
+    switch (command) {
+      case 'INSERT':
+        return `Successfully inserted ${rowCount} row${rowCount !== 1 ? 's' : ''}`;
+      case 'UPDATE':
+        return `Successfully updated ${rowCount} row${rowCount !== 1 ? 's' : ''}`;
+      case 'DELETE':
+        return `Successfully deleted ${rowCount} row${rowCount !== 1 ? 's' : ''}`;
+      default:
+        return `Operation completed successfully. Rows affected: ${rowCount}`;
     }
   }
 
@@ -670,26 +698,115 @@ export class PostgreSQLDelegationModule implements DelegationModule {
   // ==========================================================================
 
   /**
-   * Validate SQL query for dangerous operations
+   * Validate SQL query based on user roles from TE-JWT
+   *
+   * Role-based command authorization:
+   * - sql-read: SELECT only
+   * - sql-write: SELECT, INSERT, UPDATE, DELETE
+   * - sql-admin: All commands except dangerous operations
+   * - admin: All commands including dangerous operations
+   *
+   * @param sqlQuery - SQL query to validate
+   * @param roles - User roles from TE-JWT (optional, defaults to no restrictions)
    */
-  private validateSQL(sqlQuery: string): void {
-    const dangerous = [
-      'DROP',
-      'CREATE',
-      'ALTER',
-      'TRUNCATE',
-      'GRANT',
-      'REVOKE',
-    ];
+  private validateSQL(sqlQuery: string, roles?: string[]): void {
+    const upperSQL = sqlQuery.trim().toUpperCase();
 
-    const upperSQL = sqlQuery.toUpperCase();
-    for (const keyword of dangerous) {
-      if (upperSQL.includes(keyword)) {
-        throw createSecurityError(
-          'POSTGRESQL_DANGEROUS_OPERATION',
-          `Dangerous SQL operation blocked: ${keyword}`,
-          403
-        );
+    // Extract the primary SQL command (first keyword)
+    const commandMatch = upperSQL.match(/^(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|WITH|EXPLAIN|SHOW|DESCRIBE)/);
+    const command = commandMatch ? commandMatch[1] : null;
+
+    if (!command) {
+      throw createSecurityError(
+        'POSTGRESQL_INVALID_SQL',
+        'Unable to determine SQL command type',
+        400
+      );
+    }
+
+    // If roles are provided, enforce role-based access control
+    if (roles && roles.length > 0) {
+      const hasReadAccess = roles.some((role: string) =>
+        ['sql-read', 'sql-write', 'sql-admin', 'admin'].includes(role)
+      );
+      const hasWriteAccess = roles.some((role: string) =>
+        ['sql-write', 'sql-admin', 'admin'].includes(role)
+      );
+      const hasAdminAccess = roles.some((role: string) =>
+        ['sql-admin', 'admin'].includes(role)
+      );
+      const hasSuperAdminAccess = roles.some((role: string) =>
+        ['admin'].includes(role)
+      );
+
+      // Define command categories
+      const readCommands = ['SELECT', 'WITH', 'EXPLAIN', 'SHOW', 'DESCRIBE'];
+      const writeCommands = ['INSERT', 'UPDATE', 'DELETE'];
+      const adminCommands = ['CREATE', 'ALTER', 'GRANT', 'REVOKE'];
+      const dangerousCommands = ['DROP', 'TRUNCATE'];
+
+      // Check authorization based on command type
+      if (readCommands.includes(command)) {
+        if (!hasReadAccess) {
+          throw createSecurityError(
+            'POSTGRESQL_INSUFFICIENT_PERMISSIONS',
+            `Insufficient permissions to execute ${command} operation.`,
+            403
+          );
+        }
+      } else if (writeCommands.includes(command)) {
+        if (!hasWriteAccess) {
+          throw createSecurityError(
+            'POSTGRESQL_INSUFFICIENT_PERMISSIONS',
+            `Insufficient permissions to execute ${command} operation.`,
+            403
+          );
+        }
+      } else if (adminCommands.includes(command)) {
+        if (!hasAdminAccess) {
+          throw createSecurityError(
+            'POSTGRESQL_INSUFFICIENT_PERMISSIONS',
+            `Insufficient permissions to execute ${command} operation.`,
+            403
+          );
+        }
+      } else if (dangerousCommands.includes(command)) {
+        if (!hasSuperAdminAccess) {
+          throw createSecurityError(
+            'POSTGRESQL_DANGEROUS_OPERATION',
+            `Insufficient permissions to execute ${command} operation.`,
+            403
+          );
+        }
+      } else {
+        // Unknown command - require admin access
+        if (!hasAdminAccess) {
+          throw createSecurityError(
+            'POSTGRESQL_UNKNOWN_COMMAND',
+            `Insufficient permissions to execute ${command} operation.`,
+            403
+          );
+        }
+      }
+    } else {
+      // No roles provided - fall back to basic dangerous operation blocking (legacy behavior)
+      const dangerous = [
+        'DROP',
+        'CREATE',
+        'ALTER',
+        'TRUNCATE',
+        'GRANT',
+        'REVOKE',
+      ];
+
+      for (const keyword of dangerous) {
+        if (upperSQL.includes(keyword)) {
+          throw createSecurityError(
+            'POSTGRESQL_DANGEROUS_OPERATION',
+            `Dangerous SQL operation blocked: ${keyword}`,
+            403
+          );
+        }
       }
     }
   }

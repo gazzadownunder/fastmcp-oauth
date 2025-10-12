@@ -12,7 +12,7 @@
 
 import type { AuthenticationService } from '../core/authentication-service.js';
 import type { UserSession } from '../core/types.js';
-import { createSecurityError } from '../utils/errors.js';
+import { createSecurityError, OAuthSecurityError } from '../utils/errors.js';
 import type { MCPContext } from './types.js';
 import { Authorization } from './authorization.js';
 
@@ -38,6 +38,7 @@ export interface FastMCPAuthResult {
   authenticated: boolean;
   session?: UserSession;
   error?: string;
+  statusCode?: number; // HTTP status code for error responses
 }
 
 // ============================================================================
@@ -93,7 +94,7 @@ export class MCPAuthMiddleware {
         console.log('[MCPAuthMiddleware] ❌ No Bearer token found');
         throw createSecurityError(
           'MISSING_TOKEN',
-          'Missing Authorization header with Bearer token',
+          'Unauthorized: Missing Authorization header with Bearer token',
           401
         );
       }
@@ -150,18 +151,30 @@ export class MCPAuthMiddleware {
         session: authResult.session,
       };
     } catch (error) {
-      // Convert to FastMCP auth result
-      console.log('[MCPAuthMiddleware] ❌ Authentication error:', error);
+      // Convert to FastMCP auth result with statusCode preserved
+      if (error instanceof OAuthSecurityError) {
+        console.log('[MCPAuthMiddleware] ❌ Authentication error (statusCode: ' + error.statusCode + '):', error.message);
+        return {
+          authenticated: false,
+          error: error.message,
+          statusCode: error.statusCode, // Preserve HTTP status code for mcp-proxy
+        };
+      }
+
+      // For unknown errors, convert to FastMCP auth result
+      console.log('[MCPAuthMiddleware] ❌ Unknown authentication error:', error);
       if (error instanceof Error) {
         return {
           authenticated: false,
           error: error.message,
+          statusCode: 500, // Default to 500 for unknown errors
         };
       }
 
       return {
         authenticated: false,
         error: 'Authentication failed',
+        statusCode: 500,
       };
     }
   }

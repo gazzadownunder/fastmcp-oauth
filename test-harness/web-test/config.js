@@ -12,8 +12,8 @@ const appConfig = {
     postLogoutRedirectUri: window.location.origin,
 
     // Keycloak initialization options
+    // NOTE: onLoad is set dynamically in init() based on logout state
     initOptions: {
-        onLoad: 'check-sso', // Check for existing sessions without forcing login
         checkLoginIframe: false, // Disabled to avoid frame-ancestors CSP issues
         enableLogging: true,
         flow: 'standard', // Authorization code flow with PKCE
@@ -21,6 +21,9 @@ const appConfig = {
         responseMode: 'fragment', // Match Keycloak test app
         messageReceiveTimeout: 10000 // Increase timeout for SSO checks
     },
+
+    // SSO check mode (will be set dynamically)
+    ssoCheckMode: 'check-sso', // Default: check for existing SSO sessions
 
     // Token refresh settings
     minValidity: 30, // Refresh token if it expires within 30 seconds
