@@ -112,6 +112,15 @@
       "health-check": true,
       "user-info": true,
       "audit-log": true
+    },
+    "oauth": {
+      "oauth_endpoints": {
+        "authorization_endpoint": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/auth",
+        "token_endpoint": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/token"
+      },
+      "scopes": [
+        "openid"
+      ]
     }
   }
 }

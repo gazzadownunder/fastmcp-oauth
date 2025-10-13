@@ -71,7 +71,17 @@
       "Bash(git revert:*)",
       "Bash(git rm:*)",
       "Bash(set CONFIG_PATH=./test-harness/config/v2-keycloak-token-exchange.json)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(python:*)",
+      "Bash(git config:*)",
+      "Bash(npm ls:*)",
+      "Bash(git fetch:*)",
+      "Bash(git ls-remote:*)",
+      "Bash(npm view:*)",
+      "Bash(if [ -f \"pnpm-lock.yaml\" ])",
+      "Bash(then grep -A 5 \"mcp-proxy\" pnpm-lock.yaml)",
+      "Bash(else echo \"No pnpm-lock.yaml\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

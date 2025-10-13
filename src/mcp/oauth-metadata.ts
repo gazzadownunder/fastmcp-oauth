@@ -99,37 +99,26 @@ export function generateProtectedResourceMetadata(
  * Extract supported scopes from MCP server configuration
  *
  * Scopes represent permissions that can be granted via OAuth tokens.
- * These are derived from:
- * 1. Tool-level permissions (from canAccess implementations)
- * 2. Role-based permissions (from role mappings)
- * 3. Delegation-specific scopes (sql:read, sql:write, etc.)
+ * These are read from the MCP oauth.scopes configuration array.
+ *
+ * If no scopes are configured, returns an empty array (scopes will not be
+ * included in the metadata).
  *
  * @param coreContext - Core context
  * @returns Array of supported scope strings
  */
 function extractSupportedScopes(coreContext: CoreContext): string[] {
-  const scopes = new Set<string>();
+  const mcpConfig = coreContext.configManager.getMCPConfig();
 
-  // Standard MCP scopes
-  scopes.add('mcp:read');   // Read-only access to MCP tools
-  scopes.add('mcp:write');  // Write access to MCP tools
-  scopes.add('mcp:admin');  // Administrative access
+  // Debug logging
+  console.log('[OAuth Metadata] extractSupportedScopes called');
+  console.log('[OAuth Metadata] mcpConfig:', JSON.stringify(mcpConfig, null, 2));
+  console.log('[OAuth Metadata] oauth.scopes:', mcpConfig?.oauth?.scopes);
 
-  // Delegation-specific scopes
-  const delegationConfig = coreContext.configManager.getDelegationConfig();
-
-  if (delegationConfig?.modules?.sql) {
-    scopes.add('sql:query');   // Execute SQL queries
-    scopes.add('sql:execute'); // Execute stored procedures
-    scopes.add('sql:read');    // Read-only SQL access
-    scopes.add('sql:write');   // Write SQL access
-  }
-
-  if (delegationConfig?.modules?.kerberos) {
-    scopes.add('kerberos:delegate'); // Kerberos constrained delegation
-  }
-
-  return Array.from(scopes).sort();
+  // Return configured scopes or empty array if not configured
+  const scopes = mcpConfig?.oauth?.scopes || [];
+  console.log('[OAuth Metadata] Returning scopes:', scopes);
+  return scopes;
 }
 
 /**

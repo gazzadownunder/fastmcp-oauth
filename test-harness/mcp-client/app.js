@@ -63,6 +63,7 @@ function updateAuthUI() {
     const loginPasswordBtn = document.getElementById('login-password-btn');
     const loginSsoBtn = document.getElementById('login-sso-btn');
     const loginMcpOAuthBtn = document.getElementById('login-mcp-oauth-btn');
+    const loginInspectorBtn = document.getElementById('login-inspector-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const userInfo = document.getElementById('user-info');
     const initMcpBtn = document.getElementById('init-mcp-btn');
@@ -74,6 +75,7 @@ function updateAuthUI() {
         loginPasswordBtn.style.display = 'none';
         loginSsoBtn.style.display = 'none';
         loginMcpOAuthBtn.style.display = 'none';
+        loginInspectorBtn.style.display = 'none';
         logoutBtn.style.display = 'block';
         userInfo.style.display = 'block';
 
@@ -94,6 +96,7 @@ function updateAuthUI() {
         loginPasswordBtn.style.display = 'inline-block';
         loginSsoBtn.style.display = 'inline-block';
         loginMcpOAuthBtn.style.display = 'block';
+        loginInspectorBtn.style.display = 'block';
         logoutBtn.style.display = 'none';
         userInfo.style.display = 'none';
 
@@ -370,6 +373,32 @@ async function loginWithMCPOAuth() {
     } catch (error) {
         log('error', `MCP OAuth discovery failed: ${error.message}`);
         alert(`MCP OAuth discovery failed: ${error.message}\n\nMake sure the MCP server is running on ${CONFIG.mcp.baseUrl}`);
+    }
+}
+
+/**
+ * Login with Inspector-Style OAuth
+ * Minimal parameter OAuth 2.1 authorization code flow with PKCE
+ * Mimics MCP Inspector authentication behavior:
+ * - Only 4 required parameters (response_type, client_id, code_challenge, code_challenge_method)
+ * - No redirect_uri (pre-registered at IDP)
+ * - No state parameter (PKCE provides CSRF protection)
+ * - No scope parameter (uses IDP defaults)
+ */
+async function loginWithInspectorAuth() {
+    try {
+        log('info', 'Starting Inspector-Style OAuth authentication...');
+
+        if (!CONFIG.oauth.inspector.enabled) {
+            log('error', 'Inspector-style OAuth is not enabled in configuration');
+            alert('Inspector-style OAuth is not enabled. Please check configuration.');
+            return;
+        }
+
+        await authManager.redirectToInspectorAuth();
+    } catch (error) {
+        log('error', `Inspector-style OAuth failed: ${error.message}`);
+        alert(`Inspector-style OAuth failed: ${error.message}`);
     }
 }
 

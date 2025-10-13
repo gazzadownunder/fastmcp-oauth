@@ -60,7 +60,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "fastmcp": "github:gazzadownunder/fastmcp",
+    "fastmcp": "file:../fastmcp",
     "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
@@ -84,6 +84,6 @@
     "vitest": "^2.0.0"
   },
   "overrides": {
-    "mcp-proxy": "git+https://github.com/gazzadownunder/mcp-proxy.git#auth-issue"
+    "mcp-proxy": "git+https://github.com/gazzadownunder/mcp-proxy.git#www-auth401"
   }
 }

@@ -11,10 +11,11 @@
  */
 
 import type { AuthenticationService } from '../core/authentication-service.js';
-import type { UserSession } from '../core/types.js';
+import type { UserSession, CoreContext } from '../core/types.js';
 import { createSecurityError, OAuthSecurityError } from '../utils/errors.js';
 import type { MCPContext } from './types.js';
 import { Authorization } from './authorization.js';
+import { generateWWWAuthenticateHeader } from './oauth-metadata.js';
 
 // ============================================================================
 // FastMCP Request Context (Placeholder)
@@ -39,6 +40,7 @@ export interface FastMCPAuthResult {
   session?: UserSession;
   error?: string;
   statusCode?: number; // HTTP status code for error responses
+  wwwAuthenticate?: string; // WWW-Authenticate header value for 401 responses
 }
 
 // ============================================================================
@@ -70,7 +72,10 @@ export interface FastMCPAuthResult {
  * ```
  */
 export class MCPAuthMiddleware {
-  constructor(private readonly authService: AuthenticationService) {}
+  constructor(
+    private readonly authService: AuthenticationService,
+    private readonly coreContext?: CoreContext
+  ) {}
 
   /**
    * Authenticate a FastMCP request
@@ -151,13 +156,30 @@ export class MCPAuthMiddleware {
         session: authResult.session,
       };
     } catch (error) {
-      // Convert to FastMCP auth result with statusCode preserved
+      // Generate WWW-Authenticate header for 401 responses
+      let wwwAuthenticate: string | undefined;
+      if (this.coreContext && (error instanceof OAuthSecurityError && error.statusCode === 401)) {
+        try {
+          wwwAuthenticate = generateWWWAuthenticateHeader(
+            this.coreContext,
+            'MCP Server',
+            undefined // TODO: Extract required scopes from error
+          );
+        } catch (headerError) {
+          console.error('[MCPAuthMiddleware] Failed to generate WWW-Authenticate header:', headerError);
+          // Fallback to basic header if generation fails
+          wwwAuthenticate = 'Bearer realm="MCP Server"';
+        }
+      }
+
+      // Convert to FastMCP auth result with statusCode and WWW-Authenticate header
       if (error instanceof OAuthSecurityError) {
         console.log('[MCPAuthMiddleware] ❌ Authentication error (statusCode: ' + error.statusCode + '):', error.message);
         return {
           authenticated: false,
           error: error.message,
-          statusCode: error.statusCode, // Preserve HTTP status code for mcp-proxy
+          statusCode: error.statusCode,
+          wwwAuthenticate: wwwAuthenticate,
         };
       }
 
@@ -167,7 +189,7 @@ export class MCPAuthMiddleware {
         return {
           authenticated: false,
           error: error.message,
-          statusCode: 500, // Default to 500 for unknown errors
+          statusCode: 500,
         };
       }
 

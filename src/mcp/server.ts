@@ -123,6 +123,7 @@ export class MCPOAuthServer {
 
     const authConfig = this.coreContext.configManager.getAuthConfig();
     const delegationConfig = this.coreContext.configManager.getDelegationConfig();
+    const mcpConfig = this.coreContext.configManager.getMCPConfig();
     const primaryIDP = authConfig.trustedIDPs[0];
 
     if (!primaryIDP) {
@@ -136,7 +137,8 @@ export class MCPOAuthServer {
     console.log(`[MCP OAuth Server]   Primary IDP: ${primaryIDP.issuer}`);
     console.log(`[MCP OAuth Server]   Resource URL: ${serverUrl}`);
 
-    return {
+    // Build base config
+    const oauthConfig: any = {
       enabled: true,
       authorizationServer: {
         issuer: primaryIDP.issuer,
@@ -160,27 +162,38 @@ export class MCPOAuthServer {
         acceptTypesSupported: ['application/json', 'text/event-stream'],
       },
     };
+
+    // Add oauth_endpoints if explicitly configured in mcp.oauth.oauth_endpoints
+    // This allows explicit control when multiple IDPs are configured
+    console.log('[MCP OAuth Server] DEBUG - mcpConfig.oauth:', JSON.stringify(mcpConfig?.oauth, null, 2));
+    if (mcpConfig?.oauth?.oauth_endpoints) {
+      oauthConfig.oauth_endpoints = mcpConfig.oauth.oauth_endpoints;
+      console.log('[MCP OAuth Server]   OAuth endpoints (explicit): ' +
+        `${mcpConfig.oauth.oauth_endpoints.authorization_endpoint}`);
+    } else {
+      console.log('[MCP OAuth Server]   WARNING: No oauth_endpoints configured in mcp.oauth');
+    }
+
+    console.log('[MCP OAuth Server] DEBUG - Final oauthConfig:', JSON.stringify(oauthConfig, null, 2));
+    return oauthConfig;
   }
 
   /**
-   * Extract supported scopes from delegation configuration
+   * Extract supported scopes from MCP configuration
    *
-   * @param delegationConfig - Delegation configuration object
+   * Reads scopes from mcp.oauth.scopes configuration array.
+   * If not configured, returns empty array.
+   *
+   * @param delegationConfig - Delegation configuration object (unused, kept for compatibility)
    * @returns Array of supported scope strings
    *
    * @private
    */
   private extractSupportedScopes(delegationConfig: any): string[] {
-    const scopes = new Set<string>(['mcp:read', 'mcp:write', 'mcp:admin']);
+    const mcpConfig = this.configManager.getMCPConfig();
 
-    if (delegationConfig?.modules?.sql) {
-      scopes.add('sql:query');
-      scopes.add('sql:execute');
-      scopes.add('sql:read');
-      scopes.add('sql:write');
-    }
-
-    return Array.from(scopes).sort();
+    // Return configured scopes or empty array if not configured
+    return mcpConfig?.oauth?.scopes || [];
   }
 
   /**

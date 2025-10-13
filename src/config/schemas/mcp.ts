@@ -17,10 +17,13 @@ import { z } from 'zod';
  * OAuth metadata configuration
  *
  * Exposes OAuth 2.1 metadata endpoints for client discovery.
+ * Scopes defined here will be advertised in the OAuth Protected Resource Metadata.
+ *
+ * All fields are optional - if not provided, metadata will be derived from trustedIDPs config.
  */
 export const OAuthMetadataSchema = z.object({
-  issuer: z.string().url().describe('OAuth issuer URL'),
-  jwksUri: z.string().url().describe('JWKS endpoint URL'),
+  issuer: z.string().url().optional().describe('OAuth issuer URL (defaults to first trustedIDP issuer)'),
+  jwksUri: z.string().url().optional().describe('JWKS endpoint URL (defaults to first trustedIDP jwksUri)'),
   tokenEndpoint: z.string().url().optional().describe('Token endpoint URL'),
   authorizationEndpoint: z.string().url().optional().describe('Authorization endpoint URL'),
   supportedGrantTypes: z
@@ -28,6 +31,17 @@ export const OAuthMetadataSchema = z.object({
     .optional()
     .default(['urn:ietf:params:oauth:grant-type:token-exchange'])
     .describe('Supported OAuth 2.1 grant types'),
+  scopes: z
+    .array(z.string())
+    .optional()
+    .describe('OAuth scopes to advertise in metadata (e.g., ["mcp:read", "mcp:write", "sql:query"])'),
+  oauth_endpoints: z
+    .object({
+      authorization_endpoint: z.string().url().describe('Authorization endpoint for WWW-Authenticate header'),
+      token_endpoint: z.string().url().describe('Token endpoint for WWW-Authenticate header'),
+    })
+    .optional()
+    .describe('OAuth endpoints for mcp_oauth2 WWW-Authenticate header (explicit IDP selection)'),
 });
 
 /**

@@ -1,0 +1,62 @@
+{
+  "auth": {
+    "trustedIDPs": [
+      {
+        "issuer": "https://auth.example.com",
+        "discoveryUrl": "https://auth.example.com/.well-known/openid-configuration",
+        "jwksUri": "https://auth.example.com/.well-known/jwks.json",
+        "audience": "mcp-oauth",
+        "algorithms": ["RS256", "ES256"],
+        "claimMappings": {
+          "legacyUsername": "legacy_name",
+          "roles": "roles",
+          "scopes": "scope",
+          "userId": "sub",
+          "username": "preferred_username"
+        },
+        "roleMappings": {
+          "admin": ["admin", "administrator"],
+          "user": ["user"],
+          "guest": ["guest"],
+          "defaultRole": "guest"
+        },
+        "security": {
+          "clockTolerance": 60,
+          "maxTokenAge": 3600,
+          "requireNbf": true
+        }
+      }
+    ]
+  },
+  "mcp": {
+    "serverName": "Example MCP Server",
+    "version": "1.0.0",
+    "transport": "http-stream",
+    "port": 3000,
+    "oauth": {
+      "scopes": [
+        "mcp:read",
+        "mcp:write",
+        "mcp:admin",
+        "sql:query",
+        "sql:execute",
+        "sql:read",
+        "sql:write",
+        "app:custom-operation",
+        "app:special-access"
+      ]
+    }
+  },
+  "delegation": {
+    "modules": {
+      "sql": {
+        "server": "sql.example.com",
+        "database": "appdb",
+        "options": {
+          "trustedConnection": true,
+          "encrypt": true
+        }
+      }
+    }
+  }
+}

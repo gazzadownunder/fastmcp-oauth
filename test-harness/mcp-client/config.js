@@ -35,6 +35,37 @@ const CONFIG = {
         pkce: {
             enabled: true,
             codeChallengeMethod: 'S256' // S256 (SHA-256) or plain
+        },
+
+        // Inspector-Style OAuth Configuration
+        // PUBLIC CLIENT - OAuth 2.1 flow matching MCP Inspector behavior
+        //
+        // Client Type: PUBLIC (browser-based application)
+        // Security: PKCE (S256) instead of client_secret
+        //
+        // Key differences from standard OAuth:
+        // - Public client (no client_secret sent)
+        // - No state parameter (PKCE provides CSRF protection)
+        // - No scope parameter (uses IDP default scopes)
+        // - Minimal 5 parameters: response_type, client_id, redirect_uri, code_challenge, code_challenge_method
+        //
+        // IMPORTANT: Keycloak client MUST be configured as PUBLIC:
+        // - Client authentication: OFF
+        // - Standard flow: ENABLED
+        // - Valid redirect URIs: Must include this application's URL
+        inspector: {
+            enabled: true,
+            authEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/auth',
+            tokenEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/token',
+            clientId: 'mcp-oauth',
+            // No client_secret - this is a PUBLIC client per OAuth 2.1
+            // PKCE provides security instead of client credentials
+            // Redirect URI sent in authorization request and token exchange
+            preRegisteredRedirectUri: window.location.origin + window.location.pathname,
+            // No scope parameter - uses IDP default scopes
+            useDefaultScopes: true,
+            // No state parameter - PKCE provides CSRF protection per OAuth 2.1
+            skipStateParam: true
         }
     },
 
@@ -74,6 +105,7 @@ Object.freeze(CONFIG);
 Object.freeze(CONFIG.oauth);
 Object.freeze(CONFIG.oauth.testUser);
 Object.freeze(CONFIG.oauth.pkce);
+Object.freeze(CONFIG.oauth.inspector);
 Object.freeze(CONFIG.mcp);
 Object.freeze(CONFIG.mcp.clientInfo);
 Object.freeze(CONFIG.ui);

@@ -273,6 +273,79 @@ class AuthenticationManager {
     }
 
     /**
+     * Inspector-Style Authorization Code Flow (PUBLIC CLIENT)
+     * Minimal parameter OAuth 2.1 flow matching MCP Inspector behavior
+     *
+     * Client Type: PUBLIC (browser-based application per OAuth 2.1)
+     *
+     * Key Differences from Standard OAuth:
+     * - Public client (no client_secret - PKCE provides security)
+     * - No state parameter (PKCE provides CSRF protection per OAuth 2.1)
+     * - No scope parameter (uses IDP default scopes)
+     * - Minimal parameters: response_type, client_id, redirect_uri, code_challenge, code_challenge_method
+     *
+     * Security:
+     * - PKCE (S256) provides CSRF protection and code interception protection
+     * - No client_secret exposed in browser (public client per OAuth 2.1)
+     * - Redirect URI must match between authorization request and token exchange
+     * - Authorization code is single-use and time-limited
+     *
+     * Requirements:
+     * - Keycloak client MUST be configured as PUBLIC (Client authentication: OFF)
+     *
+     * @returns {Promise<void>} Redirects to authorization endpoint
+     */
+    async redirectToInspectorAuth() {
+        log('info', '🔍 Starting Inspector-Style OAuth flow...');
+
+        if (!CONFIG.oauth.inspector.enabled) {
+            log('error', 'Inspector-style OAuth is disabled in configuration');
+            throw new Error('Inspector-style OAuth is not enabled');
+        }
+
+        // Generate PKCE parameters (REQUIRED for OAuth 2.1)
+        log('info', '🔐 Generating PKCE parameters...');
+        this.pkceCodeVerifier = this.generateCodeVerifier();
+        console.log('[AUTH-INSPECTOR] PKCE code_verifier generated (length:', this.pkceCodeVerifier.length, ')');
+
+        // Generate code_challenge from code_verifier using SHA-256
+        const codeChallenge = await this.generateCodeChallenge(this.pkceCodeVerifier);
+        console.log('[AUTH-INSPECTOR] PKCE code_challenge generated (SHA-256)');
+
+        // Store code_verifier for token exchange callback
+        sessionStorage.setItem('pkce_code_verifier', this.pkceCodeVerifier);
+        sessionStorage.setItem('auth_method', 'inspector');
+        log('success', '✓ PKCE parameters stored for callback');
+
+        // Build MINIMAL authorization request (Inspector-style)
+        // Required OAuth 2.1 parameters + redirect_uri (needed by Keycloak)
+        const params = new URLSearchParams({
+            response_type: 'code',                              // REQUIRED
+            client_id: CONFIG.oauth.inspector.clientId,         // REQUIRED
+            redirect_uri: CONFIG.oauth.inspector.preRegisteredRedirectUri, // REQUIRED (for Keycloak to know where to redirect)
+            code_challenge: codeChallenge,                      // REQUIRED (PKCE)
+            code_challenge_method: 'S256'                       // REQUIRED (PKCE)
+        });
+
+        const authUrl = `${CONFIG.oauth.inspector.authEndpoint}?${params.toString()}`;
+
+        log('success', '✓ Inspector-style OAuth request built (minimal parameters)');
+        log('info', 'Parameters:');
+        log('info', '  - response_type: code');
+        log('info', '  - client_id: ' + CONFIG.oauth.inspector.clientId);
+        log('info', '  - redirect_uri: ' + CONFIG.oauth.inspector.preRegisteredRedirectUri);
+        log('info', '  - code_challenge: ' + codeChallenge.substring(0, 20) + '...');
+        log('info', '  - code_challenge_method: S256');
+        log('warning', '⚠ No state parameter (PKCE provides CSRF protection)');
+        log('warning', '⚠ No scope parameter (uses IDP defaults)');
+        console.log('[AUTH-INSPECTOR] Authorization URL:', authUrl);
+
+        // Redirect to IDP authorization endpoint
+        log('info', `Redirecting to: ${CONFIG.oauth.inspector.authEndpoint}`);
+        window.location.href = authUrl;
+    }
+
+    /**
      * Handle SSO Callback (exchange authorization code for token)
      * @param {string} code - Authorization code
      * @returns {Promise<object>} Token response
@@ -281,36 +354,80 @@ class AuthenticationManager {
         log('info', 'Processing SSO callback...');
         log('info', `Authorization code: ${code.substring(0, 20)}...`);
 
-        // Clean up URL
-        window.history.replaceState({}, document.title, CONFIG.oauth.redirectUri);
+        // Detect which authentication method was used
+        const authMethod = sessionStorage.getItem('auth_method') || 'standard';
+        const isInspectorStyle = authMethod === 'inspector';
 
+        if (isInspectorStyle) {
+            log('info', '🔍 Inspector-style token exchange detected');
+        } else {
+            log('info', '🌐 Standard OAuth token exchange');
+        }
+
+        // Clean up URL (use appropriate redirect URI)
+        const cleanupUri = isInspectorStyle
+            ? CONFIG.oauth.inspector.preRegisteredRedirectUri
+            : CONFIG.oauth.redirectUri;
+        window.history.replaceState({}, document.title, cleanupUri);
+
+        // Build token exchange request
         const formData = new URLSearchParams();
         formData.append('grant_type', 'authorization_code');
         formData.append('code', code);
-        formData.append('redirect_uri', CONFIG.oauth.redirectUri);
-        formData.append('client_id', CONFIG.oauth.clientId);
-        formData.append('client_secret', CONFIG.oauth.clientSecret);
 
-        // PKCE support - Include code_verifier if PKCE was used
-        if (CONFIG.oauth.pkce.enabled) {
-            // Retrieve code_verifier from sessionStorage
-            const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
-
-            if (codeVerifier) {
-                formData.append('code_verifier', codeVerifier);
-                log('info', '🔐 PKCE code_verifier included in token exchange');
-                console.log('[AUTH] code_verifier retrieved from sessionStorage (length:', codeVerifier.length, ')');
-
-                // Clear code_verifier from storage after use (one-time use)
-                sessionStorage.removeItem('pkce_code_verifier');
-                this.pkceCodeVerifier = null;
-            } else {
-                log('warning', '⚠ PKCE enabled but code_verifier not found in sessionStorage');
-                console.warn('[AUTH] PKCE code_verifier missing - token exchange may fail');
-            }
+        // Inspector-style: Use pre-registered redirect_uri in token exchange
+        // Standard OAuth: Use redirect_uri from config
+        // Note: Keycloak requires redirect_uri in token exchange even if not sent in auth request
+        if (isInspectorStyle) {
+            formData.append('redirect_uri', CONFIG.oauth.inspector.preRegisteredRedirectUri);
+            log('info', '🔍 Using pre-registered redirect_uri: ' + CONFIG.oauth.inspector.preRegisteredRedirectUri);
+        } else {
+            formData.append('redirect_uri', CONFIG.oauth.redirectUri);
+            log('info', '  - redirect_uri: ' + CONFIG.oauth.redirectUri);
         }
 
-        const response = await fetch(CONFIG.oauth.tokenEndpoint, {
+        // Add client credentials (use appropriate config)
+        if (isInspectorStyle) {
+            // Inspector-style: Public client (no client_secret per OAuth 2.1)
+            // Browser-based applications should NOT send client_secret
+            // PKCE provides security instead of client credentials
+            formData.append('client_id', CONFIG.oauth.inspector.clientId);
+            log('info', '🔓 Public client (no client_secret - PKCE provides security)');
+            console.log('[AUTH-INSPECTOR] Public client - no client_secret sent');
+        } else {
+            // Standard OAuth: Confidential client (includes client_secret)
+            formData.append('client_id', CONFIG.oauth.clientId);
+            formData.append('client_secret', CONFIG.oauth.clientSecret);
+        }
+
+        // PKCE support - Include code_verifier (REQUIRED for PKCE flows)
+        const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+
+        if (codeVerifier) {
+            formData.append('code_verifier', codeVerifier);
+            log('info', '🔐 PKCE code_verifier included in token exchange');
+            console.log(`[AUTH${isInspectorStyle ? '-INSPECTOR' : ''}] code_verifier retrieved (length: ${codeVerifier.length})`);
+
+            // Clear code_verifier from storage after use (one-time use)
+            sessionStorage.removeItem('pkce_code_verifier');
+            this.pkceCodeVerifier = null;
+        } else {
+            log('warning', '⚠ PKCE code_verifier not found - token exchange may fail');
+            console.warn('[AUTH] PKCE code_verifier missing');
+        }
+
+        // Determine token endpoint
+        const tokenEndpoint = isInspectorStyle
+            ? CONFIG.oauth.inspector.tokenEndpoint
+            : CONFIG.oauth.tokenEndpoint;
+
+        log('info', `Token endpoint: ${tokenEndpoint}`);
+        console.log(`[AUTH${isInspectorStyle ? '-INSPECTOR' : ''}] Token exchange request:`, {
+            endpoint: tokenEndpoint,
+            parameters: Object.fromEntries(formData.entries())
+        });
+
+        const response = await fetch(tokenEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -321,17 +438,53 @@ class AuthenticationManager {
         const data = await response.json();
 
         if (!response.ok || !data.access_token) {
-            log('error', `Code exchange failed: ${data.error_description || data.error}`);
+            log('error', `❌ Code exchange failed (HTTP ${response.status})`);
+            log('error', `Error: ${data.error || 'unknown'}`);
+            log('error', `Description: ${data.error_description || 'No description'}`);
+
+            console.error(`[AUTH${isInspectorStyle ? '-INSPECTOR' : ''}] ========== TOKEN EXCHANGE ERROR ==========`);
+            console.error(`HTTP Status: ${response.status} ${response.statusText}`);
+            console.error(`Error Code: ${data.error || 'unknown'}`);
+            console.error(`Error Description: ${data.error_description || 'No description'}`);
+            console.error(`Full Response:`, data);
+            console.error(`Request Parameters:`, Object.fromEntries(formData.entries()));
+            console.error(`=========================================`);
+
+            // Provide helpful troubleshooting hints
+            if (data.error === 'unauthorized_client' || data.error === 'invalid_client') {
+                log('error', '💡 Hint: Check Keycloak client configuration');
+                log('error', '   - Client authentication should be OFF (public client)');
+                log('error', '   - PKCE Code Challenge Method should be S256');
+                console.error('[HINT] This error usually means:');
+                console.error('  1. Client is configured as CONFIDENTIAL (needs client_secret)');
+                console.error('  2. Go to Keycloak Admin → Clients → mcp-oauth → Settings');
+                console.error('  3. Set "Client authentication" to OFF');
+                console.error('  4. Set "PKCE Code Challenge Method" to S256 in Advanced Settings');
+            } else if (data.error === 'invalid_grant') {
+                log('error', '💡 Hint: Authorization code or PKCE validation failed');
+                log('error', '   - Code may have expired or already been used');
+                log('error', '   - PKCE code_verifier may not match code_challenge');
+                console.error('[HINT] This error usually means:');
+                console.error('  1. Authorization code expired (try again immediately)');
+                console.error('  2. PKCE code_verifier doesn\'t match code_challenge');
+                console.error('  3. redirect_uri mismatch between auth and token requests');
+            }
+
             throw new Error(data.error_description || data.error || 'Code exchange failed');
         }
 
-        log('success', 'Authorization code exchanged successfully');
+        log('success', `✓ Authorization code exchanged successfully (${isInspectorStyle ? 'Inspector-style' : 'Standard OAuth'})`);
         this.setAccessToken(data.access_token);
+
         // Store id_token if present (needed for logout)
         if (data.id_token) {
             this.idToken = data.id_token;
             log('info', 'ID token stored for logout');
         }
+
+        // Clean up auth method marker
+        sessionStorage.removeItem('auth_method');
+
         return data;
     }
 
