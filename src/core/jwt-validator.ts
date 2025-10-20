@@ -248,14 +248,62 @@ export class JWTValidator {
         claims,
       };
     } catch (error) {
-      if (error instanceof OAuthSecurityError || (error as any).code) {
+      // Pass through our own security errors
+      if (error instanceof OAuthSecurityError) {
         throw error;
       }
 
-      // Wrap unexpected errors
+      // Handle jose library errors with appropriate status codes
+      if (error instanceof Error) {
+        const errorName = error.constructor.name;
+        const errorMessage = error.message;
+
+        // JWTExpired: Token has expired (401 - Unauthorized)
+        // CRITICAL: Message MUST start with "Unauthorized" for mcp-proxy error detection
+        if (errorName === 'JWTExpired' || errorMessage.includes('"exp" claim timestamp check failed')) {
+          throw createSecurityError(
+            'TOKEN_EXPIRED',
+            'Unauthorized: Token has expired',
+            401,
+            { originalError: errorMessage }
+          );
+        }
+
+        // JWTClaimValidationFailed: Invalid claims (iss, aud, nbf, etc.) (401 - Unauthorized)
+        if (errorName === 'JWTClaimValidationFailed' || errorMessage.includes('claim')) {
+          throw createSecurityError(
+            'INVALID_CLAIMS',
+            'Unauthorized: Token claims validation failed',
+            401,
+            { originalError: errorMessage }
+          );
+        }
+
+        // JWTInvalid: Invalid token format or signature (401 - Unauthorized)
+        if (errorName === 'JWTInvalid' || errorMessage.includes('signature')) {
+          throw createSecurityError(
+            'INVALID_SIGNATURE',
+            'Unauthorized: Invalid token signature',
+            401,
+            { originalError: errorMessage }
+          );
+        }
+
+        // JWSSignatureVerificationFailed: Signature verification failed (401 - Unauthorized)
+        if (errorName === 'JWSSignatureVerificationFailed') {
+          throw createSecurityError(
+            'SIGNATURE_VERIFICATION_FAILED',
+            'Unauthorized: Token signature verification failed',
+            401,
+            { originalError: errorMessage }
+          );
+        }
+      }
+
+      // Wrap unexpected errors (fallback)
       throw createSecurityError(
         'JWT_VALIDATION_FAILED',
-        'JWT validation failed',
+        'Unauthorized: JWT validation failed',
         401,
         { originalError: error instanceof Error ? error.message : 'Unknown error' }
       );

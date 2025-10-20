@@ -144,6 +144,13 @@ export interface AuthConfig {
  *
  * Authorization is role-based from JWT claims, not static permissions.
  *
+ * Token Exchange Support (Phase 1):
+ * - claims contains requestor JWT claims (from user authentication)
+ * - claims.access_token stores the original requestor JWT (for token exchange)
+ * - delegationToken stores the TE-JWT (obtained via RFC 8693 token exchange)
+ * - customClaims stores delegation-specific claims from TE-JWT
+ * - legacyUsername extracted from TE-JWT legacy_name claim (Kerberos requirement)
+ *
  * Multi-Delegation Support:
  * - customClaims stores delegation-specific claims from TE-JWTs
  * - e.g., { allowed_operations: ["read", "write"], allowed_services: ["fileserver"] }
@@ -152,13 +159,16 @@ export interface UserSession {
   /** MANDATORY (GAP #6): Schema version for backward-compatible migrations */
   _version: number;
 
+  /** Session ID (for caching and tracking) */
+  sessionId: string;
+
   /** Unique user identifier */
   userId: string;
 
   /** Username */
   username: string;
 
-  /** Legacy SAM account name (for Windows delegation) */
+  /** Legacy SAM account name (for Windows delegation) - extracted from TE-JWT */
   legacyUsername?: string;
 
   /** Primary role (can be UNASSIGNED_ROLE if mapping fails) */
@@ -170,11 +180,15 @@ export interface UserSession {
   /** OAuth scopes */
   scopes?: string[];
 
-  /** Raw JWT claims */
+  /** Raw JWT claims from requestor token (includes access_token for token exchange) */
   claims?: Record<string, unknown>;
 
   /** MANDATORY (GAP #1): True if session was rejected due to role mapping failure */
   rejected?: boolean;
+
+  /** Delegation token (TE-JWT) obtained via RFC 8693 token exchange */
+  /** This token has delegation-specific claims (legacy_name, permissions) */
+  delegationToken?: string;
 
   /** Custom claims from TE-JWT (delegation-specific) */
   /** e.g., { allowed_operations: ["read"], allowed_services: ["fileserver"] } */

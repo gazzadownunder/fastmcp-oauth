@@ -72,7 +72,7 @@
     "tokenExchange": {
       "tokenEndpoint": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/token",
       "clientId": "mcp-server-client",
-      "clientSecret": "JUUA5xCJDQZdreWgEFYvfAqjJnGdTXXA",
+      "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
       "audience": "mcp-server-client",
       "defaultScope": "legacy_name",
       "cache": {
@@ -99,6 +99,35 @@
           "idleTimeoutMillis": 30000,
           "connectionTimeoutMillis": 5000
         }
+      },
+      "kerberos": {
+        "enabled": true,
+        "_comment_enabled": "Kerberos delegation ENABLED - Requires Active Directory at w25-dc.w25ad.net",
+        "domainController": "w25-dc.w25ad.net",
+        "servicePrincipalName": "HTTP/mcp-server",
+        "realm": "w25ad.net",
+        "kdc": "w25-dc.w25ad.net:88",
+        "enableS4U2Self": true,
+        "enableS4U2Proxy": true,
+        "allowedDelegationTargets": [
+          "cifs/fileserver.w25ad.net",
+          "cifs/192.168.1.25",
+          "HOST/fileserver.w25ad.net",
+          "HOST/192.168.1.25"
+        ],
+        "_comment_targets": "File server SPNs for Windows file share access via SMB/CIFS",
+        "serviceAccount": {
+          "username": "svc-mcp-server",
+          "password": "YourSecurePassword123!",
+          "_comment_keytabPath": "For Linux: use /etc/keytabs/mcp-server.keytab instead of password"
+        },
+        "ticketCache": {
+          "enabled": true,
+          "ttlSeconds": 3600,
+          "renewThresholdSeconds": 300,
+          "maxEntriesPerSession": 10,
+          "sessionTimeoutMs": 900000
+        }
       }
     }
   },
@@ -106,21 +135,30 @@
     "serverName": "MCP OAuth Phase 3 Test Server (Cache Enabled)",
     "version": "3.0.0",
     "transport": "http-stream",
-    "port": 3000,
+    "port": 3010,
     "enabledTools": {
       "sql-delegate": true,
       "health-check": true,
       "user-info": true,
-      "audit-log": true
+      "audit-log": true,
+      "kerberos-list-directory": true,
+      "kerberos-read-file": true,
+      "kerberos-file-info": true,
+      "_comment_kerberos": "Kerberos tools automatically perform delegation (S4U2Self/S4U2Proxy) when called. Token exchange provides legacy_name claim."
     },
     "oauth": {
-      "oauth_endpoints": {
+      "wwwAuthenticateFormat": "bearer",
+      "scopes": [
+        "openid"
+      ],
+      "_comment_wwwAuthenticateFormat": "Options: 'bearer' (RFC 6750 + RFC 9728 metadata discovery) or 'mcp_oauth2' (custom format with explicit authorization_endpoint)",
+      "_comment_bearer": "Bearer format: 'Bearer realm=\"MCP Server\", authorization_server=\"https://...\"' + clients use /.well-known/oauth-protected-resource (DO NOT include oauth_endpoints when using this format)",
+      "_comment_mcp_oauth2": "Custom format: 'mcp_oauth2 authorization_endpoint=\"https://...\"' (REQUIRES oauth_endpoints configuration below)",
+      "_example_oauth_endpoints": {
         "authorization_endpoint": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/auth",
         "token_endpoint": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/token"
       },
-      "scopes": [
-        "openid"
-      ]
+      "_comment_usage": "To use mcp_oauth2 format: 1) Set wwwAuthenticateFormat='mcp_oauth2', 2) Remove underscore from _example_oauth_endpoints to make it oauth_endpoints"
     }
   }
 }

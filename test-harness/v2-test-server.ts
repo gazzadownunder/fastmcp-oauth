@@ -30,6 +30,7 @@
 
 import { MCPOAuthServer } from '../src/mcp/server.js';
 import { PostgreSQLDelegationModule } from '../src/delegation/sql/postgresql-module.js';
+import { KerberosDelegationModule } from '../src/delegation/kerberos/kerberos-module.js';
 import { TokenExchangeService } from '../src/delegation/token-exchange.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -136,7 +137,79 @@ async function main() {
       await server.registerDelegationModule('postgresql', pgModule);
       console.log('✓     PostgreSQL delegation module registered\n');
     } else {
-      console.log('      No delegation modules configured (OAuth-only mode)\n');
+      console.log('      No PostgreSQL module configured\n');
+    }
+
+    // Check for Kerberos delegation module
+    if (delegationConfig?.modules?.kerberos?.enabled) {
+      console.log('      Kerberos delegation module detected in config');
+      const kerberosModule = new KerberosDelegationModule();
+
+      try {
+        // Initialize Kerberos module
+        console.log('      Initializing Kerberos connection to KDC...');
+        console.log(`      Domain Controller: ${delegationConfig.modules.kerberos.domainController}`);
+        console.log(`      Realm: ${delegationConfig.modules.kerberos.realm}`);
+        console.log(`      Service Principal: ${delegationConfig.modules.kerberos.servicePrincipalName}`);
+
+        await kerberosModule.initialize(delegationConfig.modules.kerberos);
+        console.log('✓     Kerberos service ticket (TGT) obtained');
+
+        // Check if token exchange is configured for Kerberos
+        if (delegationConfig?.tokenExchange) {
+          console.log('      Token exchange detected for Kerberos delegation');
+          console.log(`      Token endpoint: ${delegationConfig.tokenExchange.tokenEndpoint}`);
+          console.log(`      Client ID: ${delegationConfig.tokenExchange.clientId}`);
+          console.log(`      Audience: ${delegationConfig.tokenExchange.audience || 'kerberos-delegation'}`);
+
+          // Create TokenExchangeService (reuse same instance if PostgreSQL already created it)
+          const tokenExchangeService = new TokenExchangeService(
+            delegationConfig.tokenExchange,
+            coreContext.auditService
+          );
+
+          // Inject into Kerberos module
+          kerberosModule.setTokenExchangeService(tokenExchangeService, {
+            tokenEndpoint: delegationConfig.tokenExchange.tokenEndpoint,
+            clientId: delegationConfig.tokenExchange.clientId,
+            clientSecret: delegationConfig.tokenExchange.clientSecret,
+            audience: delegationConfig.tokenExchange.audience,
+          });
+
+          console.log('✓     Token exchange service configured for Kerberos');
+        }
+
+        // Display delegation configuration
+        if (delegationConfig.modules.kerberos.allowedDelegationTargets?.length > 0) {
+          console.log('      Allowed delegation targets:');
+          delegationConfig.modules.kerberos.allowedDelegationTargets.forEach((target: string) => {
+            console.log(`        - ${target}`);
+          });
+        }
+
+        // Display cache configuration
+        if (delegationConfig.modules.kerberos.ticketCache?.enabled) {
+          console.log('      Ticket cache enabled:');
+          console.log(`        TTL: ${delegationConfig.modules.kerberos.ticketCache.ttlSeconds}s`);
+          console.log(`        Renewal threshold: ${delegationConfig.modules.kerberos.ticketCache.renewThresholdSeconds}s`);
+        }
+
+        await server.registerDelegationModule('kerberos', kerberosModule);
+        console.log('✓     Kerberos delegation module registered\n');
+      } catch (error) {
+        console.error('✗     Kerberos initialization failed');
+        console.error(`      Error: ${error instanceof Error ? error.message : String(error)}`);
+        console.error('');
+        console.error('      Common issues:');
+        console.error('        • KDC (Active Directory) not reachable at configured address');
+        console.error('        • Service account credentials invalid');
+        console.error('        • Service account not configured for delegation (run setup-ad-kerberos.ps1)');
+        console.error('        • Kerberos library not installed (npm install kerberos)');
+        console.error('');
+        console.error('      Continuing without Kerberos support...\n');
+      }
+    } else {
+      console.log('      No Kerberos module configured (or disabled)\n');
     }
 
     console.log('═══════════════════════════════════════════════════════════');
@@ -150,6 +223,9 @@ async function main() {
       console.log('  • sql-delegate      - Execute SQL queries with positional params ($1, $2, etc.)');
       console.log('  • sql-schema        - Get list of tables in database schema');
       console.log('  • sql-table-details - Get column details for a specific table');
+    }
+    if (delegationConfig?.modules?.kerberos?.enabled) {
+      console.log('  • kerberos-delegate - Obtain Kerberos tickets (S4U2Self/S4U2Proxy)');
     }
     console.log('');
 

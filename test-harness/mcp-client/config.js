@@ -17,7 +17,7 @@ const CONFIG = {
 
         // Client credentials
         clientId: 'mcp-oauth',
-        clientSecret: '9DQjCpm4D9wbzXxHa1ki51PhBbyxOXrg',
+        clientSecret: 'LMdUemYydqmQzkhhg0aspPuvXfX6OiEB',
 
         // Test user credentials (for password grant flow)
         testUser: {
@@ -29,6 +29,29 @@ const CONFIG = {
         scope: 'email openid',
         responseType: 'code',
         redirectUri: window.location.origin + window.location.pathname,
+
+        // Scope configuration for each authentication method
+        // Allows different scopes to be requested per authentication flow
+        //
+        // Each authentication method can have its own scope configuration:
+        // - password: Password grant flow (Resource Owner Password Credentials)
+        // - sso: SSO redirect (Authorization Code Flow with PKCE)
+        // - mcpOAuth: MCP OAuth Discovery (discovers endpoints from MCP server)
+        // - inspector: Inspector-style OAuth (minimal parameter OAuth 2.1)
+        //
+        // To modify scopes, edit the values below. For example:
+        // - 'email openid': Basic OIDC scopes for email and user ID
+        // - 'email openid profile': Adds profile information
+        // - 'email openid mcp:read mcp:write': Custom MCP scopes
+        //
+        // Note: For inspector-style OAuth, scope is only used if
+        // inspector.useDefaultScopes is set to false
+        scopes: {
+            password: 'email openid',           // Password grant flow
+            sso: 'email openid',                // SSO redirect (authorization code)
+            mcpOAuth: 'email openid',           // MCP OAuth discovery
+            inspector: 'email openid'           // Inspector-style OAuth (only if useDefaultScopes=false)
+        },
 
         // PKCE (Proof Key for Code Exchange) - RFC 7636
         // Required by some IDPs for authorization code flow security
@@ -71,7 +94,7 @@ const CONFIG = {
 
     // MCP Server Configuration
     mcp: {
-        baseUrl: 'http://localhost:3000',
+        baseUrl: 'http://localhost:3010',
         endpoint: '/mcp',
 
         // Protocol version
@@ -101,8 +124,8 @@ const CONFIG = {
 };
 
 // Freeze config to prevent accidental modification
+// Note: CONFIG.oauth.scopes is NOT frozen to allow runtime modification via UI
 Object.freeze(CONFIG);
-Object.freeze(CONFIG.oauth);
 Object.freeze(CONFIG.oauth.testUser);
 Object.freeze(CONFIG.oauth.pkce);
 Object.freeze(CONFIG.oauth.inspector);

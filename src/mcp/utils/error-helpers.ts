@@ -35,6 +35,17 @@ export async function handleToolError(
   auditService: AuditService | undefined,
   params: any
 ): Promise<LLMFailureResponse> {
+  // Log to console for debugging
+  console.error(`\n[ERROR-HANDLER] Tool execution error in ${toolName}`);
+  console.error('[ERROR-HANDLER] Error:', error);
+  console.error('[ERROR-HANDLER] Error type:', error?.constructor?.name);
+  if (error instanceof Error) {
+    console.error('[ERROR-HANDLER] Message:', error.message);
+    console.error('[ERROR-HANDLER] Stack:', error.stack);
+  }
+  console.error('[ERROR-HANDLER] Params:', sanitizeParams(params));
+  console.error('[ERROR-HANDLER] User:', mcpContext.session?.userId);
+
   // Log full error details to audit
   if (auditService) {
     await auditService.log({

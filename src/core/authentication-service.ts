@@ -33,6 +33,26 @@ import { AuditService } from './audit-service.js';
 // ============================================================================
 
 /**
+ * Token exchange configuration (RFC 8693)
+ */
+export interface TokenExchangeConfig {
+  /** Token endpoint URL for token exchange */
+  tokenEndpoint: string;
+
+  /** Client ID for token exchange */
+  clientId: string;
+
+  /** Client secret for token exchange */
+  clientSecret: string;
+
+  /** Audience for delegation token */
+  audience?: string;
+
+  /** Required claim in TE-JWT (e.g., 'legacy_name') */
+  requiredClaim?: string;
+}
+
+/**
  * Authentication configuration
  *
  * Authorization is role-based from JWT claims, not static permissions.
@@ -43,6 +63,9 @@ export interface AuthConfig {
 
   /** Role mapping configuration (optional) */
   roleMappings?: RoleMappingConfig;
+
+  /** Token exchange configuration (optional, for Kerberos/SQL delegation) */
+  tokenExchange?: TokenExchangeConfig;
 }
 
 /**
@@ -67,19 +90,45 @@ export interface AuthenticationResult {
 // ============================================================================
 
 /**
+ * Token Exchange Service interface (for dependency injection)
+ *
+ * This interface allows Core layer to depend on Delegation layer via abstraction,
+ * without directly importing TokenExchangeService (which is in Delegation layer).
+ */
+export interface ITokenExchangeService {
+  performExchange(params: {
+    subjectToken: string;
+    subjectTokenType?: string;
+    audience: string;
+    tokenEndpoint: string;
+    clientId: string;
+    clientSecret: string;
+  }, sessionId?: string, jwtSubject?: string): Promise<{
+    success: boolean;
+    accessToken?: string;
+    error?: string;
+    errorDescription?: string;
+  }>;
+
+  decodeTokenClaims(token: string): any | null;
+}
+
+/**
  * Authentication Service - Coordinates authentication flow
  *
- * Flow:
- * 1. Validate JWT (throws on invalid token)
- * 2. Map roles (never throws, returns result)
- * 3. Create session (with versioning)
- * 4. Check for rejection (UNASSIGNED_ROLE)
- * 5. Log to audit service (with source field)
- * 6. Return result (doesn't throw on rejected)
+ * Flow (with token exchange):
+ * 1. Validate requestor JWT (throws on invalid token)
+ * 2. (Optional) Perform token exchange to get TE-JWT
+ * 3. Validate TE-JWT has required claims (e.g., legacy_name)
+ * 4. Map roles from TE-JWT (or requestor JWT if no exchange)
+ * 5. Create session with TE-JWT claims (with versioning)
+ * 6. Check for rejection (UNASSIGNED_ROLE)
+ * 7. Log to audit service (with source field)
+ * 8. Return result (doesn't throw on rejected)
  *
  * Usage:
  * ```typescript
- * const auth = new AuthenticationService(config, auditService);
+ * const auth = new AuthenticationService(config, auditService, tokenExchangeService);
  * await auth.initialize();
  *
  * const result = await auth.authenticate(token);
@@ -96,19 +145,26 @@ export class AuthenticationService {
   private sessionManager: SessionManager;
   private auditService: AuditService;
   private config: AuthConfig;
+  private tokenExchangeService?: ITokenExchangeService;
 
   /**
    * Create authentication service
    *
    * @param config - Authentication configuration
    * @param auditService - Optional audit service (Null Object Pattern if not provided)
+   * @param tokenExchangeService - Optional token exchange service (for delegation)
    */
-  constructor(config: AuthConfig, auditService?: AuditService) {
+  constructor(
+    config: AuthConfig,
+    auditService?: AuditService,
+    tokenExchangeService?: ITokenExchangeService
+  ) {
     this.config = config;
     this.jwtValidator = new JWTValidator();
     this.roleMapper = new RoleMapper(config.roleMappings);
     this.sessionManager = new SessionManager();
     this.auditService = auditService ?? new AuditService(); // Null Object Pattern
+    this.tokenExchangeService = tokenExchangeService;
   }
 
   /**
@@ -127,43 +183,101 @@ export class AuthenticationService {
    * - Invalid JWT: throws (security validation failed)
    * - Role mapping fails: returns rejected=true (graceful degradation)
    *
-   * @param token - JWT token string
+   * Flow with Token Exchange:
+   * 1. Validate requestor JWT
+   * 2. (Optional) Perform token exchange to get TE-JWT
+   * 3. Validate TE-JWT has required claims (e.g., legacy_name)
+   * 4. Map roles from TE-JWT (or requestor JWT if no exchange)
+   * 5. Create session with TE-JWT claims
+   *
+   * @param token - JWT token string (requestor JWT)
    * @param context - Optional validation context
    * @returns Authentication result (never throws on role mapping failure)
-   * @throws SecurityError if JWT validation fails
+   * @throws SecurityError if JWT validation or token exchange fails
    */
   async authenticate(
     token: string,
     context?: Partial<ValidationContext>
   ): Promise<AuthenticationResult> {
     try {
-      // Step 1: Validate JWT (may throw on invalid token)
+      // Step 1: Validate requestor JWT (may throw on invalid token)
       const validationResult = await this.jwtValidator.validateJWT(
         token,
         context
       );
 
-      // Step 2: Map roles (Enhancement v0.2: never throws, returns result)
-      // Extract roles from claims based on IDP claim mapping
+      console.log('[AuthenticationService] Requestor JWT validated:', {
+        userId: validationResult.claims.sub,
+        issuer: validationResult.claims.iss,
+      });
+
+      // Step 2: Token Exchange (if configured)
+      let delegationToken: string | undefined;
+      let delegationClaims: Record<string, any> | undefined;
+      let effectiveClaims = validationResult.claims; // Default to requestor JWT claims
+
+      if (this.config.tokenExchange && this.tokenExchangeService) {
+        console.log('[AuthenticationService] Token exchange configured - performing exchange BEFORE session creation');
+
+        const exchangeResult = await this.tokenExchangeService.performExchange({
+          subjectToken: token,
+          subjectTokenType: 'urn:ietf:params:oauth:token-type:access_token',
+          audience: this.config.tokenExchange.audience || 'delegation',
+          tokenEndpoint: this.config.tokenExchange.tokenEndpoint,
+          clientId: this.config.tokenExchange.clientId,
+          clientSecret: this.config.tokenExchange.clientSecret,
+        });
+
+        if (!exchangeResult.success || !exchangeResult.accessToken) {
+          console.error('[AuthenticationService] Token exchange FAILED:', exchangeResult.error);
+          throw new Error(`Token exchange failed: ${exchangeResult.errorDescription || exchangeResult.error}`);
+        }
+
+        console.log('[AuthenticationService] Token exchange SUCCESS');
+
+        // Decode TE-JWT to extract delegation claims
+        delegationToken = exchangeResult.accessToken;
+        delegationClaims = this.tokenExchangeService.decodeTokenClaims(delegationToken);
+
+        console.log('[AuthenticationService] TE-JWT claims:', {
+          sub: delegationClaims?.sub,
+          legacy_name: delegationClaims?.legacy_name,
+          roles: delegationClaims?.roles,
+        });
+
+        // Step 3: Validate TE-JWT has required claim (if specified)
+        if (this.config.tokenExchange.requiredClaim) {
+          const requiredClaim = this.config.tokenExchange.requiredClaim;
+          if (!delegationClaims || !delegationClaims[requiredClaim]) {
+            console.error(`[AuthenticationService] TE-JWT missing required claim: ${requiredClaim}`);
+            throw new Error(`TE-JWT missing required claim for delegation: ${requiredClaim}`);
+          }
+          console.log(`[AuthenticationService] ✓ TE-JWT has required claim '${requiredClaim}':`, delegationClaims[requiredClaim]);
+        }
+
+        // Use TE-JWT claims for role mapping (NOT requestor JWT claims)
+        effectiveClaims = delegationClaims;
+      } else {
+        console.log('[AuthenticationService] Token exchange NOT configured - using requestor JWT claims');
+      }
+
+      // Step 4: Map roles from effective claims (TE-JWT or requestor JWT)
       const idpConfig = this.config.idpConfigs[0]; // TODO: Support multi-IDP
       const rolesClaimPath = idpConfig.claimMappings.roles;
-      const rolesFromClaims = validationResult.claims[rolesClaimPath];
+      const rolesFromClaims = effectiveClaims[rolesClaimPath];
 
       console.log('[AuthenticationService] Role extraction:', {
         rolesClaimPath,
         rolesFromClaims,
         rolesType: typeof rolesFromClaims,
         isArray: Array.isArray(rolesFromClaims),
-        allClaimsKeys: Object.keys(validationResult.claims)
+        sourceToken: delegationToken ? 'TE-JWT' : 'requestor JWT',
       });
 
       // Let RoleMapper handle validation - pass raw value
-      // If it's a string, convert to array; otherwise pass as-is for validation
       const rolesInput = typeof rolesFromClaims === 'string'
         ? [rolesFromClaims] // String -> single-element array
         : rolesFromClaims; // Pass as-is (array, undefined, null, number, etc.)
-
-      console.log('[AuthenticationService] Roles input to RoleMapper:', rolesInput);
 
       const roleResult: RoleMapperResult = this.roleMapper.determineRoles(
         rolesInput as string[] // Type assertion - RoleMapper will validate
@@ -171,27 +285,32 @@ export class AuthenticationService {
 
       console.log('[AuthenticationService] RoleMapper result:', roleResult);
 
-      // Step 3: Create session (pass original token for token exchange)
+      // Step 5: Create session with TE-JWT claims (if available)
       const session = this.sessionManager.createSession(
         validationResult.payload,
         roleResult,
-        token // Pass original JWT for token exchange (RFC 8693)
+        token, // Original requestor JWT (for future token exchange)
+        delegationToken, // TE-JWT (if exchange was performed)
+        delegationClaims // TE-JWT claims (for delegation modules)
       );
 
-      console.log('[AuthenticationService] Session created with access_token:', {
+      console.log('[AuthenticationService] Session created:', {
+        sessionId: session.sessionId,
         userId: session.userId,
-        hasAccessToken: !!session.claims?.access_token,
-        tokenLength: session.claims?.access_token?.length,
+        legacyUsername: session.legacyUsername,
+        role: session.role,
+        hasRequestorJWT: !!session.claims?.access_token,
+        hasDelegationToken: !!session.delegationToken,
+        hasDelegationClaims: !!session.customClaims,
       });
 
-      // Step 4: Enhancement v0.2 - Check if role is UNASSIGNED (GAP #1)
+      // Step 6: Check if role is UNASSIGNED (GAP #1)
       const rejected = session.role === UNASSIGNED_ROLE;
       const rejectionReason = rejected
         ? roleResult.failureReason || 'No matching roles found'
         : undefined;
 
-      // Step 5: Enhancement v0.2 - Log to AuditService
-      // MANDATORY (GAP #3): Include source field
+      // Step 7: Log to AuditService (MANDATORY GAP #3: Include source field)
       const auditEntry: AuditEntry = {
         timestamp: new Date(),
         source: 'auth:service', // MANDATORY
@@ -202,11 +321,12 @@ export class AuthenticationService {
         metadata: {
           role: session.role,
           mappingFailed: roleResult.mappingFailed,
+          tokenExchange: delegationToken ? 'performed' : 'skipped',
         },
       };
       await this.auditService.log(auditEntry);
 
-      // Step 6: Return result (doesn't throw on UNASSIGNED)
+      // Step 8: Return result (doesn't throw on UNASSIGNED)
       return {
         session,
         rejected,
@@ -214,12 +334,12 @@ export class AuthenticationService {
         auditEntry,
       };
     } catch (error) {
-      // Only JWT validation errors throw
+      // Only JWT validation and token exchange errors throw
       // MANDATORY (GAP #3): Include source field
       const auditEntry: AuditEntry = {
         timestamp: new Date(),
         source: 'auth:service',
-        userId: undefined, // Unknown - JWT validation failed
+        userId: undefined, // Unknown - authentication failed
         action: 'authenticate',
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

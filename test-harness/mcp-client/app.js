@@ -126,7 +126,8 @@ function updateMCPUI() {
     } else {
         mcpStatus.textContent = 'Not Connected';
         mcpStatus.className = 'status disconnected';
-        listToolsBtn.disabled = true;
+        // Allow list tools to be called even without initialized session
+        listToolsBtn.disabled = !authManager.isAuthenticated();
         toolsContainer.style.display = 'none';
     }
 }
@@ -542,12 +543,70 @@ async function executeSelectedTool(event) {
 // ============================================================================
 
 /**
+ * Runtime scope configuration (mutable)
+ * Initialized from CONFIG but can be modified via UI
+ */
+const runtimeScopes = {
+    password: CONFIG.oauth.scopes?.password || CONFIG.oauth.scope,
+    sso: CONFIG.oauth.scopes?.sso || CONFIG.oauth.scope,
+    mcpOAuth: CONFIG.oauth.scopes?.mcpOAuth || CONFIG.oauth.scope,
+    inspector: CONFIG.oauth.scopes?.inspector || CONFIG.oauth.scope
+};
+
+/**
+ * Get the current scope for a specific authentication method
+ * @param {string} method - Authentication method (password, sso, mcpOAuth, inspector)
+ * @returns {string} Current scope value
+ */
+function getRuntimeScope(method) {
+    return runtimeScopes[method] || CONFIG.oauth.scope;
+}
+
+/**
+ * Initialize scope input fields with values from config
+ */
+function initializeScopeInputs() {
+    // Set initial values from runtime config
+    document.getElementById('scope-password').value = runtimeScopes.password;
+    document.getElementById('scope-sso').value = runtimeScopes.sso;
+    document.getElementById('scope-mcp-oauth').value = runtimeScopes.mcpOAuth;
+    document.getElementById('scope-inspector').value = runtimeScopes.inspector;
+
+    // Add event listeners to update runtime scopes when values change
+    document.getElementById('scope-password').addEventListener('input', (e) => {
+        runtimeScopes.password = e.target.value;
+        log('info', `Password scope updated: ${e.target.value}`);
+    });
+
+    document.getElementById('scope-sso').addEventListener('input', (e) => {
+        runtimeScopes.sso = e.target.value;
+        log('info', `SSO scope updated: ${e.target.value}`);
+    });
+
+    document.getElementById('scope-mcp-oauth').addEventListener('input', (e) => {
+        runtimeScopes.mcpOAuth = e.target.value;
+        log('info', `MCP OAuth scope updated: ${e.target.value}`);
+    });
+
+    document.getElementById('scope-inspector').addEventListener('input', (e) => {
+        runtimeScopes.inspector = e.target.value;
+        log('info', `Inspector scope updated: ${e.target.value}`);
+    });
+
+    log('info', 'Scope inputs initialized');
+    console.log('[APP] Runtime scopes:', runtimeScopes);
+}
+
+/**
  * Initialize application on page load
  */
 window.addEventListener('DOMContentLoaded', () => {
     log('info', 'MCP OAuth Integration Test Client initialized');
     log('info', `MCP Server: ${CONFIG.mcp.baseUrl}${CONFIG.mcp.endpoint}`);
     log('info', `OAuth Realm: ${CONFIG.oauth.realm}`);
+
+    // Initialize scope input fields
+    initializeScopeInputs();
 
     // Check for logged_out parameter (returning from Keycloak logout)
     const urlParams = new URLSearchParams(window.location.search);

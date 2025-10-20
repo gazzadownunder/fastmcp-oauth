@@ -9,6 +9,7 @@
  * @see Phase 1.6 of refactor.md
  */
 
+import { randomUUID } from 'node:crypto';
 import {
   UNASSIGNED_ROLE,
   ROLE_ADMIN,
@@ -67,12 +68,17 @@ export class SessionManager {
    *
    * @param jwtPayload - JWT payload with user claims
    * @param roleResult - Role mapping result
+   * @param accessToken - Original requestor JWT (for token exchange)
+   * @param delegationToken - Optional TE-JWT from token exchange
+   * @param delegationClaims - Optional claims from TE-JWT
    * @returns UserSession with versioning and rejection tracking
    */
   createSession(
     jwtPayload: JWTPayload,
     roleResult: RoleMapperResult,
-    accessToken?: string
+    accessToken?: string,
+    delegationToken?: string,
+    delegationClaims?: Record<string, any>
   ): UserSession {
     // Convert scopes to array
     const scopes = Array.isArray(jwtPayload.scopes)
@@ -81,12 +87,17 @@ export class SessionManager {
         ? jwtPayload.scopes.split(' ')
         : [];
 
+    // Generate unique session ID
+    const sessionId = randomUUID();
+
     // Build session with versioning (role-based authorization)
     const session: UserSession = {
       _version: this.SESSION_VERSION, // MANDATORY (GAP #6)
+      sessionId, // Unique session ID for caching and tracking
       userId: jwtPayload.sub,
       username: jwtPayload.preferred_username || jwtPayload.username || jwtPayload.sub,
-      legacyUsername: jwtPayload.legacy_sam_account,
+      // Legacy username from TE-JWT takes precedence over requestor JWT
+      legacyUsername: delegationClaims?.legacy_name || jwtPayload.legacy_sam_account,
       role: roleResult.primaryRole,
       customRoles: roleResult.customRoles,
       scopes,
@@ -97,6 +108,9 @@ export class SessionManager {
         access_token: accessToken,
       },
       rejected: roleResult.primaryRole === UNASSIGNED_ROLE, // MANDATORY (GAP #1)
+      // Store delegation token and claims (if token exchange was performed)
+      delegationToken,
+      customClaims: delegationClaims,
     };
 
     return session;

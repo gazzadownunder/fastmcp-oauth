@@ -265,12 +265,41 @@ export class MCPOAuthServer {
       oauth: this.buildOAuthConfig(port),
     });
 
-    // 8. Register all tools
+    // 8. Register enabled tools
     const toolFactories = getAllToolFactories();
-    console.log(`[MCP OAuth Server] Registering ${toolFactories.length} tools...`);
+    const enabledTools = mcpConfig?.enabledTools || {};
 
+    console.log(`[MCP OAuth Server] Found ${toolFactories.length} available tools`);
+    console.log(`[MCP OAuth Server] Enabled tools config:`, enabledTools);
+
+    let registeredCount = 0;
     for (const factory of toolFactories) {
       const toolReg = factory(this.coreContext);
+
+      // Check if tool is enabled in config
+      // If enabledTools config is empty ({}), register all tools (backward compatibility)
+      // If tool is explicitly in config, use that value
+      // If tool is not in config but config has other tools, skip it (opt-in mode)
+      const isEnabled = enabledTools[toolReg.name as keyof typeof enabledTools];
+      const hasAnyToolsConfigured = Object.keys(enabledTools).length > 0;
+
+      if (isEnabled === false) {
+        console.log(`[MCP OAuth Server] Skipping disabled tool: ${toolReg.name}`);
+        continue;
+      }
+
+      if (isEnabled === true) {
+        console.log(`[MCP OAuth Server] Registering tool: ${toolReg.name}`);
+        registeredCount++;
+      } else if (!hasAnyToolsConfigured) {
+        // No tools configured at all - register everything (backward compatibility)
+        console.log(`[MCP OAuth Server] Registering tool (no filter): ${toolReg.name}`);
+        registeredCount++;
+      } else {
+        // Tools are configured but this one isn't listed - skip it
+        console.log(`[MCP OAuth Server] Skipping unconfigured tool: ${toolReg.name}`);
+        continue;
+      }
 
       this.mcpServer.addTool({
         name: toolReg.name,
@@ -321,11 +350,9 @@ export class MCPOAuthServer {
           }
         },
       });
-
-      console.log(`[MCP OAuth Server]   ✓ Registered tool: ${toolReg.name}`);
     }
 
-    console.log(`[MCP OAuth Server] ✓ Registered ${toolFactories.length} tools`);
+    console.log(`[MCP OAuth Server] Successfully registered ${registeredCount} of ${toolFactories.length} available tools`);
 
     // 9. Start server
     console.log('[MCP OAuth Server] Starting FastMCP server...');

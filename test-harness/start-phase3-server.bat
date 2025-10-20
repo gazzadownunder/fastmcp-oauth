@@ -10,12 +10,25 @@ echo.
 REM Set environment variables (paths relative to project root)
 set NODE_ENV=development
 set CONFIG_PATH=./test-harness/config/phase3-test-config.json
-set SERVER_PORT=3000
+set SERVER_PORT=3010
 
 echo Environment Configuration:
 echo   NODE_ENV:     %NODE_ENV%
 echo   CONFIG_PATH:  %CONFIG_PATH%
 echo   SERVER_PORT:  %SERVER_PORT%
+echo.
+echo This server includes:
+echo   - PostgreSQL Delegation (SET ROLE with token exchange)
+echo   - Kerberos Delegation (S4U2Self + S4U2Proxy for file servers)
+echo.
+echo KERBEROS PREREQUISITES (if enabled):
+echo   1. Active Directory at w25-dc.w25ad.net must be reachable
+echo   2. Service account svc-mcp-server@w25ad.net must be configured
+echo   3. SPNs registered: HTTP/mcp-server
+echo   4. Delegation targets configured: cifs/*, HOST/* (file servers)
+echo.
+echo   If AD is not configured, Kerberos will fail gracefully during startup.
+echo   Server will continue with PostgreSQL delegation only.
 echo.
 echo ================================================================
 echo  Starting MCP Server...

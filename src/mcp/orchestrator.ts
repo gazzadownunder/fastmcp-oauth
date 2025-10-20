@@ -18,7 +18,9 @@ import { JWTValidator } from '../core/jwt-validator.js';
 import { RoleMapper } from '../core/role-mapper.js';
 import { SessionManager } from '../core/session-manager.js';
 import { AuthenticationService } from '../core/authentication-service.js';
+import type { ITokenExchangeService } from '../core/authentication-service.js';
 import { DelegationRegistry } from '../delegation/registry.js';
+import { TokenExchangeService } from '../delegation/token-exchange.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { UnifiedConfig } from '../config/schemas/index.js';
 
@@ -137,7 +139,12 @@ export class ConfigOrchestrator {
 
 
   /**
-   * Create AuthenticationService
+   * Create AuthenticationService with optional TokenExchangeService
+   *
+   * NEW ARCHITECTURE (Phase 3): Token exchange happens BEFORE session creation!
+   * - Creates TokenExchangeService if delegation.tokenExchange is configured
+   * - Injects TokenExchangeService into AuthenticationService
+   * - AuthenticationService performs token exchange during authenticate()
    *
    * NOTE: Does NOT initialize - MCPOAuthServer.start() will call initialize()
    * This follows the pattern from refactor.md Phase 3.5:
@@ -174,13 +181,46 @@ export class ConfigOrchestrator {
 
     console.log('[ConfigOrchestrator] Final role mapping config:', roleMappingConfig);
 
+    // Create TokenExchangeService if configured (NEW ARCHITECTURE)
+    let tokenExchangeService: ITokenExchangeService | undefined;
+    if (config.delegation?.tokenExchange) {
+      console.log('[ConfigOrchestrator] Token exchange configured - creating TokenExchangeService');
+      console.log('[ConfigOrchestrator] Token exchange config:', {
+        tokenEndpoint: config.delegation.tokenExchange.tokenEndpoint,
+        clientId: config.delegation.tokenExchange.clientId,
+        audience: config.delegation.tokenExchange.audience,
+        cacheEnabled: config.delegation.tokenExchange.cache?.enabled,
+      });
+
+      tokenExchangeService = new TokenExchangeService(
+        config.delegation.tokenExchange,
+        auditService
+      );
+    } else {
+      console.log('[ConfigOrchestrator] Token exchange NOT configured - sessions will use requestor JWT claims');
+    }
+
+    // Build auth config with token exchange (if enabled)
     const authConfig = {
       idpConfigs: config.auth.trustedIDPs,
       roleMappings: roleMappingConfig,
+      tokenExchange: config.delegation?.tokenExchange ? {
+        tokenEndpoint: config.delegation.tokenExchange.tokenEndpoint,
+        clientId: config.delegation.tokenExchange.clientId,
+        clientSecret: config.delegation.tokenExchange.clientSecret,
+        audience: config.delegation.tokenExchange.audience,
+        requiredClaim: 'legacy_name', // Kerberos requires legacy_name claim
+      } : undefined,
     };
 
-    // Return uninitialized service (caller must call initialize() before use)
-    return new AuthenticationService(authConfig, auditService);
+    console.log('[ConfigOrchestrator] Auth config:', {
+      hasTokenExchange: !!authConfig.tokenExchange,
+      requiredClaim: authConfig.tokenExchange?.requiredClaim,
+    });
+
+    // Return uninitialized service with injected TokenExchangeService
+    // (caller must call initialize() before use)
+    return new AuthenticationService(authConfig, auditService, tokenExchangeService);
   }
 
   /**

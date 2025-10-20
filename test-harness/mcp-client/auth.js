@@ -89,15 +89,21 @@ class AuthenticationManager {
     async loginWithPassword() {
         log('info', 'Starting Password Grant flow...');
 
+        // Use runtime scope if available (from UI), otherwise fall back to config
+        const scope = (typeof getRuntimeScope !== 'undefined' ? getRuntimeScope('password') : null)
+                      || CONFIG.oauth.scopes?.password
+                      || CONFIG.oauth.scope;
+
         const formData = new URLSearchParams();
         formData.append('grant_type', 'password');
         formData.append('client_id', CONFIG.oauth.clientId);
         formData.append('client_secret', CONFIG.oauth.clientSecret);
         formData.append('username', CONFIG.oauth.testUser.username);
         formData.append('password', CONFIG.oauth.testUser.password);
-        formData.append('scope', CONFIG.oauth.scope);
+        formData.append('scope', scope);
 
         log('info', `Requesting token for user: ${CONFIG.oauth.testUser.username}`);
+        log('info', `Scope: ${scope}`);
 
         const response = await fetch(CONFIG.oauth.tokenEndpoint, {
             method: 'POST',
@@ -131,12 +137,19 @@ class AuthenticationManager {
     async redirectToSSO(forceLogin = false) {
         log('info', 'Redirecting to Keycloak SSO...');
 
+        // Use runtime scope if available (from UI), otherwise fall back to config
+        const scope = (typeof getRuntimeScope !== 'undefined' ? getRuntimeScope('sso') : null)
+                      || CONFIG.oauth.scopes?.sso
+                      || CONFIG.oauth.scope;
+
         const params = new URLSearchParams({
             client_id: CONFIG.oauth.clientId,
             redirect_uri: CONFIG.oauth.redirectUri,
             response_type: CONFIG.oauth.responseType,
-            scope: CONFIG.oauth.scope
+            scope: scope
         });
+
+        log('info', `Scope: ${scope}`);
 
         // PKCE support (RFC 7636)
         if (CONFIG.oauth.pkce.enabled) {
@@ -219,12 +232,19 @@ class AuthenticationManager {
             // Use discovered authorization endpoint
             const authEndpoint = metadata.authorization_endpoint;
 
+            // Use runtime scope if available (from UI), otherwise fall back to config
+            const scope = (typeof getRuntimeScope !== 'undefined' ? getRuntimeScope('mcpOAuth') : null)
+                          || CONFIG.oauth.scopes?.mcpOAuth
+                          || CONFIG.oauth.scope;
+
             const params = new URLSearchParams({
                 client_id: CONFIG.oauth.clientId,
                 redirect_uri: CONFIG.oauth.redirectUri,
                 response_type: CONFIG.oauth.responseType,
-                scope: CONFIG.oauth.scope
+                scope: scope
             });
+
+            log('info', `Scope: ${scope}`);
 
             // PKCE support (RFC 7636)
             if (CONFIG.oauth.pkce.enabled) {
@@ -327,6 +347,17 @@ class AuthenticationManager {
             code_challenge_method: 'S256'                       // REQUIRED (PKCE)
         });
 
+        // Add scope if configured (optional - overrides useDefaultScopes behavior)
+        // Use runtime scope if available (from UI), otherwise fall back to config
+        const configuredScope = (typeof getRuntimeScope !== 'undefined' ? getRuntimeScope('inspector') : null)
+                                || CONFIG.oauth.scopes?.inspector;
+        if (configuredScope && !CONFIG.oauth.inspector.useDefaultScopes) {
+            params.append('scope', configuredScope);
+            log('info', `Scope: ${configuredScope}`);
+        } else if (CONFIG.oauth.inspector.useDefaultScopes) {
+            log('warning', '⚠ No scope parameter (uses IDP defaults)');
+        }
+
         const authUrl = `${CONFIG.oauth.inspector.authEndpoint}?${params.toString()}`;
 
         log('success', '✓ Inspector-style OAuth request built (minimal parameters)');
@@ -337,7 +368,6 @@ class AuthenticationManager {
         log('info', '  - code_challenge: ' + codeChallenge.substring(0, 20) + '...');
         log('info', '  - code_challenge_method: S256');
         log('warning', '⚠ No state parameter (PKCE provides CSRF protection)');
-        log('warning', '⚠ No scope parameter (uses IDP defaults)');
         console.log('[AUTH-INSPECTOR] Authorization URL:', authUrl);
 
         // Redirect to IDP authorization endpoint

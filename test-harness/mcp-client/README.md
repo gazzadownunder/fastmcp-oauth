@@ -195,6 +195,38 @@ testUser: {
 }
 ```
 
+### Scope Configuration
+
+Each authentication method can use different OAuth scopes:
+
+```javascript
+scopes: {
+  password: 'email openid',           // Password grant flow
+  sso: 'email openid',                // SSO redirect (authorization code)
+  mcpOAuth: 'email openid',           // MCP OAuth discovery
+  inspector: 'email openid'           // Inspector-style OAuth
+}
+```
+
+**Common Scope Configurations:**
+
+- **Basic OIDC**: `'email openid'` - Email and user ID claims
+- **Full Profile**: `'email openid profile'` - Adds name, picture, etc.
+- **Custom MCP Scopes**: `'email openid mcp:read mcp:write'` - MCP-specific permissions
+- **API-Specific**: `'email openid sql:query sql:execute'` - Resource-specific scopes
+
+**Note**: For Inspector-style OAuth, scopes are only included if `inspector.useDefaultScopes` is set to `false`. When `true`, the IDP's default scopes are used.
+
+**Example - Different Scopes per Method:**
+```javascript
+scopes: {
+  password: 'email openid profile',              // More info for testing
+  sso: 'email openid mcp:read mcp:write',       // Production-like scopes
+  mcpOAuth: 'email openid',                      // Minimal scopes
+  inspector: 'email openid offline_access'       // Inspector with refresh token
+}
+```
+
 ## 🐛 Troubleshooting
 
 ### Authentication Fails

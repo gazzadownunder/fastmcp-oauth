@@ -13,6 +13,13 @@ import { createSQLWriteTool } from './sql-write.js';
 import { createSQLReadTool } from './sql-read.js';
 import { createSqlSchemaTool } from './sql-schema.js';
 import { createSqlTableDetailsTool } from './sql-table-details.js';
+// NOTE: kerberos-delegate is NOT exported - it's an internal implementation detail
+// Kerberos delegation happens automatically when file browsing tools are called
+import {
+  createListDirectoryTool,
+  createReadFileTool,
+  createFileInfoTool,
+} from './kerberos-file-browse.js';
 import type { ToolFactory } from '../types.js';
 
 export { createSqlDelegateTool } from './sql-delegate.js';
@@ -22,6 +29,12 @@ export { createSQLWriteTool } from './sql-write.js';
 export { createSQLReadTool } from './sql-read.js';
 export { createSqlSchemaTool } from './sql-schema.js';
 export { createSqlTableDetailsTool } from './sql-table-details.js';
+// NOTE: kerberos-delegate is NOT exported - see comment above
+export {
+  createListDirectoryTool,
+  createReadFileTool,
+  createFileInfoTool,
+} from './kerberos-file-browse.js';
 
 /**
  * Get all available tool factories
@@ -48,6 +61,10 @@ export function getAllToolFactories(): ToolFactory[] {
     createUserInfoTool,
     createSQLWriteTool,
     createSQLReadTool,
+    // NOTE: kerberos-delegate is NOT included - delegation happens automatically
+    createListDirectoryTool,
+    createReadFileTool,
+    createFileInfoTool,
   ];
 }
 

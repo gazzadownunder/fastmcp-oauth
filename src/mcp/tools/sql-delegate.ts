@@ -29,7 +29,10 @@ import { handleToolError } from '../utils/error-helpers.js';
 const sqlDelegateSchema = z.object({
   action: z.enum(['query']).describe('SQL operation type (PostgreSQL only supports query)'),
   sql: z.string().describe('SQL query string with positional parameters ($1, $2, etc.)'),
-  params: z.array(z.any()).optional().describe('Array of parameter values (for PostgreSQL $1, $2, etc.)'),
+  params: z
+    .array(z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .optional()
+    .describe('Array of parameter values (for PostgreSQL $1, $2, etc.)'),
   resource: z.string().optional().default('postgresql-database').describe('Resource identifier'),
 });
 
