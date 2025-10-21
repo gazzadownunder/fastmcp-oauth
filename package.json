@@ -8,6 +8,10 @@
   "workspaces": [
     "packages/*"
   ],
+  "bin": {
+    "mcp-oauth-scaffold": "./bin/scaffold-module.js",
+    "mcp-oauth-validate": "./bin/validate-config.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -28,6 +32,10 @@
     "./config": {
       "types": "./dist/config/index.d.ts",
       "import": "./dist/config/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
     }
   },
   "scripts": {
