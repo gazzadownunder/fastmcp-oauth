@@ -88,6 +88,64 @@ Demonstrates:
 - `canAccess` filtering
 - Permission-based tool access
 
+### [rest-api-delegation.ts](./rest-api-delegation.ts)
+**REST API integration with token exchange**
+
+Demonstrates:
+- Custom REST API delegation module
+- Token exchange for API-specific JWTs
+- Parameter and result transformation
+- Production-ready error handling
+
+### [graphql-delegation.ts](./graphql-delegation.ts)
+**GraphQL API integration**
+
+Shows how to delegate to GraphQL backends:
+- GraphQL query and mutation support
+- Variable parameterization
+- Token exchange for GraphQL-specific JWT
+- GraphQL error handling
+- Operation name support
+
+### [grpc-delegation.ts](./grpc-delegation.ts)
+**gRPC service integration**
+
+Demonstrates:
+- gRPC unary call delegation
+- Token exchange for service-specific JWT
+- Metadata (headers) propagation
+- Automatic retry with exponential backoff
+- gRPC status code handling
+
+### [ldap-delegation.ts](./ldap-delegation.ts)
+**LDAP/Active Directory integration**
+
+Shows how to integrate with directory services:
+- LDAP authentication and bind
+- User search and attribute retrieval
+- Group membership queries
+- Directory modifications (add, modify, delete)
+- LDAPS (secure) connection support
+
+### [filesystem-delegation.ts](./filesystem-delegation.ts)
+**Secure filesystem access**
+
+Demonstrates:
+- User-scoped filesystem operations
+- Path validation and traversal prevention
+- Whitelist-based directory access
+- File read/write/delete operations
+- Cross-platform support (Windows/Linux)
+
+### [api-delegation-with-token-exchange.ts](./api-delegation-with-token-exchange.ts)
+**Token exchange pattern**
+
+Shows the token exchange pattern for API delegation:
+- Exchanging requestor JWT for delegation token
+- Token caching with session binding
+- Fallback to API key authentication
+- CoreContext integration
+
 ## Installation
 
 When using this framework in your own project:
@@ -182,8 +240,86 @@ See `config/oauth-obo-test.json` for a complete example.
 - Users never modify framework code
 - All customization via configuration
 
+## When to Use Each Delegation Pattern
+
+### REST API Delegation
+**Use when:**
+- Integrating with modern HTTP/JSON APIs
+- Need to exchange tokens for downstream API access
+- APIs support Bearer token authentication
+- Stateless request/response pattern
+
+**Best for:** Third-party SaaS APIs, internal microservices, cloud services
+
+### GraphQL Delegation
+**Use when:**
+- Backend uses GraphQL instead of REST
+- Need flexible query capabilities with variables
+- Working with federated GraphQL schemas
+- Complex nested data requirements
+
+**Best for:** Modern web applications, data aggregation services, microservice orchestration
+
+### gRPC Delegation
+**Use when:**
+- Backend services use gRPC protocol
+- Need high-performance RPC calls
+- Working with protocol buffers (protobuf)
+- Microservice-to-microservice communication
+
+**Best for:** Internal microservices, high-throughput systems, streaming data
+
+### LDAP Delegation
+**Use when:**
+- Need to authenticate users against Active Directory
+- Querying organizational directory information
+- Managing user groups and permissions
+- Legacy enterprise integration
+
+**Best for:** Corporate environments, Windows Active Directory, enterprise user management
+
+### Filesystem Delegation
+**Use when:**
+- Need secure file access on behalf of users
+- Document management and storage
+- User-scoped file operations
+- Legacy file-based applications
+
+**Best for:** Document repositories, file processing systems, backup/restore operations
+
+### SQL Delegation
+**Use when:**
+- Legacy databases require user impersonation
+- SQL Server `EXECUTE AS USER` delegation
+- Row-level security based on login context
+- Direct database access is necessary
+
+**Best for:** Legacy enterprise databases, SQL Server environments, mainframe integration
+
+### Kerberos Delegation
+**Use when:**
+- Windows Active Directory constrained delegation
+- Legacy Windows platforms require user context
+- S4U2Self/S4U2Proxy delegation needed
+- Enterprise SSO integration
+
+**Best for:** Windows enterprise environments, legacy system integration, Kerberos-based SSO
+
+## Choosing the Right Pattern
+
+| Pattern | Complexity | Performance | Security | Use Case |
+|---------|-----------|-------------|----------|----------|
+| REST API | Low | Medium | High | Modern web APIs |
+| GraphQL | Medium | Medium | High | Flexible data queries |
+| gRPC | High | Very High | High | Internal microservices |
+| LDAP | Medium | Medium | High | Directory services |
+| Filesystem | Low | High | Medium | File operations |
+| SQL | Medium | High | Very High | Database delegation |
+| Kerberos | Very High | Medium | Very High | Windows SSO |
+
 ## Further Reading
 
+- [Docs/EXTENDING.md](../Docs/EXTENDING.md) - Complete guide to creating custom modules
 - [Docs/refactor.md](../Docs/refactor.md) - Architecture details
 - [CLAUDE.md](../CLAUDE.md) - Framework overview
 - [Docs/oauth2 implementation.md](../Docs/oauth2%20implementation.md) - OAuth 2.1 OBO pattern
