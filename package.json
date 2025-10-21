@@ -69,17 +69,15 @@
     "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
-    "kerberos": "^2.2.2",
     "mcp-proxy": "^5.9.0",
     "undici": "^7.13.0",
     "zod": "^3.25.76"
   },
   "optionalDependencies": {
-    "@mcp-oauth/sql-delegation": "^1.0.0"
+    "@mcp-oauth/sql-delegation": "^1.0.0",
+    "@mcp-oauth/kerberos-delegation": "^1.0.0"
   },
   "devDependencies": {
-    "@types/kerberos": "^1.1.5",
-    "@types/mssql": "^9.1.8",
     "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

@@ -49,8 +49,10 @@ export { DelegationRegistry } from './registry.js';
 // for the core framework to function.
 
 // ============================================================================
-// Kerberos Delegation Module (Placeholder)
+// Kerberos Delegation Module - Moved to @mcp-oauth/kerberos-delegation package
 // ============================================================================
-
-export { KerberosDelegationModule } from "./kerberos/kerberos-module.js";
-export type { KerberosConfig, KerberosAction, KerberosParams } from "./kerberos/types.js";
+// Kerberos delegation is now available as a separate optional package:
+// npm install @mcp-oauth/kerberos-delegation
+//
+// This demonstrates the framework's modularity - Kerberos support is NOT required
+// for the core framework to function.

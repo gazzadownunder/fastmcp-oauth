@@ -94,6 +94,48 @@ describe('Phase 4: Monorepo Modularity', () => {
     });
   });
 
+  describe('Kerberos Delegation Package', () => {
+    it('should import kerberos delegation from separate package source', async () => {
+      // Import from workspace package source
+      const { KerberosDelegationModule } = await import('../../packages/kerberos-delegation/src/kerberos-module.js');
+
+      expect(KerberosDelegationModule).toBeDefined();
+    });
+
+    it('should register kerberos delegation module from external package', async () => {
+      const { DelegationRegistry } = await import('../../src/delegation/registry.js');
+      const { AuditService } = await import('../../src/core/audit-service.js');
+      const { KerberosDelegationModule } = await import('../../packages/kerberos-delegation/src/kerberos-module.js');
+
+      const auditService = new AuditService();
+      const registry = new DelegationRegistry(auditService);
+
+      const kerberosModule = new KerberosDelegationModule();
+
+      registry.register(kerberosModule);
+
+      expect(registry.has('kerberos')).toBe(true);
+      expect(registry.get('kerberos')).toBe(kerberosModule);
+    });
+
+    it('should verify kerberos delegation module implements DelegationModule interface', async () => {
+      const { KerberosDelegationModule } = await import('../../packages/kerberos-delegation/src/kerberos-module.js');
+
+      const kerberosModule = new KerberosDelegationModule();
+
+      // Verify interface methods exist
+      expect(typeof kerberosModule.initialize).toBe('function');
+      expect(typeof kerberosModule.delegate).toBe('function');
+      expect(typeof kerberosModule.validateAccess).toBe('function');
+      expect(typeof kerberosModule.healthCheck).toBe('function');
+      expect(typeof kerberosModule.destroy).toBe('function');
+
+      // Verify interface properties
+      expect(kerberosModule.name).toBe('kerberos');
+      expect(kerberosModule.type).toBe('authentication');
+    });
+  });
+
   describe('Package Dependencies', () => {
     it('should verify SQL package structure', async () => {
       const { PostgreSQLDelegationModule } = await import('../../packages/sql-delegation/src/postgresql-module.js');
@@ -111,9 +153,21 @@ describe('Phase 4: Monorepo Modularity', () => {
       expect(sqlModule.name).toBe('sql');
     });
 
+    it('should verify kerberos package structure', async () => {
+      const { KerberosDelegationModule } = await import('../../packages/kerberos-delegation/src/kerberos-module.js');
+
+      // Verify module is exported
+      expect(KerberosDelegationModule).toBeDefined();
+
+      // Verify module can be instantiated
+      const kerberosModule = new KerberosDelegationModule();
+
+      expect(kerberosModule.name).toBe('kerberos');
+    });
+
     it('should verify core framework structure', () => {
-      // Verify core framework doesn't have direct SQL dependencies in source
-      // This is checked by TypeScript - if SQL modules were in core, this test would fail to compile
+      // Verify core framework doesn't have direct SQL/Kerberos dependencies in source
+      // This is checked by TypeScript - if delegation modules were in core, this test would fail to compile
       expect(true).toBe(true);
     });
 

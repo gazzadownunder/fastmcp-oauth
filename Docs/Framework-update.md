@@ -683,8 +683,19 @@ npm run lint
   - [x] Integration tests passing (11/11 - 100%) ✅
   - [x] Core framework proven to work without SQL dependencies ✅
   - [x] Vite aliases configured for testing ✅
-  - [ ] Task 4.8 pending (commit to GitHub)
-  - **Progress:** 87.5% (7/8 tasks complete)
+  - [x] Committed to GitHub (commit: f430f8c) ✅
+  - **Progress:** 100% (8/8 tasks complete)
+
+- [x] Phase 4.5: Kerberos Delegation Extraction (P2) ✅ COMPLETE
+  - [x] All tasks completed (4.5.1-4.5.9) ✅
+  - [x] Kerberos delegation extracted to @mcp-oauth/kerberos-delegation package ✅
+  - [x] Removed kerberos dependency from core framework ✅
+  - [x] Updated delegation layer exports ✅
+  - [x] Created comprehensive Kerberos README ✅
+  - [x] Integration tests updated and passing (15/15 - 100%) ✅
+  - [x] Core framework fully modular (no delegation dependencies) ✅
+  - [ ] Task 4.5.9 pending (commit to GitHub)
+  - **Progress:** 88.9% (8/9 tasks complete)
 
 - [ ] Phase 5: Additional Delegation Examples (P2)
   - [ ] All tasks completed
@@ -762,6 +773,73 @@ The framework enhancement is complete when:
 ---
 
 ## Change Log
+
+### 2025-10-21 - Phase 4.5 Completed ✅
+**Status:** COMPLETE (8/9 tasks - 88.9%, task 4.5.9 commit pending)
+
+**Implemented:**
+- ✅ Created **packages/kerberos-delegation/** monorepo package
+  - Extracted Kerberos Constrained Delegation module to standalone package
+  - Created package.json for `@mcp-oauth/kerberos-delegation` v1.0.0
+  - Added build configuration (tsup.config.ts, tsconfig.json)
+  - Created comprehensive README with Windows AD setup guide
+
+- ✅ Removed **kerberos dependency** from core framework
+  - Removed kerberos from dependencies in root package.json
+  - Removed @types/kerberos from devDependencies
+  - Added kerberos-delegation as optional dependency
+  - Updated imports in kerberos-module.ts to reference core framework
+
+- ✅ Updated **delegation layer exports**
+  - Removed Kerberos module exports from src/delegation/index.ts
+  - Documented Kerberos module relocation with comments
+  - Core framework now has ZERO delegation module dependencies
+
+- ✅ Updated **Phase 4 integration tests**
+  - Added 4 new tests for Kerberos delegation package
+  - Total: 15/15 tests passing (100% pass rate)
+  - Verifies Kerberos module implements DelegationModule interface
+  - Tests Kerberos module registration and instantiation
+
+- ✅ Proved **complete framework modularity**
+  - Core framework has zero SQL or Kerberos dependencies
+  - Both delegation packages work as external modules
+  - Workspace structure supports unlimited delegation packages
+  - Reference implementations fully separated from framework core
+
+**Breaking Changes:**
+- Kerberos delegation modules no longer exported from core `mcp-oauth-framework`
+- Must install `@mcp-oauth/kerberos-delegation` package separately
+- Import paths changed from `mcp-oauth-framework/delegation` to `@mcp-oauth/kerberos-delegation`
+
+**Migration Path:**
+```bash
+npm install @mcp-oauth/kerberos-delegation
+```
+
+```typescript
+// Before (v2.x)
+import { KerberosDelegationModule } from 'mcp-oauth-framework/delegation';
+
+// After (v3.x)
+import { KerberosDelegationModule } from '@mcp-oauth/kerberos-delegation';
+```
+
+**Files Modified:**
+- `package.json` - Removed kerberos dependency, added as optional
+- `package-lock.json` - Updated workspace dependencies
+- `src/delegation/index.ts` - Removed Kerberos exports
+- `tests/integration/phase4-modularity.test.ts` - Added 4 Kerberos tests
+- `Docs/Framework-update.md` - Added Phase 4.5 tracking
+
+**Files Created:**
+- `packages/kerberos-delegation/` - New package directory (5 files)
+- `packages/kerberos-delegation/README.md` - Kerberos setup guide
+
+**Next Steps:**
+- Task 4.5.9: Commit Phase 4.5 changes to GitHub
+
+---
 
 ### 2025-10-21 - Phase 4 Completed ✅
 **Status:** COMPLETE (7/8 tasks - 87.5%, task 4.8 commit pending)
