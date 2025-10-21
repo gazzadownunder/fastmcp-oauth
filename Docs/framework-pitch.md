@@ -493,12 +493,39 @@ mcp-oauth/
 
 ### 🔮 Future Enhancements (v4.x)
 
-- ⏭️ Distributed Cache (Redis/Valkey for multi-server deployments)
-- ⏭️ Token Introspection (periodic re-validation of cached tokens)
-- ⏭️ OpenTelemetry Support (advanced observability)
-- ⏭️ OAuth 2.1 Authorization Code Flow (for clients without tokens)
-- ⏭️ PKCE Support (for public clients)
-- ⏭️ Session Key Rotation (automatic key rotation for long-lived sessions)
+#### Planned Features
+
+- ⏭️ **Distributed Cache (Redis/Valkey)** - Multi-server token cache for horizontal scaling
+  - Status: Not implemented (in-memory only via EncryptedTokenCache)
+  - Use case: Multi-server deployments with shared session state
+
+- ⏭️ **Token Introspection (RFC 7662)** - Periodic re-validation of cached tokens
+  - Status: Not implemented (JWT validation only, cache invalidation via TTL/JWT hash)
+  - Use case: Real-time token revocation detection
+
+- ⏭️ **OpenTelemetry Support** - Advanced distributed tracing and metrics
+  - Status: Not implemented (basic console/audit logging only)
+  - Use case: Production observability with Prometheus/Grafana
+
+- ⏭️ **Session Key Rotation** - Automatic encryption key rotation for long-lived sessions
+  - Status: Not implemented (session timeout provides key cleanup after 15min)
+  - Use case: Extended session security (24+ hour sessions)
+
+#### Architecturally Excluded Features
+
+The following features are **intentionally excluded** per MCP OAuth 2.1 specification (MCP servers are Resource Servers, not Authorization Servers):
+
+- ❌ **OAuth 2.1 Authorization Code Flow** - OUT OF SCOPE
+  - **Why excluded:** MCP servers validate tokens, they don't issue them
+  - **Client responsibility:** OAuth flow handled by MCP clients + IDP
+  - **What IS implemented:** Bearer token validation, Protected Resource Metadata (RFC 9728)
+  - **Documentation:** Client implementation guidance in CLAUDE.md (lines 412-462)
+
+- ❌ **PKCE Support** - OUT OF SCOPE
+  - **Why excluded:** PKCE is performed between client and IDP, not MCP server
+  - **Client responsibility:** Code challenge/verifier generation
+  - **What IS implemented:** Client guidance with PKCE example code in CLAUDE.md (lines 419-443)
+  - **Documentation:** Complete PKCE implementation example for clients
 
 ---
 

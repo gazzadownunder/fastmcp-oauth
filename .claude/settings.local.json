@@ -85,7 +85,10 @@
       "Bash(npx tsup:*)",
       "Read(//c/tmp/**)",
       "Bash(1)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(mv:*)",
+      "Bash(git -C \"c:\\Users\\gazza\\Local Documents\\GitHub\\MCP Services\\MCP-Oauth\" diff --stat Docs/EXTENDING.md)",
+      "Bash(git -C \"c:\\Users\\gazza\\Local Documents\\GitHub\\MCP Services\\MCP-Oauth\" diff Docs/EXTENDING.md)"
     ],
     "deny": [],
     "ask": []

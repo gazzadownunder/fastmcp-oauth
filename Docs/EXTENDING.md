@@ -165,8 +165,7 @@ const myApiTool = createDelegationTool(
     description: 'Call My API service',
     parameters: myApiParamsSchema,
     action: 'call',
-    requiredPermission: 'api:execute',
-    requiredRoles: ['user', 'admin'],
+    requiredRoles: ['user', 'admin'], // At least one role required
   },
   coreContext
 );
@@ -198,8 +197,7 @@ const tool = createDelegationTool(
       param1: z.string(),
     }),
     action: 'action-name',  // Action to pass to module
-    requiredPermission: 'scope:action', // Required OAuth permission
-    requiredRoles: ['user'], // Optional: Required roles
+    requiredRoles: ['user'], // Required roles from JWT (at least one)
   },
   coreContext              // CoreContext from server
 );
@@ -208,7 +206,7 @@ const tool = createDelegationTool(
 ### What the Factory Does For You
 
 1. **Authentication:** Automatically checks if user is authenticated
-2. **Authorization:** Validates required permissions and roles
+2. **Authorization:** Validates required roles from JWT claims
 3. **Visibility Control:** Implements `canAccess()` for tool filtering
 4. **Session Management:** Extracts and validates user session
 5. **Delegation:** Calls the delegation module via DelegationRegistry
@@ -229,7 +227,7 @@ const tool = createDelegationTool('sql', {
     filter: z.record(z.any()),
   }),
   action: 'query',
-  requiredPermission: 'sql:read',
+  requiredRoles: ['user', 'admin'], // At least one role required
 
   // Transform parameters before delegation
   transformParams: (params, session) => ({
@@ -252,13 +250,13 @@ const tool = createDelegationTool('my-api', {
     userId: z.string(),
   }),
   action: 'getUserProfile',
-  requiredPermission: 'profile:read',
+  requiredRoles: ['user'], // At least 'user' role required
 
   // Transform result before returning to LLM
   transformResult: (apiResult) => ({
     displayName: apiResult.fullName,
     email: apiResult.email,
-    roles: apiResult.permissions.map((p: any) => p.role),
+    roles: apiResult.roles,
     // Hide sensitive fields like SSN, address
   }),
 }, coreContext);
@@ -266,7 +264,7 @@ const tool = createDelegationTool('my-api', {
 
 ### Custom Visibility Logic
 
-Control when tool is visible to LLM (beyond standard permission checks):
+Control when tool is visible to LLM (beyond standard role checks):
 
 ```typescript
 const tool = createDelegationTool('admin-api', {
@@ -276,8 +274,7 @@ const tool = createDelegationTool('admin-api', {
     userId: z.string(),
   }),
   action: 'deleteUser',
-  requiredPermission: 'admin:delete',
-  requiredRoles: ['admin'],
+  requiredRoles: ['admin'], // Must have 'admin' role
 
   // Custom visibility check
   canAccess: (mcpContext) => {
@@ -301,15 +298,14 @@ const sqlTools = createDelegationTools('sql', [
     description: 'Read data from database',
     parameters: sqlReadSchema,
     action: 'query',
-    requiredPermission: 'sql:read',
+    requiredRoles: ['user', 'admin'], // At least one role required
   },
   {
     name: 'sql-write',
     description: 'Write data to database',
     parameters: sqlWriteSchema,
     action: 'execute',
-    requiredPermission: 'sql:write',
-    requiredRoles: ['admin'], // More restrictive
+    requiredRoles: ['admin'], // Write requires admin role
   },
 ], coreContext);
 
@@ -469,7 +465,7 @@ const myTool: ToolRegistration = {
     if (!auth.isAuthenticated(mcpContext)) {
       return false;
     }
-    return mcpContext.session?.permissions.includes('my:permission') ?? false;
+    return auth.hasAnyRole(mcpContext, ['user', 'admin']);
   },
 
   // Tool handler (hard check)
@@ -478,10 +474,8 @@ const myTool: ToolRegistration = {
       // Hard check: Throw on missing auth
       auth.requireAuth(mcpContext);
 
-      // Hard check: Throw on missing permission
-      if (!mcpContext.session?.permissions.includes('my:permission')) {
-        throw createSecurityError('FORBIDDEN', 'Missing permission: my:permission', 403);
-      }
+      // Hard check: Throw on missing role
+      auth.requireAnyRole(mcpContext, ['user', 'admin']);
 
       // Perform operation
       const result = await doSomething(params.param1);
@@ -645,22 +639,24 @@ async destroy(): Promise<void> {
 **Symptom:** Tool exists but LLM doesn't see it in tools list.
 
 **Causes:**
-1. `canAccess()` returns false (user lacks permission)
+1. `canAccess()` returns false (user lacks required role)
 2. Tool not registered (`server.registerTool()` not called)
 3. Server not started (`await server.start()` missing)
 
 **Solution:**
 ```typescript
 // Debug visibility
+const auth = new Authorization();
 const tool = createDelegationTool('my-api', {
   // ...
   canAccess: (mcpContext) => {
     console.log('[DEBUG] canAccess check:', {
       authenticated: !!mcpContext.session,
-      permissions: mcpContext.session?.permissions,
-      requiredPermission: 'my:permission',
+      userRole: mcpContext.session?.role,
+      customRoles: mcpContext.session?.customRoles,
+      requiredRoles: ['user', 'admin'],
     });
-    return mcpContext.session?.permissions.includes('my:permission') ?? false;
+    return auth.hasAnyRole(mcpContext, ['user', 'admin']);
   },
 }, coreContext);
 ```
@@ -687,11 +683,11 @@ echo "$JWT" | jwt decode -
 
 ### Tool Call Fails with 403 Forbidden
 
-**Symptom:** Tool executes but fails permission check.
+**Symptom:** Tool executes but fails role check.
 
 **Causes:**
-1. User lacks required permission
-2. User lacks required role
+1. User lacks required role from JWT
+2. Role mapping configuration incorrect
 3. Custom `canAccess()` logic rejects user
 
 **Solution:**
@@ -700,8 +696,8 @@ echo "$JWT" | jwt decode -
 console.log('User session:', {
   userId: session.userId,
   role: session.role,
-  permissions: session.permissions,
-  requiredPermission: 'my:permission',
+  customRoles: session.customRoles,
+  requiredRoles: ['user', 'admin'],
 });
 ```
 
