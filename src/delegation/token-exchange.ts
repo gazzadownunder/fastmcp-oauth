@@ -134,7 +134,7 @@ export class TokenExchangeService {
       console.log('[TokenExchange] IDP response status:', response.status);
 
       // Parse response
-      const responseData = await response.json();
+      const responseData = await response.json() as Record<string, any>;
       console.log('[TokenExchange] IDP response data:', {
         hasAccessToken: !!responseData.access_token,
         tokenType: responseData.token_type,

@@ -4,7 +4,6 @@ import {
   DelegationConfigSchema,
   MCPConfigSchema,
   UnifiedConfigSchema,
-  PermissionConfigSchema,
   isLegacyConfig,
   isUnifiedConfig
 } from '../../../src/config/schemas/index.js';
@@ -412,62 +411,6 @@ describe('Config Schemas', () => {
     });
   });
 
-  // ============================================================================
-  // SECURITY (SEC-2): Permission Configuration Guard Tests
-  // ============================================================================
-
-  describe('PermissionConfigSchema - UNASSIGNED_ROLE protection (SEC-2)', () => {
-    it('should reject config with customPermissions.unassigned', () => {
-      const invalidConfig = {
-        adminPermissions: ['admin'],
-        userPermissions: ['read'],
-        guestPermissions: [],
-        customPermissions: {
-          'unassigned': ['some-permission'] // ❌ Should fail validation
-        }
-      };
-
-      const result = PermissionConfigSchema.safeParse(invalidConfig);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.errors[0].message).toContain('must not include "unassigned" key');
-      }
-    });
-
-    it('should accept config without unassigned in customPermissions', () => {
-      const validConfig = {
-        adminPermissions: ['admin'],
-        userPermissions: ['read'],
-        guestPermissions: [],
-        customPermissions: {
-          'custom-role': ['some-permission'] // ✅ Valid
-        }
-      };
-
-      expect(() => PermissionConfigSchema.parse(validConfig)).not.toThrow();
-    });
-
-    it('should accept config with empty customPermissions', () => {
-      const validConfig = {
-        adminPermissions: ['admin'],
-        userPermissions: ['read'],
-        guestPermissions: [],
-        customPermissions: {} // ✅ Empty is valid
-      };
-
-      expect(() => PermissionConfigSchema.parse(validConfig)).not.toThrow();
-    });
-
-    it('should accept config without customPermissions field (uses default)', () => {
-      const validConfig = {
-        adminPermissions: ['admin'],
-        userPermissions: ['read'],
-        guestPermissions: []
-        // customPermissions omitted - should use default {}
-      };
-
-      const result = PermissionConfigSchema.parse(validConfig);
-      expect(result.customPermissions).toEqual({});
-    });
-  });
+  // Note: Permission-based config tests have been removed.
+  // Framework now uses pure role-based authorization without static permissions.
 });

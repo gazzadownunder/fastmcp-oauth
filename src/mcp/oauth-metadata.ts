@@ -76,20 +76,20 @@ export function generateProtectedResourceMetadata(
   const authConfig = coreContext.configManager.getAuthConfig();
 
   // Extract all authorization server issuers from trusted IDPs
-  const authorizationServers = authConfig.trustedIDPs.map((idp) => idp.issuer);
+  const authorizationServers = authConfig.trustedIDPs.map((idp: any) => idp.issuer);
 
   // Extract all supported signing algorithms from trusted IDPs
-  const supportedAlgorithms = [
-    ...new Set(
-      authConfig.trustedIDPs.flatMap((idp) => idp.algorithms || ['RS256', 'ES256'])
-    ),
-  ];
+  const supportedAlgorithms = Array.from(
+    new Set(
+      authConfig.trustedIDPs.flatMap((idp: any) => idp.algorithms || ['RS256', 'ES256'])
+    )
+  );
 
   return {
     resource: serverUrl,
     authorization_servers: authorizationServers,
     bearer_methods_supported: ['header'], // MCP uses Authorization: Bearer header
-    resource_signing_alg_values_supported: supportedAlgorithms,
+    resource_signing_alg_values_supported: supportedAlgorithms as string[],
     scopes_supported: extractSupportedScopes(coreContext),
     resource_documentation: `${serverUrl}/docs`,
   };

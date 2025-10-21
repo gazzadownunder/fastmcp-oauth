@@ -38,11 +38,16 @@ describe('TokenExchangeService', () => {
       }).not.toThrow();
     });
 
-    it('should reject HTTP token endpoint', () => {
+    it('should reject HTTP token endpoint in production', () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const invalidConfig = { ...config, tokenEndpoint: 'http://idp.example.com/token' };
       expect(() => {
         new TokenExchangeService(invalidConfig, mockAuditService);
       }).toThrow('Token endpoint must use HTTPS');
+
+      process.env.NODE_ENV = originalEnv;
     });
 
     it('should reject missing token endpoint', () => {
@@ -163,7 +168,10 @@ describe('TokenExchangeService', () => {
       expect(result.errorDescription).toContain('Subject token is required');
     });
 
-    it('should reject HTTP token endpoint in params', async () => {
+    it('should reject HTTP token endpoint in params in production', async () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const result = await service.performExchange({
         subjectToken: 'user-jwt-token',
         subjectTokenType: 'urn:ietf:params:oauth:token-type:jwt',
@@ -175,6 +183,8 @@ describe('TokenExchangeService', () => {
 
       expect(result.success).toBe(false);
       expect(result.errorDescription).toContain('must use HTTPS');
+
+      process.env.NODE_ENV = originalEnv;
     });
 
     it('should reject missing audience', async () => {

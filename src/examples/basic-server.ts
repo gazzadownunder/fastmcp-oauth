@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 
-import { OAuthOBOServer } from '../index.js';
+import { MCPOAuthServer } from '../index.js';
 import { configManager } from '../config/manager.js';
 
 async function main() {
-  const server = new OAuthOBOServer();
+  // Load configuration from environment or default path
+  const configPath = process.env.CONFIG_PATH || './config/oauth-obo.json';
+
+  const server = new MCPOAuthServer(configPath);
 
   try {
-    // Load configuration from environment or default path
-    const configPath = process.env.CONFIG_PATH || './config/oauth-obo.json';
-
     console.log('Starting FastMCP OAuth OBO Server...');
     console.log(`Configuration: ${configPath}`);
     console.log(`Environment: ${configManager.getEnvironment().NODE_ENV}`);
 
     // Start server with HTTP streaming transport
     await server.start({
-      transportType: 'http-stream',
+      transport: 'http-stream',
       port: parseInt(process.env.PORT || '3000'),
       configPath,
     });

@@ -200,5 +200,13 @@ export const DEFAULT_MCP_CONFIG: MCPConfig = {
     'health-check': true,
     'user-info': true,
     'audit-log': false,
+    'kerberos-list-directory': false,
+    'kerberos-read-file': false,
+    'kerberos-file-info': false,
+    'sql-read': false,
+    'sql-write': false,
+    'sql-schema': false,
+    'sql-table-details': false,
+    'oauth-metadata': false,
   },
 };

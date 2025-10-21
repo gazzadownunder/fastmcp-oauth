@@ -178,7 +178,7 @@ describe('JWTValidator', () => {
       const token = `${header}.${payload}.fake-sig`;
 
       await expect(validator.validateJWT(token)).rejects.toThrow(
-        /Untrusted issuer|UNTRUSTED_ISSUER/i
+        /No trusted IDP found|Untrusted issuer|UNTRUSTED_ISSUER/i
       );
     });
   });

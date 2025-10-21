@@ -213,8 +213,8 @@ export class AuthenticationService {
 
       // Step 2: Token Exchange (if configured)
       let delegationToken: string | undefined;
-      let delegationClaims: Record<string, any> | undefined;
-      let effectiveClaims = validationResult.claims; // Default to requestor JWT claims
+      let delegationClaims: Record<string, unknown> | undefined;
+      let effectiveClaims: Record<string, unknown> = validationResult.claims; // Default to requestor JWT claims
 
       if (this.config.tokenExchange && this.tokenExchangeService) {
         console.log('[AuthenticationService] Token exchange configured - performing exchange BEFORE session creation');
@@ -256,7 +256,7 @@ export class AuthenticationService {
         }
 
         // Use TE-JWT claims for role mapping (NOT requestor JWT claims)
-        effectiveClaims = delegationClaims;
+        effectiveClaims = delegationClaims!;
       } else {
         console.log('[AuthenticationService] Token exchange NOT configured - using requestor JWT claims');
       }

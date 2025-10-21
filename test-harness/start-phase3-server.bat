@@ -10,7 +10,7 @@ echo.
 REM Set environment variables (paths relative to project root)
 set NODE_ENV=development
 set CONFIG_PATH=./test-harness/config/phase3-test-config.json
-set SERVER_PORT=3010
+set SERVER_PORT=3000
 
 echo Environment Configuration:
 echo   NODE_ENV:     %NODE_ENV%

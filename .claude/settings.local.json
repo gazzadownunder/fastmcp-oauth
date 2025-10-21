@@ -81,7 +81,11 @@
       "Bash(if [ -f \"pnpm-lock.yaml\" ])",
       "Bash(then grep -A 5 \"mcp-proxy\" pnpm-lock.yaml)",
       "Bash(else echo \"No pnpm-lock.yaml\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(npx tsup:*)",
+      "Read(//c/tmp/**)",
+      "Bash(1)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []

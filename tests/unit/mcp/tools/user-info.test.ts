@@ -144,10 +144,9 @@ describe('user-info Tool', () => {
       expect(result.data).toHaveProperty('userId', 'user123');
       expect(result.data).toHaveProperty('username', 'testuser');
       expect(result.data).toHaveProperty('role', 'user');
-      expect(result.data).toHaveProperty('permissions');
-      expect(result.data.permissions).toEqual(['sql:query', 'sql:procedure']);
       expect(result.data).toHaveProperty('sessionVersion', 1);
       expect(result.data).not.toHaveProperty('claims');
+      // Note: scopes and customRoles are optional and only included if present
     });
 
     it('should include claims when includeClaims=true', async () => {

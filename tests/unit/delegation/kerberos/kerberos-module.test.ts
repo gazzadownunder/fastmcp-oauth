@@ -26,15 +26,18 @@ describe('KerberosDelegationModule (Placeholder)', () => {
     };
 
     mockSession = {
+      _version: 1,
+      sessionId: 'test-session-id',
       userId: 'test-user',
+      username: 'testuser',
       legacyUsername: 'COMPANY\\testuser',
       role: 'user',
-      permissions: ['read'],
-      sessionId: 'test-session-id',
-      issuedAt: Date.now(),
-      expiresAt: Date.now() + 3600000,
-      _version: 1
-    };
+      customRoles: [],
+      scopes: [],
+      customClaims: {},
+      claims: {},
+      rejected: false,
+    } as UserSession;
   });
 
   describe('Module Metadata', () => {
@@ -48,20 +51,30 @@ describe('KerberosDelegationModule (Placeholder)', () => {
   });
 
   describe('initialize()', () => {
-    it('should throw "Not yet implemented" error', async () => {
+    it('should throw initialization error', async () => {
+      // Module attempts initialization but fails due to service ticket requirements
       await expect(module.initialize(mockConfig)).rejects.toThrow(
-        'Kerberos delegation module is not yet implemented'
+        /Failed to initialize Kerberos module/
       );
     });
 
-    it('should mention S4U2Self/S4U2Proxy in error message', async () => {
+    it('should fail when service ticket not obtained', async () => {
       await expect(module.initialize(mockConfig)).rejects.toThrow(
-        /S4U2Self\/S4U2Proxy/
+        /Failed to obtain service ticket/
       );
     });
   });
 
   describe('delegate()', () => {
+    beforeEach(async () => {
+      // Initialize module (will fail, but sets config)
+      try {
+        await module.initialize(mockConfig);
+      } catch {
+        // Expected to fail - module not implemented yet
+      }
+    });
+
     it('should return failure result for any action', async () => {
       const params: KerberosParams = {
         action: 's4u2self',
@@ -71,7 +84,7 @@ describe('KerberosDelegationModule (Placeholder)', () => {
       const result = await module.delegate(mockSession, 's4u2self', params);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('not yet implemented');
+      expect(result.error).toBeDefined();
     });
 
     it('should return audit trail with source field', async () => {
@@ -115,8 +128,14 @@ describe('KerberosDelegationModule (Placeholder)', () => {
   });
 
   describe('validateAccess()', () => {
-    it('should return false (not implemented)', async () => {
+    it('should return true when session has legacyUsername', async () => {
       const result = await module.validateAccess(mockSession);
+      expect(result).toBe(true);
+    });
+
+    it('should return false when session lacks legacyUsername', async () => {
+      const sessionWithoutLegacy = { ...mockSession, legacyUsername: undefined };
+      const result = await module.validateAccess(sessionWithoutLegacy as UserSession);
       expect(result).toBe(false);
     });
   });

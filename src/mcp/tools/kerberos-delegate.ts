@@ -111,7 +111,8 @@ export const createKerberosDelegateTool: ToolFactory = (context: CoreContext) =>
       console.log('[KERBEROS-DELEGATE] Session:', {
         userId: mcpContext.session?.userId,
         legacyUsername: mcpContext.session?.legacyUsername,
-        roles: mcpContext.session?.roles,
+        role: mcpContext.session?.role,
+        customRoles: mcpContext.session?.customRoles,
       });
 
       // Require authentication

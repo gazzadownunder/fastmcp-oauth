@@ -135,7 +135,7 @@
     "serverName": "MCP OAuth Phase 3 Test Server (Cache Enabled)",
     "version": "3.0.0",
     "transport": "http-stream",
-    "port": 3010,
+    "port": 3000,
     "enabledTools": {
       "sql-delegate": true,
       "health-check": true,

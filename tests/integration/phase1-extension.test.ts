@@ -111,21 +111,25 @@ class TestDelegationModule implements DelegationModule {
   }
 
   async validateAccess(session: UserSession): Promise<boolean> {
-    return session.permissions.includes('test:access');
+    return session.role === 'user' || session.role === 'admin';
   }
 
   async healthCheck(): Promise<boolean> {
     return this.initialized;
   }
 
-  async destroy(): Promise<void> {
-    this.initialized = false;
+  // Test helper methods
+  getCalls() {
+    return [...this.calls];
+  }
+
+  clearCalls() {
     this.calls = [];
   }
 
-  // Test helper
-  getCalls() {
-    return this.calls;
+  async destroy(): Promise<void> {
+    this.initialized = false;
+    this.calls = [];
   }
 }
 
@@ -167,7 +171,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
         {
           name: 'test-echo',
           description: 'Echo a message',
-          requiredPermission: 'test:access',
+          requiredRoles: ['user'],
           action: 'echo',
           parameters: z.object({
             message: z.string(),
@@ -189,7 +193,6 @@ describe('Phase 1: Extension API Integration Tests', () => {
         {
           name: 'test-admin-only',
           description: 'Admin only tool',
-          requiredPermission: 'test:admin',
           requiredRoles: ['admin'],
           action: 'echo',
           parameters: z.object({
@@ -208,7 +211,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
         {
           name: 'test-transform',
           description: 'Tool with parameter transformation',
-          requiredPermission: 'test:access',
+          requiredRoles: ['user'],
           action: 'echo',
           parameters: z.object({
             message: z.string(),
@@ -231,7 +234,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
         {
           name: 'test-result-transform',
           description: 'Tool with result transformation',
-          requiredPermission: 'test:access',
+          requiredRoles: ['user'],
           action: 'echo',
           parameters: z.object({
             message: z.string(),
@@ -256,14 +259,14 @@ describe('Phase 1: Extension API Integration Tests', () => {
           {
             name: 'test-tool-1',
             description: 'First tool',
-            requiredPermission: 'test:access',
+            requiredRoles: ['user'],
             action: 'echo',
             parameters: z.object({ message: z.string() }),
           },
           {
             name: 'test-tool-2',
             description: 'Second tool',
-            requiredPermission: 'test:access',
+            requiredRoles: ['user'],
             action: 'calculate',
             parameters: z.object({ a: z.number(), b: z.number() }),
           },
@@ -284,7 +287,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
         {
           name: 'test-single-register',
           description: 'Test single registration',
-          requiredPermission: 'test:access',
+          requiredRoles: ['user'],
           action: 'echo',
           parameters: z.object({ message: z.string() }),
         },
@@ -305,7 +308,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
         {
           name: 'test-uninit',
           description: 'Test',
-          requiredPermission: 'test:access',
+          requiredRoles: ['user'],
           action: 'echo',
           parameters: z.object({ message: z.string() }),
         },
@@ -326,14 +329,14 @@ describe('Phase 1: Extension API Integration Tests', () => {
           {
             name: 'test-batch-1',
             description: 'Batch tool 1',
-            requiredPermission: 'test:access',
+            requiredRoles: ['user'],
             action: 'echo',
             parameters: z.object({ message: z.string() }),
           },
           {
             name: 'test-batch-2',
             description: 'Batch tool 2',
-            requiredPermission: 'test:access',
+            requiredRoles: ['user'],
             action: 'calculate',
             parameters: z.object({ a: z.number(), b: z.number() }),
           },
@@ -353,7 +356,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
         {
           name: 'test-session-extract',
           description: 'Test session extraction',
-          requiredPermission: 'test:access',
+          requiredRoles: ['user'],
           action: 'echo',
           parameters: z.object({ message: z.string() }),
         },
@@ -362,13 +365,15 @@ describe('Phase 1: Extension API Integration Tests', () => {
 
       // Mock session
       const mockSession: UserSession = {
+        _version: 1,
+        sessionId: 'test-session',
         userId: 'test@example.com',
         username: 'test@example.com',
         legacyUsername: 'TEST_USER',
         role: 'user',
         customRoles: [],
-        permissions: ['test:access'],
         scopes: ['openid'],
+        customClaims: {},
         rejected: false,
         claims: {
           iss: 'https://auth.example.com',
@@ -389,28 +394,30 @@ describe('Phase 1: Extension API Integration Tests', () => {
       }
     });
 
-    it('should enforce permission requirements automatically', async () => {
+    it('should enforce role requirements automatically', async () => {
       const tool = createDelegationTool(
         'testmodule',
         {
-          name: 'test-permission-check',
-          description: 'Test permission enforcement',
-          requiredPermission: 'admin:manage',
+          name: 'test-role-check',
+          description: 'Test role enforcement',
+          requiredRoles: ['admin'],
           action: 'echo',
           parameters: z.object({ message: z.string() }),
         },
         coreContext
       );
 
-      // Session without required permission
+      // Session without required role
       const mockSession: UserSession = {
+        _version: 1,
+        sessionId: 'test-session',
         userId: 'test@example.com',
         username: 'test@example.com',
         legacyUsername: 'TEST_USER',
-        role: 'user',
+        role: 'user', // Not admin
         customRoles: [],
-        permissions: ['test:access'], // Missing admin:manage
         scopes: ['openid'],
+        customClaims: {},
         rejected: false,
         claims: {
           iss: 'https://auth.example.com',
@@ -426,7 +433,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
 
       expect(result.status).toBe('failure');
       if ('code' in result) {
-        expect(result.code).toBe('FORBIDDEN');
+        expect(result.code).toBe('INSUFFICIENT_PERMISSIONS');
       }
     });
 
@@ -436,7 +443,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
         {
           name: 'test-delegation-fail',
           description: 'Test delegation failure handling',
-          requiredPermission: 'test:access',
+          requiredRoles: ['user'],
           action: 'fail', // Module will return success: false
           parameters: z.object({ message: z.string() }),
         },
@@ -444,13 +451,15 @@ describe('Phase 1: Extension API Integration Tests', () => {
       );
 
       const mockSession: UserSession = {
+        _version: 1,
+        sessionId: 'test-session',
         userId: 'test@example.com',
         username: 'test@example.com',
         legacyUsername: 'TEST_USER',
         role: 'user',
         customRoles: [],
-        permissions: ['test:access'],
         scopes: ['openid'],
+        customClaims: {},
         rejected: false,
         claims: {
           iss: 'https://auth.example.com',
@@ -473,13 +482,16 @@ describe('Phase 1: Extension API Integration Tests', () => {
 
   describe('End-to-End: Custom Module Extension', () => {
     it('should support full custom delegation workflow', async () => {
+      // Clear previous calls from testModule
+      testModule.clearCalls();
+
       // 1. Create custom delegation tool
       const echoTool = createDelegationTool(
         'testmodule',
         {
           name: 'custom-echo',
           description: 'Custom echo tool',
-          requiredPermission: 'test:access',
+          requiredRoles: ['user'],
           action: 'echo',
           parameters: z.object({ message: z.string() }),
         },
@@ -491,13 +503,15 @@ describe('Phase 1: Extension API Integration Tests', () => {
 
       // 3. Simulate tool execution
       const mockSession: UserSession = {
+        _version: 1,
+        sessionId: 'test-session',
         userId: 'developer@example.com',
         username: 'developer@example.com',
         legacyUsername: 'DEV_USER',
         role: 'user',
         customRoles: ['developer'],
-        permissions: ['test:access', 'test:write'],
         scopes: ['openid', 'profile'],
+        customClaims: {},
         rejected: false,
         claims: {
           iss: 'https://auth.example.com',

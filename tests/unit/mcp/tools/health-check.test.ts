@@ -296,8 +296,8 @@ describe('health-check Tool', () => {
       const result = (await tool.handler({ service: 'sql' }, mcpContext)) as LLMResponse;
 
       expect(result.status).toBe('failure');
-      expect(result.code).toBe('INTERNAL_ERROR');
-      expect(result.message).toContain('Health check failed');
+      expect(result.code).toBe('SERVER_ERROR');
+      expect(result.message).toContain('internal processing error');
     });
 
     it('should return LLMSuccessResponse on success (GAP #5)', async () => {

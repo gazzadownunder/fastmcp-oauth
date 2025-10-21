@@ -24,8 +24,9 @@ describe('Delegation Layer Standalone Integration', () => {
       expect(DelegationRegistry).toBeDefined();
     });
 
-    it('should export SQLDelegationModule', async () => {
-      const { SQLDelegationModule } = await import('../../../src/delegation/index.js');
+    it('should export SQLDelegationModule from package', async () => {
+      // SQL module is now in @mcp-oauth/sql-delegation package
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
 
       expect(SQLDelegationModule).toBeDefined();
     });
@@ -64,7 +65,7 @@ describe('Delegation Layer Standalone Integration', () => {
 
   describe('SQL Delegation Module Creation', () => {
     it('should create SQL module', async () => {
-      const { SQLDelegationModule } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
 
       const sqlModule = new SQLDelegationModule();
 
@@ -73,7 +74,7 @@ describe('Delegation Layer Standalone Integration', () => {
     });
 
     it('should have required DelegationModule methods', async () => {
-      const { SQLDelegationModule } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
 
       const sqlModule = new SQLDelegationModule();
 
@@ -87,9 +88,8 @@ describe('Delegation Layer Standalone Integration', () => {
 
   describe('Module Registration Flow', () => {
     it('should register SQL module with registry', async () => {
-      const { DelegationRegistry, SQLDelegationModule } = await import(
-        '../../../src/delegation/index.js'
-      );
+      const { DelegationRegistry } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
 
       const registry = new DelegationRegistry();
       const sqlModule = new SQLDelegationModule();
@@ -101,9 +101,8 @@ describe('Delegation Layer Standalone Integration', () => {
     });
 
     it('should list registered modules', async () => {
-      const { DelegationRegistry, SQLDelegationModule } = await import(
-        '../../../src/delegation/index.js'
-      );
+      const { DelegationRegistry } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
 
       const registry = new DelegationRegistry();
       const sqlModule = new SQLDelegationModule();
@@ -118,9 +117,8 @@ describe('Delegation Layer Standalone Integration', () => {
 
   describe('Integration with Core', () => {
     it('should integrate with Core AuditService', async () => {
-      const { DelegationRegistry, SQLDelegationModule } = await import(
-        '../../../src/delegation/index.js'
-      );
+      const { DelegationRegistry } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
       const { AuditService } = await import('../../../src/core/index.js');
 
       const logs: any[] = [];
@@ -144,9 +142,8 @@ describe('Delegation Layer Standalone Integration', () => {
     });
 
     it('should accept Core UserSession in delegate calls', async () => {
-      const { DelegationRegistry, SQLDelegationModule } = await import(
-        '../../../src/delegation/index.js'
-      );
+      const { DelegationRegistry } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
       const { ROLE_USER } = await import('../../../src/core/index.js');
 
       const registry = new DelegationRegistry();
@@ -157,11 +154,15 @@ describe('Delegation Layer Standalone Integration', () => {
       // Create Core UserSession
       const session = {
         _version: 1,
+        sessionId: 'test-session',
         userId: 'user123',
         username: 'test.user',
         legacyUsername: 'DOMAIN\\testuser',
         role: ROLE_USER,
-        permissions: ['read', 'write'],
+        customRoles: [],
+        scopes: ['read', 'write'],
+        customClaims: {},
+        claims: {},
         rejected: false,
       };
 
@@ -179,26 +180,34 @@ describe('Delegation Layer Standalone Integration', () => {
 
   describe('Access Validation', () => {
     it('should validate session has legacyUsername for SQL', async () => {
-      const { SQLDelegationModule } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
 
       const sqlModule = new SQLDelegationModule();
 
       const sessionWithLegacy = {
         _version: 1,
+        sessionId: 'test-session-1',
         userId: 'user123',
         username: 'test.user',
         legacyUsername: 'DOMAIN\\testuser',
         role: 'user',
-        permissions: ['read'],
+        customRoles: [],
+        scopes: ['read'],
+        customClaims: {},
+        claims: {},
         rejected: false,
       };
 
       const sessionWithoutLegacy = {
         _version: 1,
+        sessionId: 'test-session-2',
         userId: 'user456',
         username: 'test.user2',
         role: 'user',
-        permissions: ['read'],
+        customRoles: [],
+        scopes: ['read'],
+        customClaims: {},
+        claims: {},
         rejected: false,
       };
 
@@ -209,7 +218,7 @@ describe('Delegation Layer Standalone Integration', () => {
 
   describe('Health Checks', () => {
     it('should return false when not initialized', async () => {
-      const { SQLDelegationModule } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
 
       const sqlModule = new SQLDelegationModule();
 
@@ -243,9 +252,8 @@ describe('Delegation Layer Standalone Integration', () => {
 
   describe('Audit Trail Compliance (GAP #3)', () => {
     it('should create audit trails with source field', async () => {
-      const { DelegationRegistry, SQLDelegationModule } = await import(
-        '../../../src/delegation/index.js'
-      );
+      const { DelegationRegistry } = await import('../../../src/delegation/index.js');
+      const { SQLDelegationModule } = await import('@mcp-oauth/sql-delegation');
 
       const registry = new DelegationRegistry();
       const sqlModule = new SQLDelegationModule();
@@ -254,11 +262,15 @@ describe('Delegation Layer Standalone Integration', () => {
 
       const session = {
         _version: 1,
+        sessionId: 'test-session',
         userId: 'user123',
         username: 'test.user',
         legacyUsername: 'DOMAIN\\testuser',
         role: 'user',
-        permissions: ['read'],
+        customRoles: [],
+        scopes: ['read'],
+        customClaims: {},
+        claims: {},
         rejected: false,
       };
 

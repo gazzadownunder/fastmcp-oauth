@@ -298,7 +298,7 @@ export class MCPOAuthServer {
       },
       protectedResource: {
         resource: serverUrl,
-        authorizationServers: authConfig.trustedIDPs.map((idp) => idp.issuer),
+        authorizationServers: authConfig.trustedIDPs.map((idp: any) => idp.issuer),
         scopesSupported: this.extractSupportedScopes(delegationConfig),
         bearerMethodsSupported: ['header'],
         resourceSigningAlgValuesSupported: primaryIDP.algorithms || ['RS256', 'ES256'],
@@ -400,13 +400,13 @@ export class MCPOAuthServer {
 
     // 7. Create FastMCP server
     const serverName = mcpConfig?.serverName || 'MCP OAuth Server';
-    const serverVersion = mcpConfig?.version || '2.0.0';
+    const serverVersion = (mcpConfig?.version || '2.0.0') as `${number}.${number}.${number}`;
 
     console.log(`[MCP OAuth Server] Creating FastMCP server: ${serverName} v${serverVersion}`);
     this.mcpServer = new FastMCP({
       name: serverName,
       version: serverVersion,
-      authenticate: authMiddleware.authenticate.bind(authMiddleware),
+      authenticate: authMiddleware.authenticate.bind(authMiddleware) as any,
       oauth: this.buildOAuthConfig(port),
     });
 
@@ -503,9 +503,11 @@ export class MCPOAuthServer {
     console.log('[MCP OAuth Server] Starting FastMCP server...');
     await this.mcpServer.start({
       transportType: transport as any,
-      httpStream: transport === 'httpStream' ? { port, endpoint: '/mcp' } : undefined,
-      stateless: true, // OAuth requires stateless mode
-      logLevel: 'debug', // Increased for troubleshooting
+      httpStream: transport === 'httpStream' ? {
+        port,
+        endpoint: '/mcp',
+        stateless: true, // OAuth requires stateless mode
+      } : undefined,
     });
 
     this.isRunning = true;
@@ -558,7 +560,7 @@ export class MCPOAuthServer {
 
     // 1. Stop FastMCP server
     if (this.mcpServer) {
-      await this.mcpServer.close();
+      await this.mcpServer.stop();
       console.log('[MCP OAuth Server] ✓ FastMCP server stopped');
     }
 

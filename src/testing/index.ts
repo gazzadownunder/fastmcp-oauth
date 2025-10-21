@@ -10,7 +10,7 @@
  *   const coreContext = createMockCoreContext();
  */
 
-import type { UserSession, AuditEntry, JWTClaims } from '../core/index.js';
+import type { UserSession, AuditEntry } from '../core/index.js';
 import type { CoreContext } from '../core/types.js';
 import type { DelegationModule, DelegationResult } from '../delegation/base.js';
 
@@ -23,28 +23,24 @@ import type { DelegationModule, DelegationResult } from '../delegation/base.js';
  * const session = createMockUserSession({
  *   userId: 'test-user',
  *   role: 'admin',
- *   permissions: ['sql:read', 'sql:write'],
+ *   customRoles: ['sql-admin'],
  * });
  */
 export function createMockUserSession(overrides: Partial<UserSession> = {}): UserSession {
-  const now = Math.floor(Date.now() / 1000);
-
   const defaultSession: UserSession = {
+    _version: 1,
+    sessionId: 'test-session-123',
     userId: 'test-user-123',
     username: 'testuser',
     role: 'user',
-    permissions: [],
+    customRoles: [],
+    scopes: [],
     customClaims: {},
     claims: {
       iss: 'https://test-idp.example.com',
       sub: 'test-user-123',
       aud: ['test-audience'],
-      exp: now + 3600, // Expires in 1 hour
-      iat: now,
-      nbf: now,
-      rawPayload: 'mock.jwt.token',
     },
-    authenticated: true,
     rejected: false,
   };
 
@@ -71,20 +67,18 @@ export function createMockUserSession(overrides: Partial<UserSession> = {}): Use
  * const token = generateMockJWT({
  *   sub: 'user-123',
  *   roles: ['admin'],
- *   permissions: ['sql:write'],
  * });
  */
-export function generateMockJWT(claims: Partial<JWTClaims> = {}): string {
+export function generateMockJWT(claims: Record<string, any> = {}): string {
   const now = Math.floor(Date.now() / 1000);
 
-  const defaultClaims: JWTClaims = {
+  const defaultClaims = {
     iss: 'https://test-idp.example.com',
     sub: 'test-user',
     aud: ['test-audience'],
     exp: now + 3600,
     iat: now,
     nbf: now,
-    rawPayload: '',
     ...claims,
   };
 
@@ -125,20 +119,8 @@ export function createMockCoreContext(overrides: Partial<CoreContext> = {}): Cor
     validateToken: async (token: string) => true,
   };
 
-  const mockSessionManager = {
-    createSession: async (claims: JWTClaims) => {
-      return createMockUserSession({ claims });
-    },
-    getSession: async (sessionId: string) => {
-      return createMockUserSession();
-    },
-    deleteSession: async (sessionId: string) => {},
-    clearExpiredSessions: async () => 0,
-  };
-
   const mockRoleMapper = {
     mapRole: (jwtRoles: string[]) => 'user',
-    getUserPermissions: (role: string) => [],
   };
 
   const mockJWTValidator = {
@@ -187,13 +169,9 @@ export function createMockCoreContext(overrides: Partial<CoreContext> = {}): Cor
   return {
     auditService: mockAuditService,
     authService: mockAuthService as any,
-    sessionManager: mockSessionManager as any,
-    roleMapper: mockRoleMapper as any,
-    jwtValidator: mockJWTValidator as any,
     delegationRegistry: mockDelegationRegistry as any,
-    tokenExchangeService: mockTokenExchangeService as any,
-    config: {
-      auth: {
+    configManager: {
+      getAuthConfig: () => ({
         trustedIDPs: [
           {
             issuer: 'https://test-idp.example.com',
@@ -202,7 +180,7 @@ export function createMockCoreContext(overrides: Partial<CoreContext> = {}): Cor
             algorithms: ['RS256'],
           },
         ],
-      },
+      }),
     } as any,
     ...overrides,
   };
@@ -270,6 +248,11 @@ export class MockDelegationModule implements DelegationModule {
 
   async destroy(): Promise<void> {
     this.initialized = false;
+  }
+
+  async validateAccess(session: UserSession): Promise<boolean> {
+    // Mock implementation - always allow access in tests
+    return true;
   }
 
   // Testing utilities
@@ -401,8 +384,10 @@ export function assertDelegationFailure<T>(result: DelegationResult<T>): asserts
 export type {
   UserSession,
   AuditEntry,
-  JWTClaims,
   CoreContext,
+} from '../core/index.js';
+
+export type {
   DelegationModule,
   DelegationResult,
-} from '../core/index.js';
+} from '../delegation/base.js';

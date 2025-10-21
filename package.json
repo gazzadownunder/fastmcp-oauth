@@ -82,11 +82,13 @@
     "zod": "^3.25.76"
   },
   "optionalDependencies": {
-    "@mcp-oauth/sql-delegation": "^1.0.0",
-    "@mcp-oauth/kerberos-delegation": "^1.0.0"
+    "@mcp-oauth/kerberos-delegation": "^1.0.0",
+    "@mcp-oauth/sql-delegation": "^1.0.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.5",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitest/coverage-v8": "^2.0.0",

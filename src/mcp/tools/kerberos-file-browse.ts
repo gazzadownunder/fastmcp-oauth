@@ -125,8 +125,8 @@ export const createListDirectoryTool: ToolFactory = (context: CoreContext) => ({
         // Obtain Kerberos proxy ticket for target file server
         // The delegation module will perform token exchange to get legacy_name
         // and construct the userPrincipal automatically
-        const ticketResult = await kerberosModule.delegate<any>(
-          mcpContext.session,
+        const ticketResult = await kerberosModule.delegate(
+          mcpContext.session!,
           's4u2proxy',
           {
             targetSPN: spn,
@@ -181,23 +181,15 @@ export const createListDirectoryTool: ToolFactory = (context: CoreContext) => ({
         });
 
         return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  path: params.path,
-                  server,
-                  share,
-                  itemCount: listing.length,
-                  items: listing,
-                  authenticatedAs: mcpContext.session.legacyUsername,
-                },
-                null,
-                2
-              ),
-            },
-          ],
+          status: 'success',
+          data: {
+            path: params.path,
+            server,
+            share,
+            itemCount: listing.length,
+            items: listing,
+            authenticatedAs: mcpContext.session.legacyUsername,
+          },
         };
       } catch (error) {
         // SECURITY (SEC-3): Handle security and non-security errors differently
@@ -266,8 +258,8 @@ export const createReadFileTool: ToolFactory = (context: CoreContext) => ({
 
         // Obtain Kerberos proxy ticket
         // The delegation module will perform token exchange to get legacy_name
-        const ticketResult = await kerberosModule.delegate<any>(
-          mcpContext.session,
+        const ticketResult = await kerberosModule.delegate(
+          mcpContext.session!,
           's4u2proxy',
           {
             targetSPN: spn,
@@ -317,25 +309,17 @@ export const createReadFileTool: ToolFactory = (context: CoreContext) => ({
         });
 
         return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  path: params.path,
-                  server,
-                  share,
-                  size: stats.size,
-                  encoding,
-                  modified: stats.mtime.toISOString(),
-                  contents,
-                  authenticatedAs: mcpContext.session.legacyUsername,
-                },
-                null,
-                2
-              ),
-            },
-          ],
+          status: 'success',
+          data: {
+            path: params.path,
+            server,
+            share,
+            size: stats.size,
+            encoding,
+            modified: stats.mtime.toISOString(),
+            contents,
+            authenticatedAs: mcpContext.session.legacyUsername,
+          },
         };
       } catch (error) {
         // SECURITY (SEC-3): Handle security and non-security errors differently
@@ -404,8 +388,8 @@ export const createFileInfoTool: ToolFactory = (context: CoreContext) => ({
 
         // Obtain Kerberos proxy ticket
         // The delegation module will perform token exchange to get legacy_name
-        const ticketResult = await kerberosModule.delegate<any>(
-          mcpContext.session,
+        const ticketResult = await kerberosModule.delegate(
+          mcpContext.session!,
           's4u2proxy',
           {
             targetSPN: spn,
@@ -473,12 +457,8 @@ export const createFileInfoTool: ToolFactory = (context: CoreContext) => ({
         });
 
         return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(info, null, 2),
-            },
-          ],
+          status: 'success',
+          data: info,
         };
       } catch (error) {
         // SECURITY (SEC-3): Handle security and non-security errors differently

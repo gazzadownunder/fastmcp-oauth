@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MCPAuthMiddleware, requireAuth, requireRole, requirePermission } from '../../../src/mcp/middleware.js';
+import { MCPAuthMiddleware, requireAuth, requireRole } from '../../../src/mcp/middleware.js';
 import type { FastMCPRequest } from '../../../src/mcp/middleware.js';
 import type { AuthenticationService } from '../../../src/core/authentication-service.js';
 import type { UserSession } from '../../../src/core/types.js';
@@ -28,13 +28,17 @@ describe('MCP Middleware', () => {
         const middleware = new MCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
+          _version: 1,
+          sessionId: 'test-session',
           userId: 'user123',
           username: 'testuser',
           legacyUsername: 'DOMAIN\\testuser',
           role: 'user',
-          permissions: ['sql:query'],
+          customRoles: [],
+          scopes: [],
+          customClaims: {},
+          claims: {},
           rejected: false,
-          _version: 1,
         };
 
         vi.mocked(mockAuthService.authenticate).mockResolvedValue({
@@ -252,13 +256,17 @@ describe('MCP Middleware', () => {
 
   describe('Authorization Helpers', () => {
     const mockSession: UserSession = {
+      _version: 1,
+      sessionId: 'test-session',
       userId: 'user123',
       username: 'testuser',
       legacyUsername: 'DOMAIN\\testuser',
       role: 'user',
-      permissions: ['sql:query', 'sql:procedure'],
+      customRoles: [],
+      scopes: [],
+      customClaims: {},
+      claims: {},
       rejected: false,
-      _version: 1,
     };
 
     const rejectedSession: UserSession = {
@@ -295,21 +303,6 @@ describe('MCP Middleware', () => {
       });
     });
 
-    describe('requirePermission', () => {
-      it('should pass for granted permission', () => {
-        const context = { session: mockSession };
-        expect(() => requirePermission(context, 'sql:query')).not.toThrow();
-      });
-
-      it('should throw for missing permission', () => {
-        const context = { session: mockSession };
-        expect(() => requirePermission(context, 'sql:admin')).toThrow('sql:admin');
-      });
-
-      it('should throw for rejected session', () => {
-        const context = { session: rejectedSession };
-        expect(() => requirePermission(context, 'sql:query')).toThrow();
-      });
-    });
+    // Note: requirePermission tests removed - framework now uses pure role-based authorization
   });
 });

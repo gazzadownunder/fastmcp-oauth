@@ -67,13 +67,14 @@ export interface DelegationToolConfig<TParams extends z.ZodType = z.ZodType> {
   description: string;
 
   /**
-   * Required permission for executing this tool
+   * Required permission for executing this tool (DEPRECATED - use requiredRoles instead)
    *
-   * Users must have this permission in their JWT claims to execute the tool.
+   * @deprecated The framework now uses role-based access control only.
+   *             Use `requiredRoles` instead. This field is ignored.
    *
    * @example 'mylegacy:call', 'api:read', 'sql:query'
    */
-  requiredPermission: string;
+  requiredPermission?: string;
 
   /**
    * Action name to pass to the delegation module's delegate() method
@@ -205,17 +206,12 @@ export function createDelegationTool<TParams extends z.ZodType>(
   return {
     name: config.name,
     description: config.description,
-    schema: config.parameters,
+    schema: config.parameters as any,
 
     // Two-tier security: Visibility filtering
     canAccess: (mcpContext: MCPContext) => {
       // Must be authenticated
       if (!auth.isAuthenticated(mcpContext)) {
-        return false;
-      }
-
-      // Check required permission
-      if (!mcpContext.session?.permissions.includes(config.requiredPermission)) {
         return false;
       }
 
@@ -239,15 +235,6 @@ export function createDelegationTool<TParams extends z.ZodType>(
       try {
         // Require authentication
         auth.requireAuth(mcpContext);
-
-        // Require permission
-        if (!mcpContext.session?.permissions.includes(config.requiredPermission)) {
-          throw createSecurityError(
-            'FORBIDDEN',
-            `Missing required permission: ${config.requiredPermission}`,
-            403
-          );
-        }
 
         // Require roles (if specified)
         if (config.requiredRoles && config.requiredRoles.length > 0) {

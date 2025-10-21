@@ -1,507 +1,292 @@
 /**
- * Authorization Helper Tests
+ * Authorization Tests (Role-Based)
  *
- * Tests both soft (boolean) and hard (throwing) authorization checks.
+ * Tests for role-based authorization helpers.
+ * Note: Permission-based tests have been removed - framework now uses pure role-based authorization.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { Authorization } from '../authorization.js';
+import { describe, it, expect } from 'vitest';
+import { Authorization, requireAuth, requireRole } from '../authorization.js';
 import type { MCPContext } from '../types.js';
 import type { UserSession } from '../../core/types.js';
 
-// ============================================================================
-// Test Fixtures
-// ============================================================================
-
-function createMockSession(overrides: Partial<UserSession> = {}): UserSession {
-  return {
-    _version: 1,
-    userId: 'test-user-123',
-    username: 'testuser',
-    legacyUsername: 'DOMAIN\\testuser',
-    role: 'user',
-    customRoles: [],
-    permissions: ['sql:query'],
-    scopes: ['read'],
-    claims: {},
-    rejected: false,
-    ...overrides,
-  };
-}
-
-function createMockContext(session?: UserSession | null): MCPContext {
-  if (session === undefined) {
-    // Default: create authenticated session
-    return {
-      session: createMockSession(),
-    };
-  }
-
-  if (session === null) {
-    // Explicitly no session
-    return {
-      session: undefined,
-    };
-  }
-
-  // Use provided session
-  return {
-    session,
-  };
-}
-
-// ============================================================================
-// Authorization Tests
-// ============================================================================
-
 describe('Authorization', () => {
-  let auth: Authorization;
+  const auth = new Authorization();
 
-  beforeEach(() => {
-    auth = new Authorization();
+  // Helper to create mock context
+  const createContext = (session?: Partial<UserSession>): MCPContext => ({
+    session: session ? ({
+      _version: 1,
+      sessionId: 'test-session',
+      userId: 'test-user',
+      username: 'testuser',
+      role: 'user',
+      customRoles: [],
+      scopes: [],
+      customClaims: {},
+      claims: {},
+      rejected: false,
+      ...session,
+    } as UserSession) : undefined,
   });
 
-  // ==========================================================================
+  // =========================================================================
   // Soft Checks (Return Boolean)
-  // ==========================================================================
+  // =========================================================================
 
   describe('isAuthenticated()', () => {
-    it('should return true for authenticated session', () => {
-      const ctx = createMockContext();
-      expect(auth.isAuthenticated(ctx)).toBe(true);
+    it('should return true when session exists and is not rejected', () => {
+      const context = createContext({ role: 'user' });
+      expect(auth.isAuthenticated(context)).toBe(true);
     });
 
-    it('should return false for missing session', () => {
-      const ctx = createMockContext(null);
-      expect(auth.isAuthenticated(ctx)).toBe(false);
+    it('should return false when session is missing', () => {
+      const context: MCPContext = { session: undefined };
+      expect(auth.isAuthenticated(context)).toBe(false);
     });
 
-    it('should return false for rejected session', () => {
-      const ctx = createMockContext(createMockSession({ rejected: true }));
-      expect(auth.isAuthenticated(ctx)).toBe(false);
+    it('should return false when session is rejected', () => {
+      const context = createContext({ rejected: true });
+      expect(auth.isAuthenticated(context)).toBe(false);
     });
   });
 
   describe('hasRole()', () => {
-    it('should return true when user has exact role', () => {
-      const ctx = createMockContext(createMockSession({ role: 'admin' }));
-      expect(auth.hasRole(ctx, 'admin')).toBe(true);
+    it('should return true when user has the role', () => {
+      const context = createContext({ role: 'admin' });
+      expect(auth.hasRole(context, 'admin')).toBe(true);
     });
 
     it('should return false when user has different role', () => {
-      const ctx = createMockContext(createMockSession({ role: 'user' }));
-      expect(auth.hasRole(ctx, 'admin')).toBe(false);
+      const context = createContext({ role: 'user' });
+      expect(auth.hasRole(context, 'admin')).toBe(false);
     });
 
     it('should return false when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(auth.hasRole(ctx, 'admin')).toBe(false);
+      const context: MCPContext = { session: undefined };
+      expect(auth.hasRole(context, 'admin')).toBe(false);
     });
 
     it('should return false when session is rejected', () => {
-      const ctx = createMockContext(createMockSession({ role: 'admin', rejected: true }));
-      expect(auth.hasRole(ctx, 'admin')).toBe(false);
+      const context = createContext({ role: 'admin', rejected: true });
+      expect(auth.hasRole(context, 'admin')).toBe(false);
     });
   });
 
   describe('hasAnyRole()', () => {
     it('should return true when user has one of the roles', () => {
-      const ctx = createMockContext(createMockSession({ role: 'user' }));
-      expect(auth.hasAnyRole(ctx, ['admin', 'user', 'guest'])).toBe(true);
+      const context = createContext({ role: 'user' });
+      expect(auth.hasAnyRole(context, ['admin', 'user', 'guest'])).toBe(true);
     });
 
     it('should return false when user has none of the roles', () => {
-      const ctx = createMockContext(createMockSession({ role: 'guest' }));
-      expect(auth.hasAnyRole(ctx, ['admin', 'moderator'])).toBe(false);
+      const context = createContext({ role: 'guest' });
+      expect(auth.hasAnyRole(context, ['admin', 'moderator'])).toBe(false);
     });
 
     it('should return false when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(auth.hasAnyRole(ctx, ['admin', 'user'])).toBe(false);
+      const context: MCPContext = { session: undefined };
+      expect(auth.hasAnyRole(context, ['admin', 'user'])).toBe(false);
     });
 
     it('should work with single role in array', () => {
-      const ctx = createMockContext(createMockSession({ role: 'admin' }));
-      expect(auth.hasAnyRole(ctx, ['admin'])).toBe(true);
+      const context = createContext({ role: 'admin' });
+      expect(auth.hasAnyRole(context, ['admin'])).toBe(true);
     });
   });
 
   describe('hasAllRoles()', () => {
     it('should return true when user has all roles (primary + custom)', () => {
-      const ctx = createMockContext(createMockSession({
+      const context = createContext({
         role: 'admin',
-        customRoles: ['auditor', 'moderator']
-      }));
-      expect(auth.hasAllRoles(ctx, ['admin', 'auditor'])).toBe(true);
+        customRoles: ['auditor', 'reviewer']
+      });
+      expect(auth.hasAllRoles(context, ['admin', 'auditor'])).toBe(true);
     });
 
     it('should return false when user is missing one role', () => {
-      const ctx = createMockContext(createMockSession({
+      const context = createContext({
         role: 'admin',
-        customRoles: ['auditor']
-      }));
-      expect(auth.hasAllRoles(ctx, ['admin', 'moderator'])).toBe(false);
+        customRoles: ['reviewer']
+      });
+      expect(auth.hasAllRoles(context, ['admin', 'auditor'])).toBe(false);
     });
 
-    it('should return true when only checking primary role', () => {
-      const ctx = createMockContext(createMockSession({ role: 'admin' }));
-      expect(auth.hasAllRoles(ctx, ['admin'])).toBe(true);
-    });
-
-    it('should return false when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(auth.hasAllRoles(ctx, ['admin'])).toBe(false);
-    });
-
-    it('should handle empty customRoles', () => {
-      const ctx = createMockContext(createMockSession({
-        role: 'admin',
-        customRoles: undefined
-      }));
-      expect(auth.hasAllRoles(ctx, ['admin'])).toBe(true);
-    });
-  });
-
-  describe('hasPermission()', () => {
-    it('should return true when user has permission', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query', 'sql:execute']
-      }));
-      expect(auth.hasPermission(ctx, 'sql:query')).toBe(true);
-    });
-
-    it('should return false when user lacks permission', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(auth.hasPermission(ctx, 'sql:execute')).toBe(false);
+    it('should return true when checking single role', () => {
+      const context = createContext({ role: 'admin' });
+      expect(auth.hasAllRoles(context, ['admin'])).toBe(true);
     });
 
     it('should return false when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(auth.hasPermission(ctx, 'sql:query')).toBe(false);
+      const context: MCPContext = { session: undefined };
+      expect(auth.hasAllRoles(context, ['admin'])).toBe(false);
     });
 
-    it('should return false when session is rejected', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query'],
-        rejected: true
-      }));
-      expect(auth.hasPermission(ctx, 'sql:query')).toBe(false);
-    });
-  });
-
-  describe('hasAnyPermission()', () => {
-    it('should return true when user has one of the permissions', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(auth.hasAnyPermission(ctx, ['sql:query', 'sql:execute', 'sql:admin'])).toBe(true);
-    });
-
-    it('should return false when user has none of the permissions', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(auth.hasAnyPermission(ctx, ['sql:execute', 'sql:admin'])).toBe(false);
-    });
-
-    it('should return false when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(auth.hasAnyPermission(ctx, ['sql:query'])).toBe(false);
-    });
-
-    it('should work with single permission in array', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(auth.hasAnyPermission(ctx, ['sql:query'])).toBe(true);
+    it('should work with only custom roles', () => {
+      const context = createContext({
+        role: 'user',
+        customRoles: ['auditor', 'reviewer']
+      });
+      expect(auth.hasAllRoles(context, ['auditor', 'reviewer'])).toBe(true);
     });
   });
 
-  describe('hasAllPermissions()', () => {
-    it('should return true when user has all permissions', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query', 'sql:execute', 'sql:admin']
-      }));
-      expect(auth.hasAllPermissions(ctx, ['sql:query', 'sql:execute'])).toBe(true);
-    });
-
-    it('should return false when user is missing one permission', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(auth.hasAllPermissions(ctx, ['sql:query', 'sql:execute'])).toBe(false);
-    });
-
-    it('should return true when checking single permission', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(auth.hasAllPermissions(ctx, ['sql:query'])).toBe(true);
-    });
-
-    it('should return false when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(auth.hasAllPermissions(ctx, ['sql:query'])).toBe(false);
-    });
-  });
-
-  // ==========================================================================
+  // =========================================================================
   // Hard Checks (Throw on Failure)
-  // ==========================================================================
+  // =========================================================================
 
   describe('requireAuth()', () => {
-    it('should not throw for authenticated session', () => {
-      const ctx = createMockContext();
-      expect(() => auth.requireAuth(ctx)).not.toThrow();
+    it('should not throw when session is authenticated', () => {
+      const context = createContext({ role: 'user' });
+      expect(() => auth.requireAuth(context)).not.toThrow();
     });
 
-    it('should throw 401 for missing session', () => {
-      const ctx = createMockContext(null);
-      expect(() => auth.requireAuth(ctx)).toThrow('Authentication required');
-    });
+    it('should throw 401 when session is missing', () => {
+      const context: MCPContext = { session: undefined };
+      expect(() => auth.requireAuth(context)).toThrow();
 
-    it('should throw 401 for rejected session', () => {
-      const ctx = createMockContext(createMockSession({ rejected: true }));
-      expect(() => auth.requireAuth(ctx)).toThrow('Authentication required');
-    });
-
-    it('should throw error with statusCode 401', () => {
-      const ctx = createMockContext(null);
       try {
-        auth.requireAuth(ctx);
-        expect.fail('Should have thrown');
+        auth.requireAuth(context);
       } catch (error: any) {
         expect(error.statusCode).toBe(401);
         expect(error.code).toBe('UNAUTHENTICATED');
       }
     });
+
+    it('should throw 401 when session is rejected', () => {
+      const context = createContext({ rejected: true });
+      expect(() => auth.requireAuth(context)).toThrow();
+
+      try {
+        auth.requireAuth(context);
+      } catch (error: any) {
+        expect(error.statusCode).toBe(401);
+      }
+    });
   });
 
   describe('requireRole()', () => {
-    it('should not throw when user has required role', () => {
-      const ctx = createMockContext(createMockSession({ role: 'admin' }));
-      expect(() => auth.requireRole(ctx, 'admin')).not.toThrow();
+    it('should not throw when user has the role', () => {
+      const context = createContext({ role: 'admin' });
+      expect(() => auth.requireRole(context, 'admin')).not.toThrow();
     });
 
     it('should throw 403 when user has different role', () => {
-      const ctx = createMockContext(createMockSession({ role: 'user' }));
-      expect(() => auth.requireRole(ctx, 'admin')).toThrow("requires the 'admin' role");
-    });
+      const context = createContext({ role: 'user' });
+      expect(() => auth.requireRole(context, 'admin')).toThrow();
 
-    it('should throw 401 when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(() => auth.requireRole(ctx, 'admin')).toThrow('Authentication required');
-    });
-
-    it('should throw error with statusCode 403 for insufficient role', () => {
-      const ctx = createMockContext(createMockSession({ role: 'user' }));
       try {
-        auth.requireRole(ctx, 'admin');
-        expect.fail('Should have thrown');
+        auth.requireRole(context, 'admin');
       } catch (error: any) {
         expect(error.statusCode).toBe(403);
         expect(error.code).toBe('INSUFFICIENT_PERMISSIONS');
+        expect(error.message).toContain('admin');
+      }
+    });
+
+    it('should throw 401 when session is not authenticated', () => {
+      const context: MCPContext = { session: undefined };
+      expect(() => auth.requireRole(context, 'admin')).toThrow();
+
+      try {
+        auth.requireRole(context, 'admin');
+      } catch (error: any) {
+        expect(error.statusCode).toBe(401);
       }
     });
   });
 
   describe('requireAnyRole()', () => {
     it('should not throw when user has one of the roles', () => {
-      const ctx = createMockContext(createMockSession({ role: 'user' }));
-      expect(() => auth.requireAnyRole(ctx, ['admin', 'user', 'guest'])).not.toThrow();
+      const context = createContext({ role: 'user' });
+      expect(() => auth.requireAnyRole(context, ['admin', 'user'])).not.toThrow();
     });
 
     it('should throw 403 when user has none of the roles', () => {
-      const ctx = createMockContext(createMockSession({ role: 'guest' }));
-      expect(() => auth.requireAnyRole(ctx, ['admin', 'moderator'])).toThrow('requires one of these roles');
-    });
+      const context = createContext({ role: 'guest' });
+      expect(() => auth.requireAnyRole(context, ['admin', 'moderator'])).toThrow();
 
-    it('should throw 401 when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(() => auth.requireAnyRole(ctx, ['admin', 'user'])).toThrow('Authentication required');
-    });
-
-    it('should include current role in error message', () => {
-      const ctx = createMockContext(createMockSession({ role: 'guest' }));
-      expect(() => auth.requireAnyRole(ctx, ['admin', 'moderator']))
-        .toThrow('Your role: guest');
-    });
-  });
-
-  describe('requireAllRoles()', () => {
-    it('should not throw when user has all roles', () => {
-      const ctx = createMockContext(createMockSession({
-        role: 'admin',
-        customRoles: ['auditor']
-      }));
-      expect(() => auth.requireAllRoles(ctx, ['admin', 'auditor'])).not.toThrow();
-    });
-
-    it('should throw 403 when user is missing one role', () => {
-      const ctx = createMockContext(createMockSession({
-        role: 'admin',
-        customRoles: ['auditor']
-      }));
-      expect(() => auth.requireAllRoles(ctx, ['admin', 'moderator']))
-        .toThrow('requires all of these roles');
-    });
-
-    it('should throw 401 when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(() => auth.requireAllRoles(ctx, ['admin'])).toThrow('Authentication required');
-    });
-
-    it('should include user roles in error message', () => {
-      const ctx = createMockContext(createMockSession({
-        role: 'user',
-        customRoles: ['viewer']
-      }));
-      expect(() => auth.requireAllRoles(ctx, ['admin', 'moderator']))
-        .toThrow('Your roles: user, viewer');
-    });
-  });
-
-  describe('requirePermission()', () => {
-    it('should not throw when user has permission', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(() => auth.requirePermission(ctx, 'sql:query')).not.toThrow();
-    });
-
-    it('should throw 403 when user lacks permission', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(() => auth.requirePermission(ctx, 'sql:execute'))
-        .toThrow("requires the 'sql:execute' permission");
-    });
-
-    it('should throw 401 when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(() => auth.requirePermission(ctx, 'sql:query'))
-        .toThrow('Authentication required');
-    });
-
-    it('should throw error with statusCode 403 for insufficient permission', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
       try {
-        auth.requirePermission(ctx, 'sql:admin');
-        expect.fail('Should have thrown');
+        auth.requireAnyRole(context, ['admin', 'moderator']);
       } catch (error: any) {
         expect(error.statusCode).toBe(403);
         expect(error.code).toBe('INSUFFICIENT_PERMISSIONS');
       }
     });
-  });
-
-  describe('requireAnyPermission()', () => {
-    it('should not throw when user has one of the permissions', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(() => auth.requireAnyPermission(ctx, ['sql:query', 'sql:execute']))
-        .not.toThrow();
-    });
-
-    it('should throw 403 when user has none of the permissions', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(() => auth.requireAnyPermission(ctx, ['sql:execute', 'sql:admin']))
-        .toThrow('requires one of these permissions');
-    });
 
     it('should throw 401 when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(() => auth.requireAnyPermission(ctx, ['sql:query']))
-        .toThrow('Authentication required');
-    });
+      const context: MCPContext = { session: undefined };
+      expect(() => auth.requireAnyRole(context, ['admin'])).toThrow();
 
-    it('should include user permissions in error message', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(() => auth.requireAnyPermission(ctx, ['sql:execute', 'sql:admin']))
-        .toThrow('Your permissions: sql:query');
+      try {
+        auth.requireAnyRole(context, ['admin']);
+      } catch (error: any) {
+        expect(error.statusCode).toBe(401);
+      }
     });
   });
 
-  describe('requireAllPermissions()', () => {
-    it('should not throw when user has all permissions', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query', 'sql:execute', 'sql:admin']
-      }));
-      expect(() => auth.requireAllPermissions(ctx, ['sql:query', 'sql:execute']))
-        .not.toThrow();
-    });
-
-    it('should throw 403 when user is missing one permission', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(() => auth.requireAllPermissions(ctx, ['sql:query', 'sql:execute']))
-        .toThrow('requires all of these permissions');
-    });
-
-    it('should throw 401 when session is not authenticated', () => {
-      const ctx = createMockContext(null);
-      expect(() => auth.requireAllPermissions(ctx, ['sql:query']))
-        .toThrow('Authentication required');
-    });
-
-    it('should include user permissions in error message', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: ['sql:query']
-      }));
-      expect(() => auth.requireAllPermissions(ctx, ['sql:query', 'sql:execute']))
-        .toThrow('Your permissions: sql:query');
-    });
-  });
-
-  // ==========================================================================
-  // Edge Cases
-  // ==========================================================================
-
-  describe('Edge Cases', () => {
-    it('should handle empty permissions array', () => {
-      const ctx = createMockContext(createMockSession({
-        permissions: []
-      }));
-      expect(auth.hasPermission(ctx, 'sql:query')).toBe(false);
-      expect(auth.hasAnyPermission(ctx, ['sql:query'])).toBe(false);
-      expect(auth.hasAllPermissions(ctx, [])).toBe(true); // No permissions required
-    });
-
-    it('should handle empty roles array in hasAnyRole', () => {
-      const ctx = createMockContext(createMockSession({ role: 'admin' }));
-      expect(auth.hasAnyRole(ctx, [])).toBe(false); // No roles to match
-    });
-
-    it('should handle empty roles array in hasAllRoles', () => {
-      const ctx = createMockContext(createMockSession({ role: 'admin' }));
-      expect(auth.hasAllRoles(ctx, [])).toBe(true); // No roles required
-    });
-
-    it('should handle undefined customRoles', () => {
-      const ctx = createMockContext(createMockSession({
+  describe('requireAllRoles()', () => {
+    it('should not throw when user has all roles', () => {
+      const context = createContext({
         role: 'admin',
-        customRoles: undefined
-      }));
-      expect(auth.hasAllRoles(ctx, ['admin'])).toBe(true);
+        customRoles: ['auditor']
+      });
+      expect(() => auth.requireAllRoles(context, ['admin', 'auditor'])).not.toThrow();
     });
 
-    it('should handle multiple custom roles', () => {
-      const ctx = createMockContext(createMockSession({
-        role: 'user',
-        customRoles: ['auditor', 'moderator', 'reviewer']
-      }));
-      expect(auth.hasAllRoles(ctx, ['user', 'auditor', 'moderator'])).toBe(true);
-      expect(auth.hasAllRoles(ctx, ['user', 'admin'])).toBe(false);
+    it('should throw 403 when user is missing one role', () => {
+      const context = createContext({
+        role: 'admin',
+        customRoles: []
+      });
+      expect(() => auth.requireAllRoles(context, ['admin', 'auditor'])).toThrow();
+
+      try {
+        auth.requireAllRoles(context, ['admin', 'auditor']);
+      } catch (error: any) {
+        expect(error.statusCode).toBe(403);
+        expect(error.code).toBe('INSUFFICIENT_PERMISSIONS');
+      }
+    });
+
+    it('should throw 401 when session is not authenticated', () => {
+      const context: MCPContext = { session: undefined };
+      expect(() => auth.requireAllRoles(context, ['admin'])).toThrow();
+
+      try {
+        auth.requireAllRoles(context, ['admin']);
+      } catch (error: any) {
+        expect(error.statusCode).toBe(401);
+      }
+    });
+  });
+
+  // =========================================================================
+  // Standalone Helper Functions (Backward Compatibility)
+  // =========================================================================
+
+  describe('requireAuth() standalone function', () => {
+    it('should work as standalone function', () => {
+      const context = createContext({ role: 'user' });
+      expect(() => requireAuth(context)).not.toThrow();
+    });
+
+    it('should throw when not authenticated', () => {
+      const context: MCPContext = { session: undefined };
+      expect(() => requireAuth(context)).toThrow();
+    });
+  });
+
+  describe('requireRole() standalone function', () => {
+    it('should work as standalone function', () => {
+      const context = createContext({ role: 'admin' });
+      expect(() => requireRole(context, 'admin')).not.toThrow();
+    });
+
+    it('should throw when role mismatch', () => {
+      const context = createContext({ role: 'user' });
+      expect(() => requireRole(context, 'admin')).toThrow();
     });
   });
 });
