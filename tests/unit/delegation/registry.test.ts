@@ -158,7 +158,13 @@ describe('DelegationRegistry', () => {
 
       const result = await registry.delegate('sql', session, 'query', { sql: 'SELECT 1' });
 
-      expect(module.delegate).toHaveBeenCalledWith(session, 'query', { sql: 'SELECT 1' });
+      // Phase 2: delegate() now receives context parameter
+      expect(module.delegate).toHaveBeenCalledWith(
+        session,
+        'query',
+        { sql: 'SELECT 1' },
+        { sessionId: undefined, coreContext: undefined }
+      );
       expect(result.success).toBe(true);
       expect(result.data).toEqual({ result: 'mock' });
     });
