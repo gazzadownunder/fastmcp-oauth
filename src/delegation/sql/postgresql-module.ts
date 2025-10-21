@@ -163,11 +163,23 @@ export class PostgreSQLDelegationModule implements DelegationModule {
 
   /**
    * Delegate PostgreSQL operation on behalf of user
+   *
+   * **Phase 2 Enhancement:** Now accepts optional context parameter with CoreContext.
+   * This enables access to framework services like TokenExchangeService.
+   *
+   * @param session - User session
+   * @param action - Action to perform
+   * @param params - Action parameters
+   * @param context - Optional context with sessionId and coreContext
    */
   async delegate<T = unknown>(
     session: UserSession,
     action: string,
-    params: any
+    params: any,
+    context?: {
+      sessionId?: string;
+      coreContext?: any;
+    }
   ): Promise<DelegationResult<T>> {
     // Ensure initialized
     if (!this.isConnected || !this.pool) {

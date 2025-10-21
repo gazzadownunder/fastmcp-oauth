@@ -1076,12 +1076,169 @@ registry.register(myModule);
 
 See [examples/custom-delegation.ts](examples/custom-delegation.ts) for a complete example.
 
+## For Developers: Extending the Framework
+
+**The framework is designed to be extended!** SQL and Kerberos are **reference implementations**, not the product itself. The goal is to make it easy for developers to create custom delegation modules for their specific use cases.
+
+### Why Extend the Framework?
+
+- Integrate with **custom APIs** (REST, GraphQL, gRPC, SOAP)
+- Support **legacy authentication systems** (LDAP, Active Directory, custom protocols)
+- Add **specialized authorization logic** (database roles, file permissions, etc.)
+- Create **domain-specific tools** for your organization
+
+### Quick Win: 5-Line Tool Creation
+
+Using the `createDelegationTool()` factory, you can create fully-featured MCP tools with OAuth security in just 5 lines:
+
+```typescript
+import { createDelegationTool } from 'mcp-oauth-framework';
+import { z } from 'zod';
+
+// Create tool with OAuth auth, authz, audit logging, error handling
+const myTool = createDelegationTool('my-module', {
+  name: 'my-custom-tool',
+  description: 'My custom tool description',
+  parameters: z.object({ param1: z.string() }),
+  action: 'my-action',
+  requiredPermission: 'my:permission',
+}, coreContext);
+
+server.registerTool(myTool);
+```
+
+**What you get for free:**
+- ✅ OAuth authentication (validates JWT)
+- ✅ Permission-based authorization
+- ✅ Role-based access control
+- ✅ Audit logging (all attempts logged)
+- ✅ Error sanitization (prevents info leaks)
+- ✅ Session management
+- ✅ Type safety (full TypeScript support)
+
+### Extension Guides
+
+- **[Docs/EXTENDING.md](Docs/EXTENDING.md)** - Complete extension guide (30-minute quickstart)
+  - Creating custom delegation modules
+  - Using `createDelegationTool()` factory
+  - Token exchange for API authentication
+  - Manual tool registration (advanced)
+  - Best practices and troubleshooting
+
+- **[examples/rest-api-delegation.ts](examples/rest-api-delegation.ts)** - REST API integration example
+  - Custom delegation module for REST APIs
+  - Token exchange for API-specific JWTs
+  - Parameter and result transformation
+  - Production-ready error handling
+
+- **[Docs/API-REFERENCE.md](Docs/API-REFERENCE.md)** - Complete API documentation
+  - All exported functions and classes
+  - TypeScript signatures
+  - Usage examples
+
+### Common Extension Patterns
+
+#### Pattern 1: REST API Integration
+
+```typescript
+// Create module (10 lines)
+class MyAPIDelegationModule implements DelegationModule {
+  async delegate(session, action, params, context) {
+    // Exchange JWT for API token
+    const apiToken = await context?.coreContext?.tokenExchangeService.performExchange({
+      requestorJWT: session.claims.access_token,
+      audience: 'urn:api:myservice',
+    });
+
+    // Call API with delegated credentials
+    return await fetch(`https://api.internal.com/${action}`, {
+      headers: { 'Authorization': `Bearer ${apiToken}` },
+      body: JSON.stringify(params),
+    });
+  }
+}
+
+// Create tools (5 lines each)
+const getTool = createDelegationTool('my-api', { ... }, coreContext);
+const postTool = createDelegationTool('my-api', { ... }, coreContext);
+```
+
+#### Pattern 2: Database Integration
+
+```typescript
+// Extend PostgreSQLDelegationModule or create your own
+class MyDatabaseModule implements DelegationModule {
+  async delegate(session, action, params) {
+    // Use session.legacyUsername or token exchange
+    const dbUsername = session.legacyUsername ||
+      await this.getDBUsername(session, context);
+
+    // Execute with proper privileges
+    return await this.executeAsUser(dbUsername, params.query, params.params);
+  }
+}
+```
+
+#### Pattern 3: Legacy System Integration
+
+```typescript
+// Wrap SOAP, LDAP, or other legacy protocols
+class LegacySOAPModule implements DelegationModule {
+  async delegate(session, action, params) {
+    // Transform modern OAuth session to legacy credentials
+    const legacyAuth = this.transformAuth(session);
+
+    // Call legacy system
+    return await this.soapClient.call(action, params, legacyAuth);
+  }
+}
+```
+
+### Developer Experience Metrics
+
+Our goal: **30 minutes from zero to working custom module**
+
+- ⏱️ Module creation: ~10 minutes
+- ⏱️ Tool creation: ~2 minutes per tool (using factory)
+- ⏱️ Testing: ~10 minutes
+- ⏱️ Documentation: Automatic (JSDoc → API docs)
+
+### Framework Extension API
+
+| API | Purpose | Lines of Code Saved |
+|-----|---------|-------------------|
+| `createDelegationTool()` | Create OAuth-secured tools | ~45 lines → 5 lines |
+| `createDelegationTools()` | Batch create tools | ~90 lines → 10 lines |
+| `server.registerTool()` | Register custom tool | N/A |
+| `server.registerTools()` | Batch register tools | N/A |
+| `Authorization` helper | Soft/hard permission checks | ~30 lines → 1 line |
+| `CoreContext` | Dependency injection | Automatic |
+| `DelegationModule` interface | Pluggable delegation | 20-50 lines total |
+
+### Need Help?
+
+- 📖 Start with [Docs/EXTENDING.md](Docs/EXTENDING.md)
+- 💡 Browse [examples/](examples/) directory
+- 🔍 Check [Docs/TROUBLESHOOTING.md](Docs/TROUBLESHOOTING.md)
+- 💬 Open a GitHub Discussion
+
+**Remember:** SQL and Kerberos are just examples! The framework is designed for **your custom delegation needs**.
+
 ## Documentation
 
+### For Developers
+- **[Docs/EXTENDING.md](Docs/EXTENDING.md)** - **START HERE!** Complete guide to extending the framework
+- **[Docs/API-REFERENCE.md](Docs/API-REFERENCE.md)** - Complete API documentation with TypeScript signatures
+- **[Docs/TROUBLESHOOTING.md](Docs/TROUBLESHOOTING.md)** - Common issues and debugging tips
+- **[examples/rest-api-delegation.ts](examples/rest-api-delegation.ts)** - REST API integration example
+- **[examples/custom-delegation.ts](examples/custom-delegation.ts)** - Custom delegation module example
+
+### Architecture & Internal Details
 - **[CLAUDE.md](CLAUDE.md)** - Architecture, patterns, and development guide
 - **[Docs/MIGRATION.md](Docs/MIGRATION.md)** - Migration guide from legacy to modular architecture
 - **[Docs/refactor-progress.md](Docs/refactor-progress.md)** - Detailed refactor progress tracker
-- **[examples/](examples/)** - 4 comprehensive usage examples
+- **[Docs/Framework-update.md](Docs/Framework-update.md)** - Framework enhancement roadmap
+- **[examples/](examples/)** - 5+ comprehensive usage examples
 
 ## Contributing
 

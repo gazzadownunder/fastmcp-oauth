@@ -115,6 +115,10 @@ export class ConfigOrchestrator {
       configManager: this.configManager,
     } satisfies CoreContext;
 
+    // Phase 2 Enhancement: Inject CoreContext into DelegationRegistry
+    // This enables delegation modules to access framework services (TokenExchangeService, etc.)
+    delegationRegistry.setCoreContext(coreContext);
+
     return coreContext;
   }
 

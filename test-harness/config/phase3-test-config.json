@@ -147,18 +147,9 @@
       "_comment_kerberos": "Kerberos tools automatically perform delegation (S4U2Self/S4U2Proxy) when called. Token exchange provides legacy_name claim."
     },
     "oauth": {
-      "wwwAuthenticateFormat": "bearer",
       "scopes": [
         "openid"
-      ],
-      "_comment_wwwAuthenticateFormat": "Options: 'bearer' (RFC 6750 + RFC 9728 metadata discovery) or 'mcp_oauth2' (custom format with explicit authorization_endpoint)",
-      "_comment_bearer": "Bearer format: 'Bearer realm=\"MCP Server\", authorization_server=\"https://...\"' + clients use /.well-known/oauth-protected-resource (DO NOT include oauth_endpoints when using this format)",
-      "_comment_mcp_oauth2": "Custom format: 'mcp_oauth2 authorization_endpoint=\"https://...\"' (REQUIRES oauth_endpoints configuration below)",
-      "_example_oauth_endpoints": {
-        "authorization_endpoint": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/auth",
-        "token_endpoint": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/token"
-      },
-      "_comment_usage": "To use mcp_oauth2 format: 1) Set wwwAuthenticateFormat='mcp_oauth2', 2) Remove underscore from _example_oauth_endpoints to make it oauth_endpoints"
+      ]
     }
   }
 }

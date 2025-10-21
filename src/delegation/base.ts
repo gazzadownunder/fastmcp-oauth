@@ -57,12 +57,39 @@ export interface DelegationModule {
    * @param session - Authenticated user session
    * @param action - Action to perform (module-specific, e.g., 'query', 'procedure')
    * @param params - Action parameters (module-specific)
+   * @param context - Optional context with sessionId and CoreContext for advanced features
    * @returns Delegation result with audit trail
+   *
+   * **Phase 2 Enhancement:** CoreContext injection enables custom modules to use
+   * the framework's TokenExchangeService for downstream API token exchange.
+   *
+   * @example Using TokenExchangeService
+   * ```typescript
+   * async delegate(session, action, params, context) {
+   *   // Exchange requestor JWT for API-specific token
+   *   const apiToken = await context?.coreContext?.tokenExchangeService?.performExchange({
+   *     requestorJWT: session.claims.rawPayload,
+   *     audience: 'urn:api:myservice',
+   *     scope: 'api:read'
+   *   });
+   *
+   *   // Use exchanged token for downstream API
+   *   const response = await fetch('https://api.internal.com/data', {
+   *     headers: { 'Authorization': `Bearer ${apiToken}` }
+   *   });
+   * }
+   * ```
    */
   delegate<T = unknown>(
     session: UserSession,
     action: string,
-    params: any
+    params: any,
+    context?: {
+      /** Session ID for token caching */
+      sessionId?: string;
+      /** CoreContext for accessing framework services (TokenExchangeService, etc.) */
+      coreContext?: any; // Using 'any' to avoid circular dependency with Core layer
+    }
   ): Promise<DelegationResult<T>>;
 
   /**

@@ -51,7 +51,6 @@ describe('MCP Layer - Standalone Integration', () => {
       expect(mcp.MCPAuthMiddleware).toBeDefined();
       expect(mcp.requireAuth).toBeDefined();
       expect(mcp.requireRole).toBeDefined();
-      expect(mcp.requirePermission).toBeDefined();
 
       // Orchestrator
       expect(mcp.ConfigOrchestrator).toBeDefined();

@@ -35,18 +35,6 @@ export const OAuthMetadataSchema = z.object({
     .array(z.string())
     .optional()
     .describe('OAuth scopes to advertise in metadata (e.g., ["mcp:read", "mcp:write", "sql:query"])'),
-  wwwAuthenticateFormat: z
-    .enum(['bearer', 'mcp_oauth2'])
-    .optional()
-    .default('bearer')
-    .describe('WWW-Authenticate header format: "bearer" (RFC 6750 + RFC 9728) or "mcp_oauth2" (custom format)'),
-  oauth_endpoints: z
-    .object({
-      authorization_endpoint: z.string().url().describe('Authorization endpoint for WWW-Authenticate header'),
-      token_endpoint: z.string().url().describe('Token endpoint for WWW-Authenticate header'),
-    })
-    .optional()
-    .describe('OAuth endpoints for mcp_oauth2 WWW-Authenticate header (required when wwwAuthenticateFormat="mcp_oauth2")'),
 });
 
 /**

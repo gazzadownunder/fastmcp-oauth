@@ -124,16 +124,10 @@ function extractSupportedScopes(coreContext: CoreContext): string[] {
 /**
  * Generate WWW-Authenticate header value for 401 responses
  *
- * Supports two formats:
- * 1. **bearer** (default): RFC 6750 Bearer format with authorization_server parameter
- *    - Standard OAuth 2.1 format
- *    - Clients use /.well-known/oauth-protected-resource for endpoint discovery
- *    - Example: `Bearer realm="MCP Server", authorization_server="https://auth.example.com"`
- *
- * 2. **mcp_oauth2** (custom): Custom format with explicit authorization_endpoint
- *    - For clients that don't support RFC 9728 metadata discovery
- *    - Requires oauth_endpoints configuration with authorization_endpoint
- *    - Example: `mcp_oauth2 authorization_endpoint="https://auth.example.com/authorize"`
+ * Generates RFC 6750 Bearer format with authorization_server parameter
+ * - Standard OAuth 2.1 format
+ * - Clients use /.well-known/oauth-protected-resource for endpoint discovery
+ * - Example: `Bearer realm="MCP Server", authorization_server="https://auth.example.com"`
  *
  * @param coreContext - Core context with authentication configuration
  * @param realm - Realm name (typically server name)
@@ -142,13 +136,8 @@ function extractSupportedScopes(coreContext: CoreContext): string[] {
  *
  * @example
  * ```typescript
- * // Bearer format (default)
  * const headerValue = generateWWWAuthenticateHeader(coreContext, "MCP Server");
  * // Returns: 'Bearer realm="MCP Server", authorization_server="https://auth.example.com"'
- *
- * // mcp_oauth2 format (custom, requires oauth_endpoints config)
- * const headerValue = generateWWWAuthenticateHeader(coreContext, "MCP Server");
- * // Returns: 'mcp_oauth2 authorization_endpoint="https://auth.example.com/authorize"'
  * ```
  */
 export function generateWWWAuthenticateHeader(
@@ -157,26 +146,8 @@ export function generateWWWAuthenticateHeader(
   scope?: string
 ): string {
   const authConfig = coreContext.configManager.getAuthConfig();
-  const mcpConfig = coreContext.configManager.getMCPConfig();
 
-  // Get configured format (default: bearer)
-  const format = mcpConfig?.oauth?.wwwAuthenticateFormat || 'bearer';
-
-  if (format === 'mcp_oauth2') {
-    // Custom format: mcp_oauth2 with explicit authorization_endpoint
-    const authEndpoint = mcpConfig?.oauth?.oauth_endpoints?.authorization_endpoint;
-
-    if (!authEndpoint) {
-      console.error('[OAuth Metadata] mcp_oauth2 format requires oauth_endpoints.authorization_endpoint configuration');
-      // Fallback to bearer format
-      return generateBearerHeader(authConfig, realm, scope);
-    }
-
-    // Build mcp_oauth2 header: mcp_oauth2 authorization_endpoint="..."
-    return `mcp_oauth2 authorization_endpoint="${authEndpoint}"`;
-  }
-
-  // Default: Bearer format (RFC 6750 + RFC 9728)
+  // Always use Bearer format (RFC 6750 + RFC 9728)
   return generateBearerHeader(authConfig, realm, scope);
 }
 

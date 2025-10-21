@@ -895,25 +895,224 @@ Parameters:
 
 ## Common Patterns
 
-### Adding a New Tool
-1. Register in `setupTools()` method of OAuthOBOServer
-2. Define Zod schema for parameters
-3. Extract and validate session from context
-4. Check permissions with role/scope validation
-5. Perform operation with try-catch
-6. Log to audit trail with `AuditEntry`
-7. Return JSON stringified result
+### Adding a New Tool (Recommended: Use Factory)
 
-### Adding a New Delegation Service
-1. Create service in `src/services/`
-2. Implement `DelegationModule` interface from `types/index.ts`
-3. Add configuration schema to `config/schema.ts`
-4. Initialize in `OAuthOBOServer.start()`
-5. Clean up in `OAuthOBOServer.stop()`
-6. Add health check to health-check tool
+**Modern Approach (v2.1+)** - Use `createDelegationTool()` factory (5 lines):
+
+```typescript
+import { createDelegationTool } from './mcp/tools/delegation-tool-factory.js';
+import { z } from 'zod';
+
+const myTool = createDelegationTool('module-name', {
+  name: 'my-tool',
+  description: 'Tool description',
+  parameters: z.object({ param1: z.string() }),
+  action: 'action-name',
+  requiredPermission: 'scope:action',
+  requiredRoles: ['user'], // optional
+}, coreContext);
+
+server.registerTool(myTool);
+```
+
+**Legacy Approach** - Manual registration (50+ lines):
+1. Create `ToolRegistration` object
+2. Define Zod schema for parameters
+3. Implement `canAccess()` for visibility filtering
+4. Implement `handler()` with auth/authz checks
+5. Extract and validate session from context
+6. Check permissions with role/scope validation
+7. Perform operation with try-catch
+8. Log to audit trail with `AuditEntry`
+9. Return `LLMResponse` (success or failure)
+10. Register with `server.registerTool()`
+
+**When to use each:**
+- ✅ Use factory for delegation-based tools (99% of cases)
+- ❌ Use manual registration only for non-delegation tools (health checks, metadata queries)
+
+### Adding a New Delegation Module
+
+**Step 1:** Create module class implementing `DelegationModule` interface:
+
+```typescript
+import type { DelegationModule, DelegationResult } from './delegation/base.js';
+import type { UserSession, AuditEntry } from './core/index.js';
+
+export class MyDelegationModule implements DelegationModule {
+  readonly name = 'my-module';
+  readonly type = 'api'; // or 'database', 'authentication', etc.
+
+  private config: any = null;
+
+  async initialize(config: any): Promise<void> {
+    this.config = config;
+    console.log(`[MyModule] Initialized`);
+  }
+
+  async delegate<T>(
+    session: UserSession,
+    action: string,
+    params: any,
+    context?: { sessionId?: string; coreContext?: any }
+  ): Promise<DelegationResult<T>> {
+    const auditEntry: AuditEntry = {
+      timestamp: new Date(),
+      source: 'delegation:my-module',
+      userId: session.userId,
+      action: `my-module:${action}`,
+      success: false,
+    };
+
+    try {
+      // Your delegation logic here
+      const result = await this.performAction(action, params);
+
+      auditEntry.success = true;
+      return { success: true, data: result as T, auditTrail: auditEntry };
+    } catch (error) {
+      auditEntry.error = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: auditEntry.error, auditTrail: auditEntry };
+    }
+  }
+
+  async healthCheck(): Promise<boolean> {
+    return true;
+  }
+
+  async destroy(): Promise<void> {
+    console.log(`[MyModule] Destroyed`);
+  }
+}
+```
+
+**Step 2:** Register module with DelegationRegistry:
+
+```typescript
+const coreContext = server.getCoreContext();
+const myModule = new MyDelegationModule();
+coreContext.delegationRegistry.register(myModule);
+await myModule.initialize(config);
+```
+
+**Step 3:** Create tools using the factory (see "Adding a New Tool" above)
+
+### Framework Extension Patterns (v2.1+)
+
+#### Pattern 1: REST API Integration with Token Exchange
+
+```typescript
+export class RestAPIDelegationModule implements DelegationModule {
+  async delegate(session, action, params, context) {
+    // Use TokenExchangeService for API-specific JWT
+    const apiToken = await context?.coreContext?.tokenExchangeService?.performExchange({
+      requestorJWT: session.claims.access_token,
+      audience: 'urn:api:myservice',
+      scope: 'api:read api:write',
+      sessionId: context?.sessionId, // Enable token caching
+    });
+
+    // Call API with exchanged token
+    const response = await fetch(`https://api.internal.com/${action}`, {
+      headers: { 'Authorization': `Bearer ${apiToken}` },
+      body: JSON.stringify(params),
+    });
+
+    return { success: true, data: await response.json(), auditTrail: {...} };
+  }
+}
+```
+
+#### Pattern 2: Parameter Transformation
+
+```typescript
+const sqlTool = createDelegationTool('sql', {
+  name: 'sql-query',
+  description: 'Execute SQL query',
+  parameters: z.object({
+    table: z.string(),
+    filter: z.record(z.any()),
+  }),
+  action: 'query',
+  requiredPermission: 'sql:read',
+
+  // Transform user-friendly params to module-specific format
+  transformParams: (params, session) => ({
+    sql: `SELECT * FROM ${params.table} WHERE id = $1`,
+    params: [params.filter.id],
+    legacyUsername: session.legacyUsername,
+  }),
+}, coreContext);
+```
+
+#### Pattern 3: Result Transformation (Hide Sensitive Data)
+
+```typescript
+const userProfileTool = createDelegationTool('api', {
+  name: 'get-user-profile',
+  description: 'Get user profile',
+  parameters: z.object({ userId: z.string() }),
+  action: 'getUserProfile',
+  requiredPermission: 'profile:read',
+
+  // Transform API response before returning to LLM
+  transformResult: (apiResult) => ({
+    displayName: apiResult.fullName,
+    email: apiResult.email,
+    department: apiResult.department,
+    // Hide: SSN, address, salary, etc.
+  }),
+}, coreContext);
+```
+
+#### Pattern 4: Custom Visibility Logic
+
+```typescript
+const adminTool = createDelegationTool('admin-api', {
+  name: 'delete-user',
+  description: 'Delete user (admin + MFA only)',
+  parameters: z.object({ userId: z.string() }),
+  action: 'deleteUser',
+  requiredPermission: 'admin:delete',
+  requiredRoles: ['admin'],
+
+  // Custom visibility check beyond standard permission/role checks
+  canAccess: (mcpContext) => {
+    return mcpContext.session?.role === 'admin' &&
+           mcpContext.session?.customClaims?.mfaVerified === true;
+  },
+}, coreContext);
+```
+
+#### Pattern 5: Batch Tool Creation
+
+```typescript
+import { createDelegationTools } from './mcp/tools/delegation-tool-factory.js';
+
+const apiTools = createDelegationTools('my-api', [
+  {
+    name: 'api-read',
+    description: 'Read from API',
+    parameters: readSchema,
+    action: 'read',
+    requiredPermission: 'api:read',
+  },
+  {
+    name: 'api-write',
+    description: 'Write to API',
+    parameters: writeSchema,
+    action: 'write',
+    requiredPermission: 'api:write',
+    requiredRoles: ['admin'], // More restrictive
+  },
+], coreContext);
+
+server.registerTools(apiTools); // Register all at once
+```
 
 ### Error Handling
 - Use `createSecurityError(code, message, statusCode)` for security-related errors
 - Use `sanitizeError(error)` before logging errors to prevent information leakage
 - Never expose internal error details to clients in production
 - Log full error details to audit trail for investigation
+- Return `LLMResponse` format: `{ status: 'success' | 'failure', data?: any, code?: string, message?: string }`

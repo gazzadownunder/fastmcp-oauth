@@ -43,6 +43,7 @@ import type { DelegationModule, DelegationResult } from './base.js';
 export class DelegationRegistry {
   private modules: Map<string, DelegationModule> = new Map();
   private auditService?: AuditService;
+  private coreContext?: any; // CoreContext for delegation module context injection
 
   /**
    * Create delegation registry
@@ -51,6 +52,18 @@ export class DelegationRegistry {
    */
   constructor(auditService?: AuditService) {
     this.auditService = auditService;
+  }
+
+  /**
+   * Set CoreContext for delegation module context injection
+   *
+   * **Phase 2 Enhancement:** Enables modules to access framework services
+   * like TokenExchangeService via the context parameter.
+   *
+   * @param coreContext - CoreContext with all framework services
+   */
+  setCoreContext(coreContext: any): void {
+    this.coreContext = coreContext;
   }
 
   /**
@@ -139,6 +152,11 @@ export class DelegationRegistry {
    * - Ensures auditTrail has source field (GAP #3)
    * - Logs auditTrail to AuditService
    *
+   * Enhancement Phase 2: CoreContext injection
+   * - Passes CoreContext to delegation modules via context parameter
+   * - Enables modules to access TokenExchangeService and other framework services
+   * - Backward compatible (existing modules work without context)
+   *
    * SECURITY (SEC-1): Trust Boundary Enforcement
    * - Registry independently verifies result.success (ground truth)
    * - Captures what module reported vs. what registry observed
@@ -149,13 +167,15 @@ export class DelegationRegistry {
    * @param session - User session
    * @param action - Action to perform
    * @param params - Action parameters
+   * @param sessionId - Optional session ID for token caching
    * @returns Delegation result with audit trail
    */
   async delegate<T = unknown>(
     moduleName: string,
     session: UserSession,
     action: string,
-    params: any
+    params: any,
+    sessionId?: string
   ): Promise<DelegationResult<T>> {
     const module = this.get(moduleName);
 
@@ -182,8 +202,11 @@ export class DelegationRegistry {
       };
     }
 
-    // Call module delegation
-    const result = await module.delegate<T>(session, action, params);
+    // Call module delegation with CoreContext (Phase 2 enhancement)
+    const result = await module.delegate<T>(session, action, params, {
+      sessionId,
+      coreContext: this.coreContext,
+    });
 
     // SECURITY (SEC-1): Registry's ground truth - independently verify success
     const registryTimestamp = new Date();

@@ -87,7 +87,6 @@
       "_comment": "Kerberos tool ENABLED - Can test S4U2Self and S4U2Proxy delegation"
     },
     "oauth": {
-      "wwwAuthenticateFormat": "bearer",
       "scopes": [
         "openid",
         "profile",

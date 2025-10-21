@@ -105,15 +105,23 @@ export class KerberosDelegationModule implements DelegationModule {
    * - This method uses pre-validated claims from session.legacyUsername
    * - No token exchange happens here anymore
    *
+   * **Phase 2 Enhancement:** Now accepts optional context parameter with CoreContext.
+   * This enables access to framework services if needed in the future.
+   *
    * @param session - User session (with pre-validated TE-JWT claims)
    * @param action - Delegation action (s4u2self, s4u2proxy)
    * @param params - Action parameters
+   * @param context - Optional context with sessionId and coreContext
    * @returns Delegation result with ticket
    */
   async delegate<T>(
     session: UserSession,
     action: string,
-    params: KerberosParams
+    params: KerberosParams,
+    context?: {
+      sessionId?: string;
+      coreContext?: any;
+    }
   ): Promise<DelegationResult<T>> {
     console.log('\n[KERBEROS-MODULE] delegate() called');
     console.log('[KERBEROS-MODULE] Action:', action);
