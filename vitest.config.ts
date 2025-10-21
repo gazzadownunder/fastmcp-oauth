@@ -1,6 +1,15 @@
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Map package imports to source files for testing
+      'mcp-oauth-framework/core': path.resolve(__dirname, './src/core/index.ts'),
+      'mcp-oauth-framework/delegation': path.resolve(__dirname, './src/delegation/index.ts'),
+      'mcp-oauth-framework': path.resolve(__dirname, './src/index.ts'),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',

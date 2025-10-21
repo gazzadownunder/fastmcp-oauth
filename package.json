@@ -5,6 +5,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "workspaces": [
+    "packages/*"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -28,7 +31,9 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "npm run build:core && npm run build:packages",
+    "build:core": "tsup",
+    "build:packages": "npm run build --workspaces --if-present",
     "dev": "tsup --watch",
     "test": "vitest",
     "test:unit": "vitest tests/unit",
@@ -38,9 +43,9 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write src/**/*.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
     "start": "node dist/start-server.js",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist && npm run clean --workspaces --if-present"
   },
   "keywords": [
     "fastmcp",
@@ -66,10 +71,11 @@
     "jose": "^6.1.0",
     "kerberos": "^2.2.2",
     "mcp-proxy": "^5.9.0",
-    "mssql": "^11.0.1",
-    "pg": "^8.13.1",
     "undici": "^7.13.0",
     "zod": "^3.25.76"
+  },
+  "optionalDependencies": {
+    "@mcp-oauth/sql-delegation": "^1.0.0"
   },
   "devDependencies": {
     "@types/kerberos": "^1.1.5",

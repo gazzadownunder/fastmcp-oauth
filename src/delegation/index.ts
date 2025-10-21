@@ -40,11 +40,13 @@ export type { CacheConfig, CacheMetrics } from './encrypted-token-cache.js';
 export { DelegationRegistry } from './registry.js';
 
 // ============================================================================
-// SQL Delegation Module
+// SQL Delegation Module - Moved to @mcp-oauth/sql-delegation package
 // ============================================================================
-
-export { SQLDelegationModule } from './sql/sql-module.js';
-export type { SQLConfig } from './sql/sql-module.js';
+// SQL delegation is now available as a separate optional package:
+// npm install @mcp-oauth/sql-delegation
+//
+// This demonstrates the framework's modularity - SQL support is NOT required
+// for the core framework to function.
 
 // ============================================================================
 // Kerberos Delegation Module (Placeholder)

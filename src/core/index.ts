@@ -64,3 +64,9 @@ export {
   ROLE_USER,
   ROLE_GUEST,
 } from './types.js';
+
+// ============================================================================
+// Utilities
+// ============================================================================
+
+export { createSecurityError, OAuthSecurityError } from '../utils/errors.js';
