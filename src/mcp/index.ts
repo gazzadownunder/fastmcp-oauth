@@ -38,10 +38,11 @@ export type {
 export type { FastMCPRequest, FastMCPAuthResult } from './middleware.js';
 
 // ============================================================================
-// Middleware
+// Middleware & Authorization
 // ============================================================================
 
 export { MCPAuthMiddleware, requireAuth, requireRole } from './middleware.js';
+export { Authorization } from './authorization.js';
 
 // ============================================================================
 // Orchestrator
@@ -61,6 +62,16 @@ export { MCPOAuthServer } from './server.js';
 // ============================================================================
 
 export { createSqlDelegateTool, getAllToolFactories, ALL_TOOL_FACTORIES } from './tools/index.js';
+
+// ============================================================================
+// Generic Delegation Tool Factory (Framework Extension API)
+// ============================================================================
+
+export {
+  createDelegationTool,
+  createDelegationTools,
+  type DelegationToolConfig,
+} from './tools/delegation-tool-factory.js';
 
 // ============================================================================
 // IMPORTANT: CoreContext is NOT re-exported

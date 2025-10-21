@@ -23,7 +23,7 @@ import { ConfigOrchestrator } from './orchestrator.js';
 import { MCPAuthMiddleware } from './middleware.js';
 import { getAllToolFactories } from './tools/index.js';
 import type { CoreContext } from '../core/index.js';
-import type { MCPStartOptions, MCPContext } from './types.js';
+import type { MCPStartOptions, MCPContext, ToolRegistration } from './types.js';
 import type { DelegationModule } from '../delegation/base.js';
 
 /**
@@ -103,6 +103,151 @@ export class MCPOAuthServer {
     // The module's .name property is used as the registration key
     await this.coreContext.delegationRegistry.register(module);
     console.log(`[MCP OAuth Server] Registered delegation module: ${name}`);
+  }
+
+  /**
+   * Register a custom MCP tool
+   *
+   * Allows developers to register custom tools with the MCP server after initialization.
+   * This is the primary API for extending the framework with custom functionality.
+   *
+   * **Note:** Tools can be registered before OR after calling start(). If registered after
+   * start(), the tool will be immediately available.
+   *
+   * @param tool - Tool registration object (from createDelegationTool or manual creation)
+   *
+   * @throws {Error} If server is not initialized (CoreContext is null)
+   *
+   * @example
+   * ```typescript
+   * import { createDelegationTool } from 'mcp-oauth-framework';
+   *
+   * // Create custom tool using factory
+   * const myTool = createDelegationTool('mymodule', {
+   *   name: 'my-custom-tool',
+   *   description: 'My custom delegation tool',
+   *   requiredPermission: 'mymodule:execute',
+   *   action: 'execute',
+   *   parameters: z.object({ param: z.string() })
+   * }, server.getCoreContext());
+   *
+   * // Register the tool
+   * server.registerTool(myTool);
+   * ```
+   *
+   * @see createDelegationTool for easy tool creation
+   * @see Framework-update.md Phase 1.2
+   */
+  registerTool(tool: ToolRegistration): void {
+    if (!this.coreContext) {
+      throw new Error(
+        'Cannot register tool before server initialization. ' +
+        'CoreContext must be created first. Call start() or ensure configuration is loaded.'
+      );
+    }
+
+    if (!this.mcpServer) {
+      throw new Error(
+        'Cannot register tool before server start. ' +
+        'Call start() first to initialize the FastMCP server.'
+      );
+    }
+
+    console.log(`[MCP OAuth Server] Registering custom tool: ${tool.name}`);
+
+    this.mcpServer.addTool({
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.schema,
+      canAccess: tool.canAccess as any,
+      execute: async (args, context) => {
+        // Extract UserSession from FastMCP context
+        const fastmcpSession = (context as any).session;
+        const mcpContext: MCPContext = {
+          session: fastmcpSession?.session || fastmcpSession,
+        };
+
+        // Call tool handler
+        const result = await tool.handler(args, mcpContext);
+
+        // Convert LLMResponse to MCP protocol format
+        if ('data' in result) {
+          // Success response
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result.data, null, 2),
+              },
+            ],
+          };
+        } else {
+          // Failure response
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    error: result.code,
+                    message: result.message,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    });
+  }
+
+  /**
+   * Register multiple custom MCP tools at once
+   *
+   * Convenience method for registering multiple tools in a single call.
+   *
+   * @param tools - Array of tool registration objects
+   *
+   * @throws {Error} If server is not initialized
+   *
+   * @example
+   * ```typescript
+   * import { createDelegationTools } from 'mcp-oauth-framework';
+   *
+   * // Create multiple tools for same module
+   * const tools = createDelegationTools('myapi', [
+   *   {
+   *     name: 'api-get',
+   *     description: 'GET request',
+   *     requiredPermission: 'api:read',
+   *     action: 'get',
+   *     parameters: z.object({ endpoint: z.string() })
+   *   },
+   *   {
+   *     name: 'api-post',
+   *     description: 'POST request',
+   *     requiredPermission: 'api:write',
+   *     action: 'post',
+   *     parameters: z.object({ endpoint: z.string(), body: z.any() })
+   *   }
+   * ], server.getCoreContext());
+   *
+   * // Register all tools at once
+   * server.registerTools(tools);
+   * ```
+   *
+   * @see registerTool for registering a single tool
+   * @see Framework-update.md Phase 1.3
+   */
+  registerTools(tools: ToolRegistration[]): void {
+    console.log(`[MCP OAuth Server] Registering ${tools.length} custom tools...`);
+    for (const tool of tools) {
+      this.registerTool(tool);
+    }
+    console.log(`[MCP OAuth Server] ✓ Successfully registered ${tools.length} custom tools`);
   }
 
   /**
