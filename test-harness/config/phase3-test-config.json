@@ -104,7 +104,7 @@
         "enabled": true,
         "_comment_enabled": "Kerberos delegation ENABLED - Requires Active Directory at w25-dc.w25ad.net",
         "domainController": "w25-dc.w25ad.net",
-        "servicePrincipalName": "HTTP/mcp-server",
+        "servicePrincipalName": "host/mcp-server",
         "realm": "w25ad.net",
         "kdc": "w25-dc.w25ad.net:88",
         "enableS4U2Self": true,

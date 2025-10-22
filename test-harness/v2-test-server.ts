@@ -29,8 +29,8 @@
  */
 
 import { MCPOAuthServer } from '../src/mcp/server.js';
-import { PostgreSQLDelegationModule } from '../src/delegation/sql/postgresql-module.js';
-import { KerberosDelegationModule } from '../src/delegation/kerberos/kerberos-module.js';
+import { PostgreSQLDelegationModule } from '@mcp-oauth/sql-delegation';
+import { KerberosDelegationModule } from '@mcp-oauth/kerberos-delegation';
 import { TokenExchangeService } from '../src/delegation/token-exchange.js';
 import path from 'path';
 import { fileURLToPath } from 'url';

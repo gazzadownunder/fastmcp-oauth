@@ -10,7 +10,7 @@
  * @module delegation/kerberos/kerberos-client
  */
 
-import * as kerberos from 'kerberos';
+import kerberos from 'kerberos';
 import type { KerberosConfig } from './types.js';
 
 /**
@@ -108,28 +108,31 @@ export class KerberosClient {
       console.log('[KERBEROS-CLIENT] Domain Controller:', this.config.domainController);
       console.log('[KERBEROS-CLIENT] KDC:', this.config.kdc);
 
-      // Use keytab if provided, otherwise use password
-      let authOptions: any;
+      // Use keytab if provided, otherwise use password, otherwise use current user credentials
+      let authOptions: any = {};
 
       if (this.config.serviceAccount.keytabPath) {
         console.log('[KERBEROS-CLIENT] Using keytab authentication:', this.config.serviceAccount.keytabPath);
-        // Authenticate using keytab
+        // Authenticate using keytab (Linux/Unix)
         authOptions = {
           principal: `${username}@${realm}`,
           keytab: this.config.serviceAccount.keytabPath,
         };
       } else if (this.config.serviceAccount.password) {
-        console.log('[KERBEROS-CLIENT] Using password authentication');
-        // Authenticate using password
+        console.log('[KERBEROS-CLIENT] Password provided - attempting password authentication');
+        console.log('[KERBEROS-CLIENT] NOTE: On Windows, password auth requires credentials in Windows Credential Manager');
+        // On Windows SSPI: password field is ignored, uses cached credentials
+        // On Linux MIT Kerberos: password is used directly
         authOptions = {
           principal: `${username}@${realm}`,
           password: this.config.serviceAccount.password,
         };
       } else {
-        console.error('[KERBEROS-CLIENT] No authentication method provided');
-        throw new Error(
-          'Service account must have either password or keytabPath configured'
-        );
+        console.log('[KERBEROS-CLIENT] No credentials provided - using current user credentials (Windows SSPI)');
+        console.log('[KERBEROS-CLIENT] This requires the current user to be logged into the domain');
+        // Use current user's cached credentials (Windows SSPI default behavior)
+        // No principal or password needed - SSPI uses current security context
+        authOptions = {};
       }
 
       console.log('[KERBEROS-CLIENT] Initializing Kerberos client with node-kerberos library');
@@ -139,7 +142,9 @@ export class KerberosClient {
         hasKeytab: !!authOptions.keytab,
       });
 
-      // Initialize Kerberos authentication
+      // Initialize Kerberos client using the module-level function
+      console.log('[KERBEROS-CLIENT] Initializing client for service principal:', servicePrincipal);
+
       this.kerberosClient = await kerberos.initializeClient(
         servicePrincipal,
         authOptions

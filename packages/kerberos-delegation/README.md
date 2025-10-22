@@ -19,9 +19,20 @@ This package is an **optional** dependency of `mcp-oauth-framework`. The core fr
 
 ## Platform Requirements
 
+### Windows (Domain-Joined)
 - **Windows Server** with Active Directory
 - **Node.js** 18.0.0 or higher
 - **Kerberos** configured service account with delegation rights
+- Uses **Windows SSPI** (Security Support Provider Interface)
+
+### Linux
+- **Node.js** 18.0.0 or higher
+- **MIT Kerberos** (`krb5-user` package)
+- **Keytab file** for service account
+- Network access to Active Directory KDC
+
+### Windows (Non-Domain-Joined)
+See [Non-Domain-Joined Windows Setup](#non-domain-joined-windows-setup) below
 
 ## Features
 
@@ -179,6 +190,218 @@ Kerberos Constrained Delegation requires:
 - Ticket cache supports automatic expiration and renewal
 - All delegation operations are audit logged
 
+## Platform-Specific Configuration
+
+### Linux Setup with Keytab
+
+On Linux, the recommended approach is to use a **keytab file** for authentication:
+
+#### 1. Generate Keytab on Active Directory
+
+```powershell
+# On Windows AD Domain Controller
+ktpass -princ HTTP/mcp-server@COMPANY.COM -mapuser svc-mcp-server `
+       -pass YourSecurePassword123! -out mcp-server.keytab `
+       -ptype KRB5_NT_PRINCIPAL
+```
+
+#### 2. Copy Keytab to Linux Server
+
+```bash
+# Copy keytab to Linux server
+scp mcp-server.keytab linux-server:/etc/keytabs/
+chmod 600 /etc/keytabs/mcp-server.keytab
+chown node-app-user:node-app-user /etc/keytabs/mcp-server.keytab
+```
+
+#### 3. Install MIT Kerberos
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install krb5-user
+
+# RHEL/CentOS
+sudo yum install krb5-workstation
+```
+
+#### 4. Configure Kerberos (`/etc/krb5.conf`)
+
+```ini
+[libdefaults]
+    default_realm = COMPANY.COM
+    dns_lookup_kdc = true
+    dns_lookup_realm = false
+    ticket_lifetime = 24h
+    renew_lifetime = 7d
+    forwardable = true
+
+[realms]
+    COMPANY.COM = {
+        kdc = dc01.company.com:88
+        admin_server = dc01.company.com:749
+        default_domain = company.com
+    }
+
+[domain_realm]
+    .company.com = COMPANY.COM
+    company.com = COMPANY.COM
+```
+
+#### 5. Update Configuration to Use Keytab
+
+```json
+{
+  "delegation": {
+    "modules": {
+      "kerberos": {
+        "enabled": true,
+        "domainController": "dc01.company.com",
+        "servicePrincipalName": "HTTP/mcp-server",
+        "realm": "COMPANY.COM",
+        "kdc": "dc01.company.com:88",
+        "serviceAccount": {
+          "username": "svc-mcp-server",
+          "keytabPath": "/etc/keytabs/mcp-server.keytab"
+        }
+      }
+    }
+  }
+}
+```
+
+#### 6. Test Keytab
+
+```bash
+# Obtain ticket using keytab
+kinit -kt /etc/keytabs/mcp-server.keytab svc-mcp-server@COMPANY.COM
+
+# Verify ticket
+klist
+
+# Expected output:
+# Ticket cache: FILE:/tmp/krb5cc_1000
+# Default principal: svc-mcp-server@COMPANY.COM
+```
+
+### Non-Domain-Joined Windows Setup
+
+For **non-domain-joined Windows machines**, you have several options:
+
+#### Option 1: MIT Kerberos for Windows (Recommended)
+
+Install MIT Kerberos for Windows to get the same capabilities as Linux:
+
+**Step 1: Install MIT Kerberos**
+```powershell
+# Download from: https://web.mit.edu/kerberos/dist/
+# Or use Chocolatey:
+choco install kerberos-for-windows
+```
+
+**Step 2: Configure Kerberos (`C:\ProgramData\MIT\Kerberos5\krb5.ini`)**
+```ini
+[libdefaults]
+    default_realm = COMPANY.COM
+    dns_lookup_kdc = true
+    dns_lookup_realm = false
+    ticket_lifetime = 24h
+    renew_lifetime = 7d
+    forwardable = true
+
+[realms]
+    COMPANY.COM = {
+        kdc = dc01.company.com:88
+        admin_server = dc01.company.com:749
+        default_domain = company.com
+    }
+
+[domain_realm]
+    .company.com = COMPANY.COM
+    company.com = COMPANY.COM
+```
+
+**Step 3: Obtain Kerberos Ticket**
+```powershell
+# Using password
+kinit svc-mcp-server@COMPANY.COM
+
+# Or using keytab (recommended)
+kinit -kt C:\keytabs\mcp-server.keytab svc-mcp-server@COMPANY.COM
+
+# Verify ticket
+klist
+```
+
+**Step 4: Run MCP Server**
+
+The `kerberos` npm package will automatically detect MIT Kerberos and use it instead of SSPI.
+
+#### Option 2: Windows Credential Manager (SSPI)
+
+Cache credentials using Windows built-in tools:
+
+```powershell
+# Add credentials to Windows Credential Manager
+cmdkey /generic:TERMSRV/dc01.company.com /user:COMPANY\svc-mcp-server /pass:YourPassword123!
+
+# Verify
+cmdkey /list
+
+# Start a new session with domain credentials
+runas /netonly /user:COMPANY\svc-mcp-server "powershell.exe"
+
+# In the new PowerShell window, run the server
+cd "C:\path\to\mcp-oauth"
+npm start
+```
+
+#### Option 3: ksetup Configuration
+
+Configure the non-domain-joined machine to trust the domain:
+
+```powershell
+# Run as Administrator
+ksetup /setdomain COMPANY.COM
+ksetup /addkdc COMPANY.COM dc01.company.com
+
+# Map realm to domain
+ksetup /addhosttorealmmap dc01.company.com COMPANY.COM
+
+# Reboot required
+shutdown /r /t 0
+```
+
+After reboot, use `runas /netonly` as shown in Option 2.
+
+#### Option 4: WSL2 with MIT Kerberos
+
+Run the MCP server in WSL2 (Ubuntu) where MIT Kerberos works natively:
+
+```bash
+# In WSL2 Ubuntu
+sudo apt-get install krb5-user
+
+# Configure /etc/krb5.conf (same as Linux setup above)
+sudo nano /etc/krb5.conf
+
+# Use keytab
+kinit -kt /etc/keytabs/mcp-server.keytab svc-mcp-server@COMPANY.COM
+
+# Run server
+npm start
+```
+
+### Platform Comparison
+
+| Feature | Windows (Domain-Joined) | Linux | Windows (Non-Domain) |
+|---------|------------------------|-------|---------------------|
+| **Kerberos Library** | Windows SSPI | MIT Kerberos | MIT Kerberos (recommended) |
+| **Password Auth** | ❌ Not supported | ✅ Supported | ✅ With MIT Kerberos |
+| **Keytab Auth** | ❌ Not supported by SSPI | ✅ **Recommended** | ✅ With MIT Kerberos |
+| **Current User Credentials** | ✅ Default | ⚠️ Requires `kinit` | ⚠️ Requires `kinit` |
+| **Setup Complexity** | Low (automatic) | Medium (keytab setup) | High (MIT Kerberos install) |
+| **Production Ready** | ✅ Yes | ✅ Yes | ⚠️ Yes (with MIT Kerberos) |
+
 ## Troubleshooting
 
 ### Common Issues
@@ -186,7 +409,13 @@ Kerberos Constrained Delegation requires:
 **Issue: "Kerberos client initialization failed"**
 - Verify service account has SPN configured
 - Check KDC server is reachable
-- Ensure Windows SSPI is available
+- Ensure Windows SSPI is available (or MIT Kerberos on Linux)
+
+**Issue: "No credentials are available in the security package" (Windows SSPI)**
+- **Cause**: Windows SSPI doesn't support password authentication; it requires cached credentials
+- **Solution 1**: Install MIT Kerberos for Windows (see [Option 1](#option-1-mit-kerberos-for-windows-recommended))
+- **Solution 2**: Run server with `runas /netonly` (see [Option 2](#option-2-windows-credential-manager-sspi))
+- **Solution 3**: Use domain-joined machine where credentials are automatically cached
 
 **Issue: "S4U2Self failed: KDC_ERR_BADOPTION"**
 - Service account missing `TrustedToAuthForDelegation` flag
@@ -195,6 +424,10 @@ Kerberos Constrained Delegation requires:
 **Issue: "S4U2Proxy failed: KDC_ERR_BADOPTION"**
 - Target service not in `msDS-AllowedToDelegateTo` list
 - Constrained delegation not configured
+
+**Issue: "Keytab contains no suitable keys" (Linux)**
+- Keytab file doesn't match the service principal name
+- Regenerate keytab with correct SPN using `ktpass`
 
 ### Debug Mode
 
