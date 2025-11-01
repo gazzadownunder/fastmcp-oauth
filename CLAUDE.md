@@ -509,6 +509,119 @@ canAccess: (context) => {
 - SQL identifier validation enforced
 - Connection must use TLS encryption (`encrypt: true`)
 
+### Kerberos Security (Windows Constrained Delegation)
+
+**Overview:** The framework supports Windows Kerberos Constrained Delegation (S4U2Self/S4U2Proxy) for delegating on behalf of users to access backend resources (file shares, legacy systems) without requiring user passwords.
+
+#### Cross-Platform Authentication
+
+**Windows (SSPI):**
+- Uses `user` and `pass` options for explicit service account credentials
+- Supports SPNEGO mechanism for Windows compatibility
+- MCP server can run as any account (doesn't need to run as service account)
+
+**Configuration:**
+```json
+{
+  "kerberos": {
+    "servicePrincipalName": "HTTP/mcp-server",
+    "realm": "W25AD.NET",
+    "serviceAccount": {
+      "username": "svc-mcp-server",
+      "password": "ServicePassword123!"
+    }
+  }
+}
+```
+
+**Linux/macOS (GSSAPI):**
+- Uses keytab file for service account credentials
+- Sets `KRB5_KTNAME` environment variable to point to keytab
+- Supports MIT Kerberos and Heimdal Kerberos
+
+**Configuration:**
+```json
+{
+  "kerberos": {
+    "servicePrincipalName": "HTTP/mcp-server",
+    "realm": "EXAMPLE.COM",
+    "serviceAccount": {
+      "username": "svc-mcp-server",
+      "keytabPath": "/etc/keytabs/svc-mcp-server.keytab"
+    }
+  }
+}
+```
+
+#### Service Account vs End User Credentials
+
+**CRITICAL:** Kerberos credentials in configuration are for the **SERVICE ACCOUNT**, NOT end users!
+
+- **Service Account Credentials**: Authenticate the MCP server to Active Directory
+  - Windows: `password` required for SSPI
+  - Linux: `keytabPath` required for GSSAPI
+  - These credentials obtain the initial TGT (Ticket Granting Ticket)
+
+- **End User Credentials**: NOT REQUIRED!
+  - S4U2Self (protocol transition) obtains tickets for users WITHOUT their passwords
+  - User identity comes from JWT `legacy_name` claim (e.g., "alice")
+  - This is the "magic" of Windows Constrained Delegation
+
+#### S4U2Self/S4U2Proxy Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│          Windows Kerberos Constrained Delegation                 │
+│                                                                   │
+│  1. MCP Server authenticates as SERVICE ACCOUNT                  │
+│     - Credentials: svc-mcp-server + password (Windows)           │
+│     - Credentials: svc-mcp-server + keytab (Linux)               │
+│     - Obtains: TGT for service account                           │
+│                                                                   │
+│  2. S4U2Self: Protocol Transition                                │
+│     - Input: User principal from JWT (alice@W25AD.NET)           │
+│     - NO PASSWORD NEEDED for alice!                              │
+│     - Service requests ticket "as if" alice requested it         │
+│     - Output: Forwardable ticket for alice → mcp-server          │
+│                                                                   │
+│  3. S4U2Proxy: Constrained Delegation                            │
+│     - Input: User ticket from S4U2Self                           │
+│     - Input: Target SPN (cifs/fileserver.w25ad.net)              │
+│     - Output: Proxy ticket for alice → fileserver                │
+│     - Allows: MCP server accesses fileserver AS alice            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Active Directory Prerequisites
+
+**Service Account Configuration:**
+1. **For S4U2Self (Protocol Transition):**
+   - Service account must have `TRUSTED_TO_AUTH_FOR_DELEGATION` flag set
+   - Configured via: Active Directory Users and Computers → Account tab → "Account is trusted for delegation"
+
+2. **For S4U2Proxy (Constrained Delegation):**
+   - Service account must have `msDS-AllowedToDelegateTo` attribute
+   - Lists target SPNs (e.g., `cifs/fileserver.w25ad.net`)
+   - Configured via: Active Directory Users and Computers → Delegation tab → "Trust this user for delegation to specified services only"
+
+3. **SPN Registration:**
+   - Service principal must be registered in Active Directory
+   - Command: `setspn -S HTTP/mcp-server.w25ad.net svc-mcp-server`
+
+**End User Requirements:**
+- User must exist in Active Directory
+- NO special permissions or flags required
+- NO password needed by MCP server
+
+#### Multi-Tenant Delegation Pattern
+
+This architecture enables **true multi-tenant delegation**:
+
+✅ **Single MCP Server Instance** can delegate on behalf of many users
+✅ **Service runs as any account** (SYSTEM, Administrator, or dedicated service user)
+✅ **Per-request delegation** using different user identities from JWT claims
+✅ **No user password storage** - S4U2Self obtains tickets without passwords
+
 ### Configuration Security
 - All IDP URLs must use HTTPS (enforced by Zod schema)
 - Trusted connection recommended for SQL Server

@@ -133,6 +133,7 @@ export class KerberosClient {
       }
 
       console.log('[KERBEROS-CLIENT] Initializing Kerberos client with node-kerberos library');
+      console.log('[KERBEROS-CLIENT] Platform:', process.platform);
       console.log('[KERBEROS-CLIENT] Auth options:', {
         principal: authOptions.principal,
         hasPassword: !!authOptions.password,
@@ -140,9 +141,81 @@ export class KerberosClient {
       });
 
       // Initialize Kerberos authentication
+      // API: initializeClient(service, options)
+      // - service: 'type@fqdn' format (e.g., 'HTTP@mcp-server.w25ad.net')
+      // - options: { principal, user, pass, flags, mechOID }
+      //
+      // Cross-Platform Authentication:
+      // - Windows (SSPI): Use 'user' and 'pass' options for explicit credentials
+      // - Linux/macOS (GSSAPI): Set KRB5_KTNAME environment variable for keytab
+
+      // Convert SPN to 'type@fqdn' format required by kerberos library
+      // From: 'HTTP/mcp-server.w25ad.net@W25AD.NET' or 'HTTP/mcp-server@W25AD.NET'
+      // To: 'HTTP@mcp-server.w25ad.net'
+      const spnParts = this.config.servicePrincipalName.split('/');
+      const serviceType = spnParts[0]; // e.g., 'HTTP' or 'host'
+      const serviceHost = spnParts.length > 1 ? spnParts[1] : this.config.domainController || `mcp-server.${this.config.realm.toLowerCase()}`;
+      const serviceFormatted = `${serviceType}@${serviceHost}`;
+
+      console.log('[KERBEROS-CLIENT] Service SPN (formatted):', serviceFormatted);
+
+      // Build options for kerberos.initializeClient()
+      const initOptions: any = {
+        principal: `${username}@${realm}`,
+      };
+
+      const isWindows = process.platform === 'win32';
+      const isLinux = process.platform === 'linux' || process.platform === 'darwin';
+
+      if (isWindows) {
+        // Windows: Use SSPI with explicit credentials (user/pass)
+        // This allows the MCP server to run as any account and specify delegation
+        // credentials per operation (true multi-tenant delegation)
+        console.log('[KERBEROS-CLIENT] Windows platform detected - using SSPI');
+        initOptions.mechOID = kerberos.GSS_MECH_OID_SPNEGO; // SPNEGO for Windows compatibility
+
+        if (this.config.serviceAccount.password) {
+          console.log('[KERBEROS-CLIENT] Using explicit credentials (user/pass) for SSPI');
+          initOptions.user = username;
+          initOptions.pass = this.config.serviceAccount.password;
+        } else if (this.config.serviceAccount.keytabPath) {
+          console.warn('[KERBEROS-CLIENT] WARNING: keytab not supported on Windows');
+          console.warn('[KERBEROS-CLIENT] Falling back to process credentials (current logged-in user)');
+          console.warn('[KERBEROS-CLIENT] For multi-tenant delegation, configure password instead of keytab');
+          // Let SSPI use process credentials
+        } else {
+          console.warn('[KERBEROS-CLIENT] No credentials provided - using process credentials (current logged-in user)');
+        }
+      } else if (isLinux) {
+        // Linux/macOS: Use GSSAPI with keytab file
+        // Set KRB5_KTNAME environment variable to point to keytab file
+        console.log('[KERBEROS-CLIENT] Linux/macOS platform detected - using GSSAPI');
+        initOptions.mechOID = kerberos.GSS_MECH_OID_KRB5; // Kerberos for Linux
+
+        if (this.config.serviceAccount.keytabPath) {
+          console.log('[KERBEROS-CLIENT] Using keytab authentication:', this.config.serviceAccount.keytabPath);
+          // Set environment variable for GSSAPI to find keytab
+          process.env.KRB5_KTNAME = this.config.serviceAccount.keytabPath;
+          console.log('[KERBEROS-CLIENT] Set KRB5_KTNAME environment variable');
+        } else if (this.config.serviceAccount.password) {
+          console.warn('[KERBEROS-CLIENT] WARNING: Password authentication on Linux requires kinit command');
+          console.warn('[KERBEROS-CLIENT] Please use keytab file instead for production deployments');
+          console.warn('[KERBEROS-CLIENT] Falling back to default credential cache (requires manual kinit)');
+          // Let GSSAPI use default credential cache (/tmp/krb5cc_*)
+        } else {
+          console.warn('[KERBEROS-CLIENT] No credentials provided - using default credential cache');
+          console.warn('[KERBEROS-CLIENT] Requires manual kinit or existing TGT in credential cache');
+        }
+      } else {
+        throw new Error(
+          `Unsupported platform: ${process.platform}. Kerberos delegation is only supported on Windows, Linux, and macOS.`
+        );
+      }
+
+      console.log('[KERBEROS-CLIENT] Calling kerberos.initializeClient()');
       this.kerberosClient = await kerberos.initializeClient(
-        servicePrincipal,
-        authOptions
+        serviceFormatted,
+        initOptions
       );
 
       console.log('[KERBEROS-CLIENT] ✓ Kerberos client initialized');
