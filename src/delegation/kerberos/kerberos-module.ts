@@ -42,6 +42,8 @@ export class KerberosDelegationModule implements DelegationModule {
   private config?: KerberosConfig;
   private client?: KerberosClient;
   private ticketCache?: TicketCache;
+  private tokenExchangeService?: any; // Unused - token exchange handled by AuthenticationService
+  private tokenExchangeConfig?: any;  // Unused - maintained for API consistency
 
   /**
    * Initialize Kerberos delegation module
@@ -364,6 +366,32 @@ export class KerberosDelegationModule implements DelegationModule {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Set token exchange service (API consistency with SQL module)
+   *
+   * NOTE: Kerberos module doesn't use TokenExchangeService directly.
+   * Token exchange happens at authentication time (AuthenticationService),
+   * and legacy_name claim is pre-validated in UserSession.
+   *
+   * This method is provided for API consistency but is a no-op.
+   *
+   * @param service - TokenExchangeService instance (unused)
+   * @param config - Token exchange configuration (unused)
+   */
+  setTokenExchangeService(
+    service: any,
+    config: {
+      tokenEndpoint: string;
+      clientId: string;
+      clientSecret: string;
+      audience?: string;
+    }
+  ): void {
+    console.log('[KERBEROS-MODULE] setTokenExchangeService() called (no-op - token exchange handled by AuthenticationService)');
+    this.tokenExchangeService = service;
+    this.tokenExchangeConfig = config;
   }
 
   /**

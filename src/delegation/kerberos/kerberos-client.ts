@@ -10,7 +10,8 @@
  * @module delegation/kerberos/kerberos-client
  */
 
-import * as kerberos from 'kerberos';
+// Import kerberos package - use default export for ES modules
+import kerberos from 'kerberos';
 import type { KerberosConfig } from './types.js';
 
 /**

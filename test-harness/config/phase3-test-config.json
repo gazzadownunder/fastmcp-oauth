@@ -118,7 +118,7 @@
         "_comment_targets": "File server SPNs for Windows file share access via SMB/CIFS",
         "serviceAccount": {
           "username": "svc-mcp-server",
-          "password": "YourSecurePassword123!",
+          "password": "Password5",
           "_comment_keytabPath": "For Linux: use /etc/keytabs/mcp-server.keytab instead of password"
         },
         "ticketCache": {
