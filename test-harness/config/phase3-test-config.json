@@ -3,9 +3,9 @@
     "trustedIDPs": [
       {
         "name": "requestor-jwt",
-        "issuer": "http://localhost:8080/realms/mcp_security",
-        "discoveryUrl": "http://localhost:8080/realms/mcp_security/.well-known/openid-configuration",
-        "jwksUri": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "issuer": "http://192.168.1.196:8080/realms/mcp_security",
+        "discoveryUrl": "http://192.168.1.196:8080/realms/mcp_security/.well-known/openid-configuration",
+        "jwksUri": "http://192.168.1.196:8080/realms/mcp_security/protocol/openid-connect/certs",
         "audience": "mcp-oauth",
         "algorithms": ["RS256"],
         "claimMappings": {
@@ -31,9 +31,9 @@
       },
       {
         "name": "sql-delegation-te-jwt",
-        "issuer": "http://localhost:8080/realms/mcp_security",
-        "discoveryUrl": "http://localhost:8080/realms/mcp_security/.well-known/openid-configuration",
-        "jwksUri": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "issuer": "http://192.168.1.196:8080/realms/mcp_security",
+        "discoveryUrl": "http://192.168.1.196:8080/realms/mcp_security/.well-known/openid-configuration",
+        "jwksUri": "http://192.168.1.196:8080/realms/mcp_security/protocol/openid-connect/certs",
         "audience": "mcp-server-client",
         "algorithms": ["RS256"],
         "claimMappings": {
@@ -70,7 +70,7 @@
   },
   "delegation": {
     "tokenExchange": {
-      "tokenEndpoint": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/token",
+      "tokenEndpoint": "http://192.168.1.196:8080/realms/mcp_security/protocol/openid-connect/token",
       "clientId": "mcp-server-client",
       "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
       "audience": "mcp-server-client",
