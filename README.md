@@ -31,32 +31,42 @@ The framework follows a **layered modular architecture** with strict one-way dep
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                     MCP Layer                           │
-│  (FastMCP Integration, Tools, Middleware)               │
+│  src/mcp/ - FastMCP Integration                         │
 │  - MCPAuthMiddleware, ConfigOrchestrator                │
 │  - Tool factories with CoreContext injection            │
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
 │                  Delegation Layer                       │
-│  (Pluggable delegation modules)                         │
-│  - DelegationRegistry, SQLDelegationModule              │
-│  - Custom delegation modules (API, Kerberos, etc.)      │
+│  src/delegation/ - Core delegation infrastructure       │
+│  - DelegationRegistry, TokenExchangeService             │
+│  - EncryptedTokenCache, Base interfaces                 │
+│  - NOTE: Delegation modules moved to packages/          │
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
 │                    Core Layer                           │
-│  (Authentication framework - usable standalone)         │
+│  src/core/ - Standalone authentication framework        │
 │  - AuthenticationService, JWTValidator                  │
 │  - SessionManager, RoleMapper, AuditService             │
 │  - CoreContext, CoreContextValidator                    │
 └─────────────────────────────────────────────────────────┘
+                   │
+┌─────────────────────────────────────────────────────────┐
+│             Optional Delegation Packages                │
+│  packages/ - Standalone npm packages                    │
+│  - @mcp-oauth/sql-delegation (PostgreSQL, MSSQL)        │
+│  - @mcp-oauth/kerberos-delegation (S4U2Self/Proxy)      │
+│  - Custom modules can be published independently        │
+└─────────────────────────────────────────────────────────┘
 ```
 
 **Key Principles:**
-- **Core** is usable standalone (no MCP or delegation dependencies)
-- **Delegation** is pluggable (add custom modules in <50 LOC)
+- **Core** has zero delegation dependencies (truly standalone)
+- **Delegation modules** are optional npm packages
 - **MCP** orchestrates everything via `CoreContext` dependency injection
 - **One-way dependencies**: Core ← Delegation ← MCP
+- **Install only what you need**: No forced dependencies on SQL, Kerberos, etc.
 
 ##  Implementation Status
 
@@ -121,15 +131,17 @@ The framework follows a **layered modular architecture** with strict one-way dep
 -  **Hot-Reload** - Update configuration without server restart
 -  **Comprehensive Documentation** - 4500+ lines across EXTENDING.md, TESTING.md, CLAUDE.md
 
-### Delegation Modules 
--  **SQL Delegation** - PostgreSQL + SQL Server (monorepo package @mcp-oauth/sql-delegation)
--  **Kerberos Delegation** - S4U2Self/S4U2Proxy (monorepo package @mcp-oauth/kerberos-delegation)
+### Delegation Modules
+-  **SQL Delegation** - Optional package `@mcp-oauth/sql-delegation` (PostgreSQL + MSSQL)
+-  **Kerberos Delegation** - Optional package `@mcp-oauth/kerberos-delegation` (S4U2Self/Proxy)
 -  **REST API** - Token exchange, parameter transformation (example)
 -  **GraphQL** - Query/mutation support (example)
 -  **gRPC** - High-performance RPC with retry (example)
 -  **LDAP** - Directory services integration (example)
 -  **Filesystem** - Path traversal prevention (example)
 -  **Token Exchange** - API-to-API delegation (example)
+
+**Note**: SQL and Kerberos are optional packages - install only if needed. Core framework has zero delegation dependencies.
 
 ### Quality & Testing 
 -  **319 Tests Passing** - 100% pass rate
@@ -145,10 +157,14 @@ The framework follows a **layered modular architecture** with strict one-way dep
 ### Installation
 
 ```bash
-# From npm (when published)
+# Core framework (required)
 npm install fastmcp-oauth-obo
 
-# From source (current)
+# Optional delegation packages (install only what you need)
+npm install @mcp-oauth/sql-delegation        # For SQL Server or PostgreSQL
+npm install @mcp-oauth/kerberos-delegation   # For Windows Active Directory
+
+# From source (development)
 git clone https://github.com/your-org/MCP-Oauth.git
 cd MCP-Oauth
 npm install
@@ -311,11 +327,8 @@ if (!result.rejected) {
 Add SQL delegation without MCP:
 
 ```typescript
-import {
-  AuthenticationService,
-  DelegationRegistry,
-  SQLDelegationModule
-} from 'fastmcp-oauth-obo';
+import { AuthenticationService, DelegationRegistry } from 'fastmcp-oauth-obo';
+import { SQLDelegationModule } from '@mcp-oauth/sql-delegation';
 
 const registry = new DelegationRegistry(auditService);
 const sqlModule = new SQLDelegationModule();

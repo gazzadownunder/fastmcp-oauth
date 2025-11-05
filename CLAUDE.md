@@ -8,6 +8,8 @@ FastMCP OAuth On-Behalf-Of (OBO) Framework - A production-ready, modular OAuth 2
 
 **Current Status:** Phases 1-6 completed - Modular architecture with Core, Delegation, and MCP layers fully implemented, tested, and documented.
 
+**Architecture Highlight:** Core framework has **zero delegation dependencies**. SQL and Kerberos are optional npm packages (`@mcp-oauth/sql-delegation`, `@mcp-oauth/kerberos-delegation`) that developers install only if needed.
+
 ## Modular Architecture (v2.x)
 
 The framework follows a **layered modular architecture** with strict one-way dependencies:
@@ -52,18 +54,22 @@ The framework follows a **layered modular architecture** with strict one-way dep
 
 1. **One-way Dependencies**: Core ← Delegation ← MCP (never reverse!)
 2. **Core is Standalone**: Can be used without MCP or delegation
-3. **Pluggable Delegation**: Add custom modules in <50 LOC
-4. **CoreContext Injection**: All tools receive dependencies via single CoreContext object
-5. **Fail-Safe Design**: RoleMapper never crashes (returns Unassigned role), AuditService works without config (Null Object Pattern)
+3. **Zero Delegation Dependencies**: Core has no SQL, Kerberos, or other delegation dependencies
+4. **Optional Packages**: Delegation modules are separate npm packages (install only what you need)
+5. **Pluggable Delegation**: Add custom modules in <50 LOC
+6. **CoreContext Injection**: All tools receive dependencies via single CoreContext object
+7. **Fail-Safe Design**: RoleMapper never crashes (returns Unassigned role), AuditService works without config (Null Object Pattern)
 
 ### Critical Rules (DO NOT VIOLATE)
 
 - ❌ **NEVER** import from `src/mcp/` in Core layer
 - ❌ **NEVER** import from `src/delegation/` in Core layer
 - ❌ **NEVER** import from `src/mcp/` in Delegation layer
+- ❌ **NEVER** add SQL or Kerberos dependencies to core `package.json`
 - ✅ **ALWAYS** define CoreContext in `src/core/types.ts`
 - ✅ **ALWAYS** use `ConfigOrchestrator.buildCoreContext()` to create CoreContext
 - ✅ **ALWAYS** validate CoreContext with `CoreContextValidator.validate()`
+- ✅ **ALWAYS** import delegation modules from packages: `@mcp-oauth/sql-delegation`, `@mcp-oauth/kerberos-delegation`
 
 ## Dependencies
 
@@ -131,9 +137,14 @@ External IDP (OAuth/JWKS) → JWT Middleware (jose lib) → FastMCP Core
                                     ↓                         ↓
                               Config Manager            Tools Registry
                                     ↓                         ↓
-                          Kerberos Module (Planned)    SQL Module (Implemented)
-                                    ↓                         ↓
-                          Legacy Windows Platforms     SQL Server (MSSQL 11.0+)
+                        Optional Delegation Packages (npm install)
+                                    ↓
+        ┌───────────────────────────┴───────────────────────────┐
+        │                                                        │
+  @mcp-oauth/kerberos-delegation            @mcp-oauth/sql-delegation
+        │                                                        │
+        ↓                                                        ↓
+  Windows AD / GSSAPI                               PostgreSQL / MSSQL
 ```
 
 ### Key Modules
@@ -142,13 +153,20 @@ External IDP (OAuth/JWKS) → JWT Middleware (jose lib) → FastMCP Core
 
 **[src/index-simple.ts](src/index-simple.ts)** - Simplified server without OAuth metadata (for basic FastMCP integration)
 
-**[src/middleware/jwt-validator.ts](src/middleware/jwt-validator.ts)** - RFC 8725 compliant JWT validation using jose library v6.1.0+. Validates tokens from trusted IDPs with JWKS discovery, rate limiting, and comprehensive audit logging.
+**[src/core/jwt-validator.ts](src/core/jwt-validator.ts)** - RFC 8725 compliant JWT validation using jose library v6.1.0+. Validates tokens from trusted IDPs with JWKS discovery, rate limiting, and comprehensive audit logging.
 
-**[src/services/sql-delegator.ts](src/services/sql-delegator.ts)** - SQL Server delegation service implementing `EXECUTE AS USER` with security features:
+**[packages/sql-delegation/src/sql-module.ts](packages/sql-delegation/src/sql-module.ts)** - SQL Server delegation service implementing `EXECUTE AS USER` with security features:
   - Parameterized queries only
   - SQL injection prevention with multiple validation layers
   - Dangerous operation blocking (DROP, CREATE, ALTER, etc.)
   - Automatic context reversion on error
+  - **Location:** Optional package `@mcp-oauth/sql-delegation`
+
+**[packages/kerberos-delegation/src/kerberos-module.ts](packages/kerberos-delegation/src/kerberos-module.ts)** - Kerberos constrained delegation implementing S4U2Self/S4U2Proxy:
+  - Windows SSPI and Linux GSSAPI support
+  - Service ticket caching
+  - Target SPN validation
+  - **Location:** Optional package `@mcp-oauth/kerberos-delegation`
 
 **[src/config/manager.ts](src/config/manager.ts)** - Configuration manager with hot-reload capability and Zod validation
 

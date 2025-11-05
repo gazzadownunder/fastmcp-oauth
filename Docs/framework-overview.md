@@ -184,21 +184,48 @@ server.registerTool(tool);
 ```
 mcp-oauth/
 ├── package.json (workspaces: ["packages/*"])
-├── packages/
-│ ├── sql-delegation/
-│ │ ├── src/ (PostgreSQL + SQL Server modules)
-│ │ ├── package.json (@mcp-oauth/sql-delegation)
-│ │ └── README.md
-│ └── kerberos-delegation/
-│ ├── src/ (Kerberos S4U2Self/S4U2Proxy)
-│ ├── package.json (@mcp-oauth/kerberos-delegation)
-│ └── README.md
-└── src/ (Core framework - zero delegation dependencies)
+│ - Core dependencies: fastmcp, jose, zod
+│ - NO SQL or Kerberos dependencies
+│
+├── src/ (Core framework - zero delegation dependencies)
+│ ├── core/ - Authentication & authorization
+│ ├── delegation/ - Base interfaces, TokenExchange, Cache
+│ └── mcp/ - FastMCP integration
+│
+└── packages/ (Optional delegation modules)
+  ├── sql-delegation/ (@mcp-oauth/sql-delegation)
+  │ ├── src/ (PostgreSQL + SQL Server modules)
+  │ ├── package.json - Dependencies: pg, mssql
+  │ └── README.md
+  │
+  └── kerberos-delegation/ (@mcp-oauth/kerberos-delegation)
+    ├── src/ (Kerberos S4U2Self/S4U2Proxy)
+    ├── package.json - Dependencies: kerberos, dns
+    └── README.md
 ```
 
-### Reference Implementations (Monorepo Packages)
+**Key Benefits:**
+- **Zero forced dependencies** - Core has no SQL or Kerberos deps
+- **Install only what you need** - `npm install @mcp-oauth/sql-delegation`
+- **Independent versioning** - Packages can evolve separately
+- **Community contributions** - Publish custom modules as packages
+
+### Optional Delegation Packages
+
+The framework provides two production-ready delegation modules as **optional npm packages**. Install only what you need:
+
+```bash
+# Install SQL delegation support (optional)
+npm install @mcp-oauth/sql-delegation
+
+# Install Kerberos delegation support (optional)
+npm install @mcp-oauth/kerberos-delegation
+```
 
 #### **SQL Delegation** (`@mcp-oauth/sql-delegation`)
+
+**Location:** `packages/sql-delegation/`
+**Installation:** `npm install @mcp-oauth/sql-delegation`
 
 - **PostgreSQL Support** - Full OBO delegation via `SET SESSION AUTHORIZATION`
 - **SQL Server Support** - `EXECUTE AS USER` impersonation
@@ -208,12 +235,20 @@ mcp-oauth/
 - **Automatic Context Reversion** - Security cleanup on error
 - **TLS Encryption** - Required for SQL connections
 
+**Dependencies:** `pg` (PostgreSQL), `mssql` (SQL Server)
+
 #### **Kerberos Delegation** (`@mcp-oauth/kerberos-delegation`)
+
+**Location:** `packages/kerberos-delegation/`
+**Installation:** `npm install @mcp-oauth/kerberos-delegation`
 
 - **Constrained Delegation** - S4U2Self/S4U2Proxy support
 - **Windows Active Directory** - Enterprise integration
 - **Service Ticket Management** - Automatic ticket lifecycle
 - **Legacy Platform Support** - File shares, Exchange, etc.
+- **Cross-Platform** - Windows (SSPI) and Linux (GSSAPI/keytab)
+
+**Dependencies:** `kerberos`, `dns`
 
 ### Example Implementations (Production-Ready Templates)
 
