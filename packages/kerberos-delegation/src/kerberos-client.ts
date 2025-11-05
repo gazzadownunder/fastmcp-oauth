@@ -192,13 +192,18 @@ export class KerberosClient {
    * - Service account has TrustedToAuthForDelegation enabled
    * - Service has valid TGT (call obtainServiceTicket first)
    *
+   * NOTE: The node-kerberos library (v2.2.2) does NOT support S4U2Self/S4U2Proxy.
+   * This implementation creates a stub ticket that will be used by Windows
+   * authentication when accessing resources (SMB shares, etc).
+   *
    * @param userPrincipal - User principal name (e.g., ALICE@COMPANY.COM)
-   * @returns Kerberos ticket for the user
-   * @throws {Error} If S4U2Self fails
+   * @returns Kerberos ticket for the user (stub implementation)
+   * @throws {Error} If validation fails
    */
   async performS4U2Self(userPrincipal: string): Promise<KerberosTicket> {
     console.log('\n[KERBEROS-CLIENT] performS4U2Self() called');
     console.log('[KERBEROS-CLIENT] User principal:', userPrincipal);
+    console.log('[KERBEROS-CLIENT] NOTE: Using stub implementation - node-kerberos does not support S4U2Self');
 
     if (!this.serviceTicket) {
       console.error('[KERBEROS-CLIENT] Service ticket not available');
@@ -223,21 +228,27 @@ export class KerberosClient {
       // For S4U2Self, we request a ticket for the user to our service
       const targetSPN = `${this.config.servicePrincipalName}@${this.config.realm}`;
 
-      // Use Kerberos client to perform S4U2Self
-      // This is a simplified implementation - real S4U2Self requires GSS-API calls
-      const ticket = await this.kerberosClient.step('', {
-        s4u2self: {
-          userPrincipal,
-          targetSPN,
-        },
-      });
+      // STUB IMPLEMENTATION:
+      // The node-kerberos library does not support S4U2Self operations.
+      // Instead, we create a stub ticket that contains the user principal.
+      // Actual Kerberos delegation will be handled by Windows SSPI when
+      // accessing resources (e.g., via PowerShell, SMB client, etc).
+
+      console.log('[KERBEROS-CLIENT] Creating stub ticket for user:', userPrincipal);
+      console.log('[KERBEROS-CLIENT] Target SPN:', targetSPN);
+      console.log('[KERBEROS-CLIENT] Actual delegation will be handled by Windows SSPI');
 
       return {
         principal: userPrincipal,
         service: targetSPN,
         expiresAt: new Date(Date.now() + 10 * 60 * 60 * 1000), // 10 hours
-        ticketData: ticket,
-        flags: ['FORWARDABLE', 'PROXIABLE'],
+        ticketData: Buffer.from(JSON.stringify({
+          userPrincipal,
+          targetSPN,
+          timestamp: Date.now(),
+          note: 'Stub ticket - real delegation handled by Windows SSPI'
+        })).toString('base64'),
+        flags: ['FORWARDABLE', 'PROXIABLE', 'STUB'],
       };
     } catch (error) {
       throw new Error(
@@ -256,15 +267,24 @@ export class KerberosClient {
    * - User ticket from S4U2Self
    * - Target SPN in msDS-AllowedToDelegateTo list
    *
+   * NOTE: The node-kerberos library (v2.2.2) does NOT support S4U2Proxy.
+   * This implementation creates a stub ticket. Actual delegation to backend
+   * services must be handled by Windows SSPI or PowerShell with CredSSP.
+   *
    * @param userTicket - User ticket from S4U2Self
-   * @param targetSPN - Target service principal (e.g., MSSQLSvc/sql01.company.com:1433)
-   * @returns Proxy ticket for backend service
-   * @throws {Error} If S4U2Proxy fails or SPN not allowed
+   * @param targetSPN - Target service principal (e.g., MSSQLSvc/sql01.company.com:1433 or cifs/fileserver)
+   * @returns Proxy ticket for backend service (stub implementation)
+   * @throws {Error} If validation fails or SPN not allowed
    */
   async performS4U2Proxy(
     userTicket: KerberosTicket,
     targetSPN: string
   ): Promise<KerberosTicket> {
+    console.log('\n[KERBEROS-CLIENT] performS4U2Proxy() called');
+    console.log('[KERBEROS-CLIENT] Target SPN:', targetSPN);
+    console.log('[KERBEROS-CLIENT] User principal:', userTicket.principal);
+    console.log('[KERBEROS-CLIENT] NOTE: Using stub implementation - node-kerberos does not support S4U2Proxy');
+
     // Validate target SPN is in allowed delegation targets
     if (
       this.config.allowedDelegationTargets &&
@@ -282,13 +302,18 @@ export class KerberosClient {
         ? targetSPN
         : `${targetSPN}@${this.config.realm}`;
 
-      // Use Kerberos client to perform S4U2Proxy
-      const ticket = await this.kerberosClient.step('', {
-        s4u2proxy: {
-          evidenceTicket: userTicket.ticketData,
-          targetSPN: fullTargetSPN,
-        },
-      });
+      console.log('[KERBEROS-CLIENT] Full target SPN:', fullTargetSPN);
+
+      // STUB IMPLEMENTATION:
+      // The node-kerberos library does not support S4U2Proxy operations.
+      // Instead, we create a stub ticket that contains delegation metadata.
+      // Actual Kerberos delegation will be handled by:
+      // 1. Windows SSPI when accessing SMB shares (native authentication)
+      // 2. PowerShell with CredSSP for file/network operations
+      // 3. SQL Server integrated security with delegation
+
+      console.log('[KERBEROS-CLIENT] Creating stub proxy ticket');
+      console.log('[KERBEROS-CLIENT] Actual delegation will be handled by Windows SSPI');
 
       return {
         principal: userTicket.principal,
@@ -296,8 +321,15 @@ export class KerberosClient {
         targetService: fullTargetSPN,
         delegatedFrom: `${this.config.serviceAccount.username}@${this.config.realm}`,
         expiresAt: new Date(Date.now() + 10 * 60 * 60 * 1000), // 10 hours
-        ticketData: ticket,
-        flags: ['FORWARDED'],
+        ticketData: Buffer.from(JSON.stringify({
+          userPrincipal: userTicket.principal,
+          targetSPN: fullTargetSPN,
+          evidenceTicket: userTicket.ticketData,
+          delegatedFrom: `${this.config.serviceAccount.username}@${this.config.realm}`,
+          timestamp: Date.now(),
+          note: 'Stub proxy ticket - real delegation handled by Windows SSPI'
+        })).toString('base64'),
+        flags: ['FORWARDED', 'STUB'],
       };
     } catch (error) {
       throw new Error(

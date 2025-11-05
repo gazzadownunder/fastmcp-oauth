@@ -12,7 +12,7 @@
  */
 
 import { MCPOAuthServer } from '../src/mcp/server.js';
-import { SQLDelegationModule } from '../src/delegation/sql/sql-module.js';
+import { SQLDelegationModule } from '@mcp-oauth/sql-delegation';
 
 async function main() {
   // Get config path from environment or use default

@@ -94,7 +94,7 @@ const CONFIG = {
 
     // MCP Server Configuration
     mcp: {
-        baseUrl: 'http://localhost:3000',
+        baseUrl: 'http://192.168.1.3:3000',
         endpoint: '/mcp',
 
         // Protocol version

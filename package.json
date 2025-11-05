@@ -53,7 +53,8 @@
     "format": "prettier --write src/**/*.ts",
     "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
     "start": "node dist/start-server.js",
-    "clean": "rimraf dist && npm run clean --workspaces --if-present"
+    "clean": "rimraf dist && npm run clean --workspaces --if-present",
+    "serve": "http-server ./test-harness/mcp-client -p 8081"
   },
   "keywords": [
     "fastmcp",

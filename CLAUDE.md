@@ -23,10 +23,19 @@ The framework follows a **layered modular architecture** with strict one-way dep
                    │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
 │                  Delegation Layer                        │
-│  src/delegation/ - Pluggable delegation modules         │
-│  - DelegationRegistry, SQLDelegationModule              │
-│  - Custom delegation module support                      │
+│  src/delegation/ - Core delegation infrastructure       │
+│  - DelegationRegistry, TokenExchangeService             │
+│  - EncryptedTokenCache, Base interfaces                 │
 │  - Imports from: Core only                               │
+│  - NOTE: Delegation modules moved to packages/          │
+└──────────────────┬──────────────────────────────────────┘
+                   │
+┌─────────────────────────────────────────────────────────┐
+│             Optional Delegation Packages                 │
+│  packages/ - Standalone npm packages                    │
+│  - @mcp-oauth/sql-delegation (PostgreSQL, MSSQL)        │
+│  - @mcp-oauth/kerberos-delegation (S4U2Self/Proxy)      │
+│  - Custom modules can be published independently        │
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
