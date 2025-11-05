@@ -11,9 +11,9 @@ const CONFIG = {
     // Keycloak OAuth Configuration
     oauth: {
         realm: 'mcp_security',
-        authEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/auth',
-        tokenEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/token',
-        logoutEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/logout',
+        authEndpoint: 'http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/auth',
+        tokenEndpoint: 'http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token',
+        logoutEndpoint: 'http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/logout',
 
         // Client credentials
         clientId: 'mcp-oauth',
@@ -78,8 +78,8 @@ const CONFIG = {
         // - Valid redirect URIs: Must include this application's URL
         inspector: {
             enabled: true,
-            authEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/auth',
-            tokenEndpoint: 'http://localhost:8080/realms/mcp_security/protocol/openid-connect/token',
+            authEndpoint: 'http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/auth',
+            tokenEndpoint: 'http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token',
             clientId: 'mcp-oauth',
             // No client_secret - this is a PUBLIC client per OAuth 2.1
             // PKCE provides security instead of client credentials
@@ -94,7 +94,7 @@ const CONFIG = {
 
     // MCP Server Configuration
     mcp: {
-        baseUrl: 'http://192.168.1.3:3000',
+        baseUrl: 'http://localhost:3000',
         endpoint: '/mcp',
 
         // Protocol version

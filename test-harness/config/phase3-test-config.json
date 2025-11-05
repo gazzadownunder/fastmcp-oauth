@@ -3,9 +3,9 @@
     "trustedIDPs": [
       {
         "name": "requestor-jwt",
-        "issuer": "http://192.168.1.196:8080/realms/mcp_security",
-        "discoveryUrl": "http://192.168.1.196:8080/realms/mcp_security/.well-known/openid-configuration",
-        "jwksUri": "http://192.168.1.196:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "issuer": "http://192.168.1.137:8080/realms/mcp_security",
+        "discoveryUrl": "http://192.168.1.137:8080/realms/mcp_security/.well-known/openid-configuration",
+        "jwksUri": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/certs",
         "audience": "mcp-oauth",
         "algorithms": ["RS256"],
         "claimMappings": {
@@ -31,9 +31,9 @@
       },
       {
         "name": "sql-delegation-te-jwt",
-        "issuer": "http://192.168.1.196:8080/realms/mcp_security",
-        "discoveryUrl": "http://192.168.1.196:8080/realms/mcp_security/.well-known/openid-configuration",
-        "jwksUri": "http://192.168.1.196:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "issuer": "http://192.168.1.137:8080/realms/mcp_security",
+        "discoveryUrl": "http://192.168.1.137:8080/realms/mcp_security/.well-known/openid-configuration",
+        "jwksUri": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/certs",
         "audience": "mcp-server-client",
         "algorithms": ["RS256"],
         "claimMappings": {
@@ -70,7 +70,7 @@
   },
   "delegation": {
     "tokenExchange": {
-      "tokenEndpoint": "http://192.168.1.196:8080/realms/mcp_security/protocol/openid-connect/token",
+      "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
       "clientId": "mcp-server-client",
       "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
       "audience": "mcp-server-client",
@@ -84,22 +84,6 @@
       }
     },
     "modules": {
-      "postgresql": {
-        "host": "localhost",
-        "port": 5432,
-        "database": "postgres",
-        "user": "mcp_service",
-        "password": "ServicePass123!",
-        "options": {
-          "ssl": false
-        },
-        "pool": {
-          "max": 10,
-          "min": 0,
-          "idleTimeoutMillis": 30000,
-          "connectionTimeoutMillis": 5000
-        }
-      },
       "kerberos": {
         "enabled": true,
         "_comment_enabled": "Kerberos delegation ENABLED - Requires Active Directory at w25-dc.w25ad.net",
@@ -118,7 +102,7 @@
         "_comment_targets": "File server SPNs for Windows file share access via SMB/CIFS",
         "serviceAccount": {
           "username": "svc-mcp-server",
-          "password": "Password5",
+          "password": "YourSecurePassword123!",
           "_comment_keytabPath": "For Linux: use /etc/keytabs/mcp-server.keytab instead of password"
         },
         "ticketCache": {
