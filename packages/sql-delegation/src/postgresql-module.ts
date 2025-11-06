@@ -26,6 +26,41 @@ import { createSecurityError } from 'mcp-oauth-framework/core';
 // ============================================================================
 
 /**
+ * Per-module token exchange configuration
+ */
+export interface TokenExchangeConfig {
+  /** IDP name from auth.trustedIDPs to use for TE-JWT validation */
+  idpName: string;
+
+  /** Token exchange endpoint URL */
+  tokenEndpoint: string;
+
+  /** Client ID for token exchange */
+  clientId: string;
+
+  /** Client secret for token exchange */
+  clientSecret: string;
+
+  /** Expected audience for TE-JWT */
+  audience?: string;
+
+  /** Required claim in TE-JWT (e.g., legacy_name) */
+  requiredClaim?: string;
+
+  /** Roles claim path in TE-JWT (default: 'roles') */
+  rolesClaim?: string;
+
+  /** Token cache configuration */
+  cache?: {
+    enabled?: boolean;
+    ttlSeconds?: number;
+    sessionTimeoutMs?: number;
+    maxEntriesPerSession?: number;
+    maxTotalEntries?: number;
+  };
+}
+
+/**
  * PostgreSQL Server configuration
  */
 export interface PostgreSQLConfig {
@@ -65,6 +100,17 @@ export interface PostgreSQLConfig {
     idleTimeoutMillis?: number;
     connectionTimeoutMillis?: number;
   };
+
+  /**
+   * Per-module token exchange configuration (Phase 2)
+   *
+   * When configured, the module will perform token exchange to obtain
+   * TE-JWT with delegation-specific claims (e.g., legacy_name for PostgreSQL).
+   *
+   * Token exchange happens on-demand during delegate() method execution,
+   * NOT during authentication.
+   */
+  tokenExchange?: TokenExchangeConfig;
 }
 
 // ============================================================================
@@ -100,39 +146,33 @@ export class PostgreSQLDelegationModule implements DelegationModule {
   private pool: pg.Pool | null = null;
   private config: PostgreSQLConfig | null = null;
   private isConnected = false;
-  private tokenExchangeService: TokenExchangeService | null = null;
-  private tokenExchangeConfig: {
-    tokenEndpoint: string;
-    clientId: string;
-    clientSecret: string;
-    audience?: string;
-  } | null = null;
-
-  /**
-   * Set token exchange service (optional for Phase 1)
-   */
-  setTokenExchangeService(
-    service: TokenExchangeService,
-    config: {
-      tokenEndpoint: string;
-      clientId: string;
-      clientSecret: string;
-      audience?: string;
-    }
-  ): void {
-    this.tokenExchangeService = service;
-    this.tokenExchangeConfig = config;
-  }
+  private tokenExchangeConfig: TokenExchangeConfig | null = null;
 
   /**
    * Initialize PostgreSQL connection pool
+   *
+   * Per-Module Token Exchange (Phase 2):
+   * - Token exchange config comes from config.tokenExchange (not injected separately)
+   * - Token exchange happens on-demand in delegate() method
+   * - TokenExchangeService can be injected via context parameter in delegate()
+   *
+   * @param config - PostgreSQL configuration (includes optional tokenExchange)
+   * @throws Error if connection fails
    */
   async initialize(config: PostgreSQLConfig): Promise<void> {
+    console.log('[PostgreSQLModule] VERSION: Phase2-Fix-2025-01-06-v3 - Per-module token exchange implementation');
+
     if (this.isConnected) {
       return; // Already initialized
     }
 
     this.config = config;
+
+    // Store token exchange config if provided (Phase 2: Per-module config)
+    if (config.tokenExchange) {
+      this.tokenExchangeConfig = config.tokenExchange;
+      console.log('[PostgreSQLModule] Token exchange enabled with IDP:', config.tokenExchange.idpName);
+    }
 
     try {
       this.pool = new Pool({
@@ -204,103 +244,92 @@ export class PostgreSQLDelegationModule implements DelegationModule {
       }
     }
 
-    // Validate legacyUsername exists (fallback for when TE-JWT is not available)
-    if (!session.legacyUsername && !this.tokenExchangeService) {
-      return {
-        success: false,
-        error: 'Session missing legacyUsername (required for PostgreSQL delegation)',
-        auditTrail: {
-          timestamp: new Date(),
-          source: 'delegation:postgresql',
-          userId: session.userId,
-          action: `postgresql_delegation:${action}`,
-          success: false,
-          reason: 'Missing legacyUsername',
-        },
-      };
-    }
-
-    // PHASE 1: Token Exchange (if configured)
+    // PHASE 2: Per-Module Token Exchange (on-demand)
+    console.log('[PostgreSQLModule] delegate() VERSION: Phase2-Fix-2025-01-06-v3');
     let effectiveLegacyUsername = session.legacyUsername;
-    let teRoles: string[] | undefined = undefined;
+    let teRoles: string[] = []; // Roles extracted from TE-JWT (if token exchange used)
 
-    console.log('[PostgreSQL] Token Exchange Check:', {
-      hasTokenExchangeService: !!this.tokenExchangeService,
-      hasTokenExchangeConfig: !!this.tokenExchangeConfig,
-      sessionLegacyUsername: session.legacyUsername,
-    });
-
-    if (this.tokenExchangeService) {
-      console.log('[PostgreSQL] Token exchange service is configured - attempting token exchange');
-
+    // Attempt token exchange if configured
+    if (this.tokenExchangeConfig) {
       try {
-        // Extract JWT from session claims
-        const subjectToken = session.claims?.access_token as string | undefined;
-        console.log('[PostgreSQL] Extracting subject token from session.claims.access_token:', {
-          hasSubjectToken: !!subjectToken,
-          subjectTokenLength: subjectToken?.length,
-          availableClaimKeys: Object.keys(session.claims || {}),
+        // DEBUG: Log what we received in context
+        console.log('[PostgreSQLModule] DEBUG: context type:', typeof context);
+        console.log('[PostgreSQLModule] DEBUG: context is null?', context === null);
+        console.log('[PostgreSQLModule] DEBUG: context is undefined?', context === undefined);
+        console.log('[PostgreSQLModule] DEBUG: context keys:', context ? Object.keys(context) : 'N/A');
+        console.log('[PostgreSQLModule] DEBUG: has coreContext?', !!context?.coreContext);
+        console.log('[PostgreSQLModule] DEBUG: coreContext keys:', context?.coreContext ? Object.keys(context.coreContext) : 'N/A');
+        console.log('[PostgreSQLModule] DEBUG: has tokenExchangeService?', !!context?.coreContext?.tokenExchangeService);
+        console.log('[PostgreSQLModule] DEBUG: tokenExchangeService type:', typeof context?.coreContext?.tokenExchangeService);
+
+        // Get TokenExchangeService from context (injected by ConfigOrchestrator)
+        const tokenExchangeService = context?.coreContext?.tokenExchangeService as TokenExchangeService | undefined;
+
+        if (!tokenExchangeService) {
+          console.error('[PostgreSQLModule] ERROR: TokenExchangeService not available - dumping context structure');
+          console.error('[PostgreSQLModule] ERROR: Full context:', JSON.stringify(context, null, 2));
+          return {
+            success: false,
+            error: 'Token exchange configured but TokenExchangeService not available in context',
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:postgresql',
+              userId: session.userId,
+              action: `postgresql_delegation:${action}`,
+              success: false,
+              reason: 'TokenExchangeService not in context',
+            },
+          };
+        }
+
+        // Get requestor JWT from session (Phase 2: stored during authentication)
+        const requestorJWT = session.requestorJWT;
+
+        console.log('[PostgreSQLModule] DEBUG: requestorJWT from session:', {
+          exists: !!requestorJWT,
+          type: typeof requestorJWT,
+          length: requestorJWT?.length,
+          first50chars: requestorJWT?.substring(0, 50),
         });
 
-        if (!subjectToken) {
-          console.error('[PostgreSQL] ERROR: No access_token in session claims');
+        if (!requestorJWT) {
+          console.error('[PostgreSQLModule] ERROR: Session is missing requestorJWT');
+          console.error('[PostgreSQLModule] ERROR: Session keys:', Object.keys(session));
+          console.error('[PostgreSQLModule] ERROR: Session dump:', JSON.stringify(session, null, 2));
           return {
             success: false,
-            error: 'Session missing access_token in claims (required for token exchange)',
+            error: 'Session missing requestorJWT (required for token exchange)',
             auditTrail: {
               timestamp: new Date(),
               source: 'delegation:postgresql',
               userId: session.userId,
               action: `postgresql_delegation:${action}`,
               success: false,
-              reason: 'Missing access_token in session claims',
+              reason: 'Missing requestorJWT in session',
             },
           };
         }
 
-        // Validate token exchange configuration
-        if (!this.tokenExchangeConfig) {
-          console.error('[PostgreSQL] ERROR: Token exchange service exists but config is missing');
-          return {
-            success: false,
-            error: 'Token exchange service configured but missing token exchange config',
-            auditTrail: {
-              timestamp: new Date(),
-              source: 'delegation:postgresql',
-              userId: session.userId,
-              action: `postgresql_delegation:${action}`,
-              success: false,
-              reason: 'Missing token exchange configuration',
-            },
-          };
-        }
-
-        console.log('[PostgreSQL] Performing token exchange with IDP:', {
-          tokenEndpoint: this.tokenExchangeConfig.tokenEndpoint,
-          clientId: this.tokenExchangeConfig.clientId,
-          audience: this.tokenExchangeConfig.audience || 'postgresql-delegation',
+        console.log('[PostgreSQLModule] Performing token exchange:', {
+          idpName: this.tokenExchangeConfig.idpName,
+          audience: this.tokenExchangeConfig.audience,
+          userId: session.userId,
+          requestorJWTLength: requestorJWT.length,
         });
 
         // Perform token exchange to get TE-JWT
-        // Use access_token type (RFC 8693) - Keycloak requires this
-        const exchangeResult = await this.tokenExchangeService.performExchange({
-          subjectToken,
+        const exchangeResult = await tokenExchangeService.performExchange({
+          requestorJWT,
           subjectTokenType: 'urn:ietf:params:oauth:token-type:access_token',
           audience: this.tokenExchangeConfig.audience || 'postgresql-delegation',
           tokenEndpoint: this.tokenExchangeConfig.tokenEndpoint,
           clientId: this.tokenExchangeConfig.clientId,
           clientSecret: this.tokenExchangeConfig.clientSecret,
-        });
-
-        console.log('[PostgreSQL] Token exchange result:', {
-          success: exchangeResult.success,
-          hasAccessToken: !!exchangeResult.accessToken,
-          error: exchangeResult.error,
-          errorDescription: exchangeResult.errorDescription,
+          cache: this.tokenExchangeConfig.cache,
+          sessionId: context?.sessionId, // For token caching
         });
 
         if (!exchangeResult.success || !exchangeResult.accessToken) {
-          console.error('[PostgreSQL] Token exchange FAILED:', exchangeResult.error);
           return {
             success: false,
             error: `Token exchange failed: ${exchangeResult.errorDescription || exchangeResult.error}`,
@@ -316,78 +345,43 @@ export class PostgreSQLDelegationModule implements DelegationModule {
         }
 
         // Decode TE-JWT to extract delegation claims
-        console.log('[PostgreSQL] Decoding delegation token (TE-JWT) to extract claims...');
-        const teClaims = this.tokenExchangeService.decodeTokenClaims(exchangeResult.accessToken);
-        console.log('[PostgreSQL] Delegation token claims:', {
-          sub: teClaims?.sub,
-          legacy_name: teClaims?.legacy_name,
-          roles: teClaims?.roles,
-          aud: teClaims?.aud,
+        const teClaims = tokenExchangeService.decodeTokenClaims(exchangeResult.accessToken);
+
+        // Validate required claim if configured
+        const requiredClaim = this.tokenExchangeConfig.requiredClaim || 'legacy_name';
+        const claimValue = teClaims?.[requiredClaim];
+
+        if (!claimValue) {
+          return {
+            success: false,
+            error: `TE-JWT missing required claim: ${requiredClaim}`,
+            auditTrail: {
+              timestamp: new Date(),
+              source: 'delegation:postgresql',
+              userId: session.userId,
+              action: `postgresql_delegation:${action}`,
+              success: false,
+              reason: `TE-JWT missing ${requiredClaim} claim`,
+            },
+          };
+        }
+
+        // Use claim value as legacy username
+        effectiveLegacyUsername = claimValue as string;
+
+        // Extract roles from TE-JWT (may be in 'roles', 'user_roles', or other claim)
+        const rolesClaimPath = this.tokenExchangeConfig.rolesClaim || 'roles';
+        teRoles = (Array.isArray(teClaims?.[rolesClaimPath])
+          ? teClaims[rolesClaimPath]
+          : []) as string[];
+
+        console.log('[PostgreSQLModule] Token exchange successful:', {
+          legacyUsername: effectiveLegacyUsername,
+          roles: teRoles,
+          rolesClaimPath,
+          idpName: this.tokenExchangeConfig.idpName,
         });
-
-        if (!teClaims || !teClaims.legacy_name) {
-          return {
-            success: false,
-            error: 'TE-JWT missing legacy_name claim (required for PostgreSQL delegation)',
-            auditTrail: {
-              timestamp: new Date(),
-              source: 'delegation:postgresql',
-              userId: session.userId,
-              action: `postgresql_delegation:${action}`,
-              success: false,
-              reason: 'TE-JWT missing legacy_name claim',
-            },
-          };
-        }
-
-        // Extract TE-JWT roles for command-level authorization
-        teRoles = Array.isArray(teClaims.roles) ? teClaims.roles : [];
-        console.log('[PostgreSQL] Extracted TE-JWT roles for command authorization:', { teRoles, action });
-
-        // Determine required role based on action
-        const hasReadAccess = teRoles.some((role: string) =>
-          ['sql-read', 'sql-write', 'sql-admin', 'admin'].includes(role)
-        );
-
-        // Schema and table-details are read operations
-        if ((action === 'schema' || action === 'table-details') && !hasReadAccess) {
-          return {
-            success: false,
-            error: "Insufficient permissions to perform this operation.",
-            auditTrail: {
-              timestamp: new Date(),
-              source: 'delegation:postgresql',
-              userId: session.userId,
-              action: `postgresql_delegation:${action}`,
-              success: false,
-              reason: `Insufficient permissions: user has roles [${teRoles.join(', ')}], requires sql-read or higher`,
-            },
-          };
-        }
-
-        // Query action - roles will be checked at SQL command level by validateSQL
-        if (action === 'query' && !hasReadAccess) {
-          return {
-            success: false,
-            error: "Insufficient permissions to perform this operation.",
-            auditTrail: {
-              timestamp: new Date(),
-              source: 'delegation:postgresql',
-              userId: session.userId,
-              action: `postgresql_delegation:${action}`,
-              success: false,
-              reason: `Insufficient permissions: user has roles [${teRoles.join(', ')}], requires sql-read or higher`,
-            },
-          };
-        }
-
-        console.log('[PostgreSQL] Action-level authorization check PASSED:', { action, teRoles });
-
-        // Use legacy_name from TE-JWT for SET ROLE
-        effectiveLegacyUsername = teClaims.legacy_name;
-        console.log('[PostgreSQL] Token exchange SUCCESS - using legacy_name from TE-JWT:', effectiveLegacyUsername);
       } catch (error) {
-        console.error('[PostgreSQL] Token exchange EXCEPTION:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Token exchange failed',
@@ -401,16 +395,13 @@ export class PostgreSQLDelegationModule implements DelegationModule {
           },
         };
       }
-    } else {
-      console.log('[PostgreSQL] No token exchange service - using session.legacyUsername:', effectiveLegacyUsername);
     }
 
-    // Ensure we have a legacy username at this point
+    // Fallback: Check if legacy username exists (for configs without token exchange)
     if (!effectiveLegacyUsername) {
-      console.error('[PostgreSQL] ERROR: No effective legacy username available');
       return {
         success: false,
-        error: 'Unable to determine legacy username for PostgreSQL delegation',
+        error: 'Unable to determine legacy username for PostgreSQL delegation (configure tokenExchange or provide legacyUsername in JWT)',
         auditTrail: {
           timestamp: new Date(),
           source: 'delegation:postgresql',
@@ -474,7 +465,7 @@ export class PostgreSQLDelegationModule implements DelegationModule {
           metadata: {
             legacyUsername: effectiveLegacyUsername,
             action,
-            tokenExchangeUsed: !!this.tokenExchangeService,
+            tokenExchangeUsed: !!this.tokenExchangeConfig,
           },
         },
       };
@@ -491,7 +482,7 @@ export class PostgreSQLDelegationModule implements DelegationModule {
           error: error instanceof Error ? error.message : 'Unknown error',
           metadata: {
             legacyUsername: effectiveLegacyUsername,
-            tokenExchangeUsed: !!this.tokenExchangeService,
+            tokenExchangeUsed: !!this.tokenExchangeConfig,
           },
         },
       };
