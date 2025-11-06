@@ -25,6 +25,38 @@ import { createSecurityError } from 'mcp-oauth-framework/core';
 // ============================================================================
 
 /**
+ * Per-module token exchange configuration
+ */
+export interface TokenExchangeConfig {
+  /** IDP name from auth.trustedIDPs to use for TE-JWT validation */
+  idpName: string;
+
+  /** Token exchange endpoint URL */
+  tokenEndpoint: string;
+
+  /** Client ID for token exchange */
+  clientId: string;
+
+  /** Client secret for token exchange */
+  clientSecret: string;
+
+  /** Expected audience for TE-JWT */
+  audience?: string;
+
+  /** Required claim in TE-JWT (e.g., legacy_name) */
+  requiredClaim?: string;
+
+  /** Token cache configuration */
+  cache?: {
+    enabled?: boolean;
+    ttlSeconds?: number;
+    sessionTimeoutMs?: number;
+    maxEntriesPerSession?: number;
+    maxTotalEntries?: number;
+  };
+}
+
+/**
  * SQL Server configuration
  */
 export interface SQLConfig {
@@ -61,6 +93,17 @@ export interface SQLConfig {
 
   /** Request timeout in milliseconds */
   requestTimeout?: number;
+
+  /**
+   * Per-module token exchange configuration (Phase 2)
+   *
+   * When configured, the module will perform token exchange to obtain
+   * TE-JWT with delegation-specific claims (e.g., legacy_name for SQL).
+   *
+   * Token exchange happens on-demand during delegate() method execution,
+   * NOT during authentication.
+   */
+  tokenExchange?: TokenExchangeConfig;
 }
 
 // ============================================================================
@@ -97,36 +140,17 @@ export class SQLDelegationModule implements DelegationModule {
   private config: SQLConfig | null = null;
   private isConnected = false;
   private tokenExchangeService: TokenExchangeService | null = null;
-  private tokenExchangeConfig: {
-    tokenEndpoint: string;
-    clientId: string;
-    clientSecret: string;
-    audience?: string;
-  } | null = null;
-
-  /**
-   * Set token exchange service (optional for Phase 1)
-   *
-   * @param service - TokenExchangeService instance
-   * @param config - Token exchange configuration
-   */
-  setTokenExchangeService(
-    service: TokenExchangeService,
-    config: {
-      tokenEndpoint: string;
-      clientId: string;
-      clientSecret: string;
-      audience?: string;
-    }
-  ): void {
-    this.tokenExchangeService = service;
-    this.tokenExchangeConfig = config;
-  }
+  private tokenExchangeConfig: TokenExchangeConfig | null = null;
 
   /**
    * Initialize SQL connection pool
    *
-   * @param config - SQL Server configuration
+   * Per-Module Token Exchange (Phase 2):
+   * - Token exchange config comes from config.tokenExchange (not injected separately)
+   * - Token exchange happens on-demand in delegate() method
+   * - TokenExchangeService can be injected via context parameter in delegate()
+   *
+   * @param config - SQL Server configuration (includes optional tokenExchange)
    * @throws Error if connection fails
    */
   async initialize(config: SQLConfig): Promise<void> {
@@ -135,6 +159,12 @@ export class SQLDelegationModule implements DelegationModule {
     }
 
     this.config = config;
+
+    // Store token exchange config if provided (Phase 2: Per-module config)
+    if (config.tokenExchange) {
+      this.tokenExchangeConfig = config.tokenExchange;
+      console.log('[SQLModule] Token exchange enabled with IDP:', config.tokenExchange.idpName);
+    }
 
     try {
       const connectionConfig: sql.config = {
@@ -169,15 +199,22 @@ export class SQLDelegationModule implements DelegationModule {
   /**
    * Delegate SQL operation on behalf of user
    *
-   * @param session - User session with legacyUsername
+   * Per-Module Token Exchange (Phase 2):
+   * - Gets TokenExchangeService from context.coreContext
+   * - Uses session.requestorJWT (not session.claims.access_token)
+   * - Validates TE-JWT with module's specific IDP (idpName)
+   *
+   * @param session - User session with requestorJWT
    * @param action - Action type: 'query', 'procedure', 'function'
    * @param params - Action parameters
+   * @param context - Context with sessionId and coreContext
    * @returns Delegation result with audit trail
    */
   async delegate<T = unknown>(
     session: UserSession,
     action: string,
-    params: any
+    params: any,
+    context?: { sessionId?: string; coreContext?: any }
   ): Promise<DelegationResult<T>> {
     // Ensure initialized
     if (!this.isConnected || !this.pool) {
@@ -202,69 +239,63 @@ export class SQLDelegationModule implements DelegationModule {
       }
     }
 
-    // Validate legacyUsername exists (fallback for when TE-JWT is not available)
-    if (!session.legacyUsername && !this.tokenExchangeService) {
-      return {
-        success: false,
-        error: 'Session missing legacyUsername (required for SQL delegation)',
-        auditTrail: {
-          timestamp: new Date(),
-          source: 'delegation:sql',
-          userId: session.userId,
-          action: `sql_delegation:${action}`,
-          success: false,
-          reason: 'Missing legacyUsername',
-        },
-      };
-    }
-
-    // PHASE 1: Token Exchange (if configured)
+    // PHASE 2: Per-Module Token Exchange (on-demand)
     let effectiveLegacyUsername = session.legacyUsername;
 
-    if (this.tokenExchangeService) {
+    // Attempt token exchange if configured
+    if (this.tokenExchangeConfig) {
       try {
-        // Extract JWT from session claims
-        const subjectToken = session.claims?.access_token as string | undefined;
+        // Get TokenExchangeService from context (injected by ConfigOrchestrator)
+        const tokenExchangeService = context?.coreContext?.tokenExchangeService as TokenExchangeService | undefined;
 
-        if (!subjectToken) {
+        if (!tokenExchangeService) {
           return {
             success: false,
-            error: 'Session missing access_token in claims (required for token exchange)',
+            error: 'Token exchange configured but TokenExchangeService not available in context',
             auditTrail: {
               timestamp: new Date(),
               source: 'delegation:sql',
               userId: session.userId,
               action: `sql_delegation:${action}`,
               success: false,
-              reason: 'Missing access_token in session claims',
+              reason: 'TokenExchangeService not in context',
             },
           };
         }
 
-        // Validate token exchange configuration
-        if (!this.tokenExchangeConfig) {
+        // Get requestor JWT from session (Phase 2: stored during authentication)
+        const requestorJWT = session.requestorJWT;
+
+        if (!requestorJWT) {
           return {
             success: false,
-            error: 'Token exchange service configured but missing token exchange config',
+            error: 'Session missing requestorJWT (required for token exchange)',
             auditTrail: {
               timestamp: new Date(),
               source: 'delegation:sql',
               userId: session.userId,
               action: `sql_delegation:${action}`,
               success: false,
-              reason: 'Missing token exchange configuration',
+              reason: 'Missing requestorJWT in session',
             },
           };
         }
+
+        console.log('[SQLModule] Performing token exchange:', {
+          idpName: this.tokenExchangeConfig.idpName,
+          audience: this.tokenExchangeConfig.audience,
+          userId: session.userId,
+        });
 
         // Perform token exchange to get TE-JWT
-        const exchangeResult = await this.tokenExchangeService.performExchange({
-          subjectToken,
+        const exchangeResult = await tokenExchangeService.performExchange({
+          requestorJWT,
           subjectTokenType: 'urn:ietf:params:oauth:token-type:jwt',
           audience: this.tokenExchangeConfig.audience || 'sql-delegation',
           tokenEndpoint: this.tokenExchangeConfig.tokenEndpoint,
           clientId: this.tokenExchangeConfig.clientId,
           clientSecret: this.tokenExchangeConfig.clientSecret,
+          sessionId: context?.sessionId, // For token caching
         });
 
         if (!exchangeResult.success || !exchangeResult.accessToken) {
@@ -283,25 +314,34 @@ export class SQLDelegationModule implements DelegationModule {
         }
 
         // Decode TE-JWT to extract delegation claims
-        const teClaims = this.tokenExchangeService.decodeTokenClaims(exchangeResult.accessToken);
+        const teClaims = tokenExchangeService.decodeTokenClaims(exchangeResult.accessToken);
 
-        if (!teClaims || !teClaims.legacy_name) {
+        // Validate required claim if configured
+        const requiredClaim = this.tokenExchangeConfig.requiredClaim || 'legacy_name';
+        const claimValue = teClaims?.[requiredClaim];
+
+        if (!claimValue) {
           return {
             success: false,
-            error: 'TE-JWT missing legacy_name claim (required for SQL delegation)',
+            error: `TE-JWT missing required claim: ${requiredClaim}`,
             auditTrail: {
               timestamp: new Date(),
               source: 'delegation:sql',
               userId: session.userId,
               action: `sql_delegation:${action}`,
               success: false,
-              reason: 'TE-JWT missing legacy_name claim',
+              reason: `TE-JWT missing ${requiredClaim} claim`,
             },
           };
         }
 
-        // Use legacy_name from TE-JWT
-        effectiveLegacyUsername = teClaims.legacy_name;
+        // Use claim value as legacy username
+        effectiveLegacyUsername = claimValue as string;
+
+        console.log('[SQLModule] Token exchange successful:', {
+          legacyUsername: effectiveLegacyUsername,
+          idpName: this.tokenExchangeConfig.idpName,
+        });
       } catch (error) {
         return {
           success: false,
@@ -318,11 +358,11 @@ export class SQLDelegationModule implements DelegationModule {
       }
     }
 
-    // Ensure we have a legacy username at this point
+    // Fallback: Check if legacy username exists (for configs without token exchange)
     if (!effectiveLegacyUsername) {
       return {
         success: false,
-        error: 'Unable to determine legacy username for SQL delegation',
+        error: 'Unable to determine legacy username for SQL delegation (configure tokenExchange or provide legacyUsername in JWT)',
         auditTrail: {
           timestamp: new Date(),
           source: 'delegation:sql',

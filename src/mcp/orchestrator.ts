@@ -18,7 +18,6 @@ import { JWTValidator } from '../core/jwt-validator.js';
 import { RoleMapper } from '../core/role-mapper.js';
 import { SessionManager } from '../core/session-manager.js';
 import { AuthenticationService } from '../core/authentication-service.js';
-import type { ITokenExchangeService } from '../core/authentication-service.js';
 import { DelegationRegistry } from '../delegation/registry.js';
 import { TokenExchangeService } from '../delegation/token-exchange.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -83,6 +82,11 @@ export class ConfigOrchestrator {
   /**
    * Build CoreContext from configuration
    *
+   * Per-Module Token Exchange (Phase 2):
+   * - Creates ONE TokenExchangeService for ALL delegation modules to share
+   * - Delegates modules get TokenExchangeService via context.coreContext
+   * - Each module specifies its own IDP, audience, cache config
+   *
    * CRITICAL (GAP #11): Uses `satisfies CoreContext` operator to ensure
    * type safety without losing literal types.
    *
@@ -98,25 +102,31 @@ export class ConfigOrchestrator {
     // Create AuditService (Null Object Pattern if disabled)
     const auditService = this.createAuditService(config);
 
-    // Create AuthenticationService (NOT initialized yet - MCPOAuthServer.start() will initialize)
+    // Create AuthenticationService (NO token exchange service - Phase 2)
     const authenticationService = this.createAuthenticationService(
       config,
       auditService
     );
 
+    // Create TokenExchangeService (Phase 2: shared by all delegation modules)
+    // NOTE: Delegation modules will specify their own IDP/audience/cache config
+    const tokenExchangeService = new TokenExchangeService(auditService);
+
     // Create DelegationRegistry
     const delegationRegistry = this.createDelegationRegistry(auditService);
 
     // MANDATORY (GAP #11): Build CoreContext with satisfies operator
+    // Phase 2: Added tokenExchangeService for delegation modules
     const coreContext = {
       authService: authenticationService,
       auditService,
       delegationRegistry,
       configManager: this.configManager,
+      tokenExchangeService, // NEW: For delegation modules to use
     } satisfies CoreContext;
 
     // Phase 2 Enhancement: Inject CoreContext into DelegationRegistry
-    // This enables delegation modules to access framework services (TokenExchangeService, etc.)
+    // This enables delegation modules to access TokenExchangeService
     delegationRegistry.setCoreContext(coreContext);
 
     return coreContext;
@@ -143,12 +153,13 @@ export class ConfigOrchestrator {
 
 
   /**
-   * Create AuthenticationService with optional TokenExchangeService
+   * Create AuthenticationService from configuration
    *
-   * NEW ARCHITECTURE (Phase 3): Token exchange happens BEFORE session creation!
-   * - Creates TokenExchangeService if delegation.tokenExchange is configured
-   * - Injects TokenExchangeService into AuthenticationService
-   * - AuthenticationService performs token exchange during authenticate()
+   * Per-Module Token Exchange (Phase 2):
+   * - NO token exchange at auth level
+   * - AuthenticationService only validates requestor JWT
+   * - Session created from requestor JWT roles only
+   * - Delegation modules perform token exchange on-demand
    *
    * NOTE: Does NOT initialize - MCPOAuthServer.start() will call initialize()
    * This follows the pattern from refactor.md Phase 3.5:
@@ -185,46 +196,17 @@ export class ConfigOrchestrator {
 
     console.log('[ConfigOrchestrator] Final role mapping config:', roleMappingConfig);
 
-    // Create TokenExchangeService if configured (NEW ARCHITECTURE)
-    let tokenExchangeService: ITokenExchangeService | undefined;
-    if (config.delegation?.tokenExchange) {
-      console.log('[ConfigOrchestrator] Token exchange configured - creating TokenExchangeService');
-      console.log('[ConfigOrchestrator] Token exchange config:', {
-        tokenEndpoint: config.delegation.tokenExchange.tokenEndpoint,
-        clientId: config.delegation.tokenExchange.clientId,
-        audience: config.delegation.tokenExchange.audience,
-        cacheEnabled: config.delegation.tokenExchange.cache?.enabled,
-      });
-
-      tokenExchangeService = new TokenExchangeService(
-        config.delegation.tokenExchange,
-        auditService
-      );
-    } else {
-      console.log('[ConfigOrchestrator] Token exchange NOT configured - sessions will use requestor JWT claims');
-    }
-
-    // Build auth config with token exchange (if enabled)
+    // Build auth config (Phase 2: NO token exchange)
     const authConfig = {
       idpConfigs: config.auth.trustedIDPs,
       roleMappings: roleMappingConfig,
-      tokenExchange: config.delegation?.tokenExchange ? {
-        tokenEndpoint: config.delegation.tokenExchange.tokenEndpoint,
-        clientId: config.delegation.tokenExchange.clientId,
-        clientSecret: config.delegation.tokenExchange.clientSecret,
-        audience: config.delegation.tokenExchange.audience,
-        requiredClaim: 'legacy_name', // Kerberos requires legacy_name claim
-      } : undefined,
     };
 
-    console.log('[ConfigOrchestrator] Auth config:', {
-      hasTokenExchange: !!authConfig.tokenExchange,
-      requiredClaim: authConfig.tokenExchange?.requiredClaim,
-    });
+    console.log('[ConfigOrchestrator] Auth config built (no token exchange at auth level)');
 
-    // Return uninitialized service with injected TokenExchangeService
+    // Return uninitialized service (Phase 2: NO tokenExchangeService parameter)
     // (caller must call initialize() before use)
-    return new AuthenticationService(authConfig, auditService, tokenExchangeService);
+    return new AuthenticationService(authConfig, auditService);
   }
 
   /**

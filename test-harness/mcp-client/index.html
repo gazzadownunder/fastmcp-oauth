@@ -342,7 +342,49 @@
     <div class="container">
         <div class="header">
             <h1>🔐 MCP OAuth Integration Test Client</h1>
-            <p class="subtitle">OAuth 2.1 Authentication + MCP Tool Testing (Keycloak → localhost:3000)</p>
+            <p class="subtitle" id="subtitle">OAuth 2.1 Authentication + MCP Tool Testing</p>
+        </div>
+
+        <!-- Configuration Display -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h2>⚙️ Configuration</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                <!-- MCP Server Config -->
+                <div class="info-item">
+                    <div class="info-label">MCP Server URL</div>
+                    <div class="info-value" id="config-mcp-url" style="font-family: 'Courier New', monospace; color: #667eea;"></div>
+                </div>
+
+                <!-- OAuth IDP Config -->
+                <div class="info-item">
+                    <div class="info-label">OAuth Token Endpoint</div>
+                    <div class="info-value" id="config-token-endpoint" style="font-family: 'Courier New', monospace; font-size: 11px; word-break: break-all;"></div>
+                </div>
+
+                <!-- Client Config -->
+                <div class="info-item">
+                    <div class="info-label">OAuth Client ID</div>
+                    <div class="info-value" id="config-client-id" style="font-family: 'Courier New', monospace;"></div>
+                </div>
+
+                <!-- Realm Config -->
+                <div class="info-item">
+                    <div class="info-label">OAuth Realm</div>
+                    <div class="info-value" id="config-realm" style="font-family: 'Courier New', monospace;"></div>
+                </div>
+
+                <!-- Test User Config -->
+                <div class="info-item">
+                    <div class="info-label">Test User</div>
+                    <div class="info-value" id="config-test-user" style="font-family: 'Courier New', monospace;"></div>
+                </div>
+
+                <!-- Protocol Version -->
+                <div class="info-item">
+                    <div class="info-label">MCP Protocol Version</div>
+                    <div class="info-value" id="config-protocol-version" style="font-family: 'Courier New', monospace;"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Authentication & JWT Claims -->
@@ -417,7 +459,7 @@
 
         <!-- Step 2: MCP Server Interaction -->
         <div class="card">
-            <h2>Step 2️⃣: MCP Server Interaction (localhost:3000/mcp)</h2>
+            <h2>Step 2️⃣: MCP Server Interaction (<span id="mcp-url-display"></span>)</h2>
             <span class="status disconnected" id="mcp-status">Not Connected</span>
 
             <div style="margin-bottom: 15px;">
@@ -471,5 +513,39 @@
     <script src="auth.js"></script>
     <script src="mcp-client.js"></script>
     <script src="app.js"></script>
+
+    <script>
+        /**
+         * Initialize configuration display
+         * Populates UI elements with actual config values from CONFIG object
+         */
+        function initializeConfigDisplay() {
+            // Update subtitle with actual endpoints
+            const subtitle = document.getElementById('subtitle');
+            const mcpUrl = `${CONFIG.mcp.baseUrl}${CONFIG.mcp.endpoint}`;
+            const idpHost = new URL(CONFIG.oauth.tokenEndpoint).hostname;
+            subtitle.textContent = `OAuth 2.1 Authentication + MCP Tool Testing (${idpHost} → ${mcpUrl})`;
+
+            // Populate configuration fields
+            document.getElementById('config-mcp-url').textContent = mcpUrl;
+            document.getElementById('config-token-endpoint').textContent = CONFIG.oauth.tokenEndpoint;
+            document.getElementById('config-client-id').textContent = CONFIG.oauth.clientId;
+            document.getElementById('config-realm').textContent = CONFIG.oauth.realm;
+            document.getElementById('config-test-user').textContent = CONFIG.oauth.testUser.username;
+            document.getElementById('config-protocol-version').textContent = CONFIG.mcp.protocolVersion;
+
+            // Update MCP URL display in Step 2
+            document.getElementById('mcp-url-display').textContent = mcpUrl;
+
+            console.log('✓ Configuration display initialized');
+        }
+
+        // Initialize config display when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeConfigDisplay);
+        } else {
+            initializeConfigDisplay();
+        }
+    </script>
 </body>
 </html>

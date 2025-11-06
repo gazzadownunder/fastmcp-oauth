@@ -504,6 +504,7 @@ export class MCPOAuthServer {
     await this.mcpServer.start({
       transportType: transport as any,
       httpStream: transport === 'httpStream' ? {
+        host: '0.0.0.0', // Bind to all network interfaces (allows remote connections)
         port,
         endpoint: '/mcp',
         stateless: true, // OAuth requires stateless mode
@@ -520,9 +521,11 @@ export class MCPOAuthServer {
     console.log(`  Version:          ${serverVersion}`);
     console.log(`  Transport:        ${transport}`);
     if (transport === 'httpStream') {
+      console.log(`  Host:             0.0.0.0 (all network interfaces)`);
       console.log(`  Port:             ${port}`);
       console.log(`  Endpoint:         /mcp`);
-      console.log(`  URL:              http://localhost:${port}/mcp`);
+      console.log(`  URL (local):      http://localhost:${port}/mcp`);
+      console.log(`  URL (network):    http://<server-ip>:${port}/mcp`);
       console.log(`  OAuth Metadata:   http://localhost:${port}/.well-known/oauth-authorization-server`);
       console.log(`  Resource Metadata: http://localhost:${port}/.well-known/oauth-protected-resource`);
     }

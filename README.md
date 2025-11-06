@@ -132,16 +132,15 @@ The framework follows a **layered modular architecture** with strict one-way dep
 -  **Comprehensive Documentation** - 4500+ lines across EXTENDING.md, TESTING.md, CLAUDE.md
 
 ### Delegation Modules
+-  **REST API Delegation** - Optional package `@mcp-oauth/rest-api-delegation` (HTTP/JSON APIs with token exchange)
 -  **SQL Delegation** - Optional package `@mcp-oauth/sql-delegation` (PostgreSQL + MSSQL)
 -  **Kerberos Delegation** - Optional package `@mcp-oauth/kerberos-delegation` (S4U2Self/Proxy)
--  **REST API** - Token exchange, parameter transformation (example)
 -  **GraphQL** - Query/mutation support (example)
 -  **gRPC** - High-performance RPC with retry (example)
 -  **LDAP** - Directory services integration (example)
 -  **Filesystem** - Path traversal prevention (example)
--  **Token Exchange** - API-to-API delegation (example)
 
-**Note**: SQL and Kerberos are optional packages - install only if needed. Core framework has zero delegation dependencies.
+**Note**: REST API, SQL, and Kerberos are optional packages - install only what you need. Core framework has zero delegation dependencies.
 
 ### Quality & Testing 
 -  **319 Tests Passing** - 100% pass rate
@@ -161,6 +160,7 @@ The framework follows a **layered modular architecture** with strict one-way dep
 npm install fastmcp-oauth-obo
 
 # Optional delegation packages (install only what you need)
+npm install @mcp-oauth/rest-api-delegation   # For REST/HTTP APIs (most common)
 npm install @mcp-oauth/sql-delegation        # For SQL Server or PostgreSQL
 npm install @mcp-oauth/kerberos-delegation   # For Windows Active Directory
 

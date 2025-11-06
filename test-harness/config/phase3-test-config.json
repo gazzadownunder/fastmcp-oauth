@@ -69,22 +69,43 @@
     }
   },
   "delegation": {
-    "tokenExchange": {
-      "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
-      "clientId": "mcp-server-client",
-      "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
-      "audience": "mcp-server-client",
-      "defaultScope": "legacy_name",
-      "cache": {
-        "enabled": true,
-        "ttlSeconds": 60,
-        "sessionTimeoutMs": 900000,
-        "maxEntriesPerSession": 10,
-        "maxTotalEntries": 1000
-      }
+    "_DEPRECATED_tokenExchange": {
+      "_comment": "DEPRECATED: Global token exchange config removed in v3.1. Use per-module tokenExchange instead (see postgresql.tokenExchange, kerberos.tokenExchange below)."
     },
     "modules": {
-      "kerberos": {
+      "postgresql": {
+        "host": "localhost",
+        "port": 5432,
+        "database": "postgres",
+        "user": "mcp_service",
+        "password": "ServicePass123!",
+        "options": {
+          "ssl": false
+        },
+        "pool": {
+          "max": 10,
+          "min": 0,
+          "idleTimeoutMillis": 30000,
+          "connectionTimeoutMillis": 5000
+        },
+        "tokenExchange": {
+          "_comment": "Per-module token exchange (Phase 2: v3.1+)",
+          "idpName": "sql-delegation-te-jwt",
+          "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
+          "clientId": "mcp-server-client",
+          "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
+          "audience": "mcp-server-client",
+          "requiredClaim": "legacy_name",
+          "cache": {
+            "enabled": true,
+            "ttlSeconds": 60,
+            "sessionTimeoutMs": 900000,
+            "maxEntriesPerSession": 10,
+            "maxTotalEntries": 1000
+          }
+        }
+      },
+      "_kerberos": {
         "enabled": true,
         "_comment_enabled": "Kerberos delegation ENABLED - Requires Active Directory at w25-dc.w25ad.net",
         "domainController": "w25-dc.w25ad.net",
@@ -111,6 +132,22 @@
           "renewThresholdSeconds": 300,
           "maxEntriesPerSession": 10,
           "sessionTimeoutMs": 900000
+        },
+        "tokenExchange": {
+          "_comment": "Per-module token exchange for Kerberos (Phase 2: v3.1+)",
+          "idpName": "sql-delegation-te-jwt",
+          "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
+          "clientId": "mcp-server-client",
+          "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
+          "audience": "mcp-server-client",
+          "requiredClaim": "legacy_name",
+          "cache": {
+            "enabled": true,
+            "ttlSeconds": 60,
+            "sessionTimeoutMs": 900000,
+            "maxEntriesPerSession": 10,
+            "maxTotalEntries": 1000
+          }
         }
       }
     }
@@ -119,15 +156,17 @@
     "serverName": "MCP OAuth Phase 3 Test Server (Cache Enabled)",
     "version": "3.0.0",
     "transport": "http-stream",
-    "port": 3000,
+    "port": 3010,
     "enabledTools": {
       "sql-delegate": true,
+      "sql-schema": true,
+      "sql-table-details": true,
       "health-check": true,
       "user-info": true,
       "audit-log": true,
-      "kerberos-list-directory": true,
-      "kerberos-read-file": true,
-      "kerberos-file-info": true,
+      "_kerberos-list-directory": true,
+      "_kerberos-read-file": true,
+      "_kerberos-file-info": true,
       "_comment_kerberos": "Kerberos tools automatically perform delegation (S4U2Self/S4U2Proxy) when called. Token exchange provides legacy_name claim."
     },
     "oauth": {

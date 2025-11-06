@@ -36,6 +36,11 @@ export const ROLE_GUEST = 'guest';
  * The DelegationRegistry reference is a forward type reference only - no
  * runtime import is needed from the delegation layer.
  *
+ * Per-Module Token Exchange (Phase 2):
+ * - TokenExchangeService added to CoreContext for delegation modules
+ * - Each delegation module specifies its own IDP, audience, cache config
+ * - Token exchange happens on-demand in delegation modules, NOT during authentication
+ *
  * @see Phase 0.2 of refactor.md for architectural rationale
  */
 export interface CoreContext {
@@ -50,6 +55,9 @@ export interface CoreContext {
 
   /** Configuration manager for config orchestration */
   configManager: any; // Will be typed as ConfigManager once implemented
+
+  /** Token exchange service for delegation modules (Phase 2: per-module) */
+  tokenExchangeService?: any; // Will be typed as TokenExchangeService once implemented
 }
 
 // ============================================================================
@@ -144,16 +152,16 @@ export interface AuthConfig {
  *
  * Authorization is role-based from JWT claims, not static permissions.
  *
- * Token Exchange Support (Phase 1):
+ * Per-Module Token Exchange Design (Phase 2):
  * - claims contains requestor JWT claims (from user authentication)
- * - claims.access_token stores the original requestor JWT (for token exchange)
- * - delegationToken stores the TE-JWT (obtained via RFC 8693 token exchange)
- * - customClaims stores delegation-specific claims from TE-JWT
- * - legacyUsername extracted from TE-JWT legacy_name claim (Kerberos requirement)
+ * - requestorJWT stores the original JWT string (for delegation modules to perform token exchange)
+ * - Delegation modules perform token exchange on-demand during tool execution
+ * - TE-JWT claims are used only within delegation modules (not stored in session)
  *
- * Multi-Delegation Support:
- * - customClaims stores delegation-specific claims from TE-JWTs
- * - e.g., { allowed_operations: ["read", "write"], allowed_services: ["fileserver"] }
+ * Design Principle:
+ * - Requestor JWT → Authenticate user + determine tool visibility
+ * - TE-JWT → Delegation modules request on-demand during tool execution
+ * - Tool visibility based on requestor JWT roles (correct behavior)
  */
 export interface UserSession {
   /** MANDATORY (GAP #6): Schema version for backward-compatible migrations */
@@ -168,7 +176,7 @@ export interface UserSession {
   /** Username */
   username: string;
 
-  /** Legacy SAM account name (for Windows delegation) - extracted from TE-JWT */
+  /** Legacy SAM account name (for Windows delegation) - extracted from requestor JWT */
   legacyUsername?: string;
 
   /** Primary role (can be UNASSIGNED_ROLE if mapping fails) */
@@ -180,19 +188,14 @@ export interface UserSession {
   /** OAuth scopes */
   scopes?: string[];
 
-  /** Raw JWT claims from requestor token (includes access_token for token exchange) */
+  /** Raw JWT claims from requestor token */
   claims?: Record<string, unknown>;
 
   /** MANDATORY (GAP #1): True if session was rejected due to role mapping failure */
   rejected?: boolean;
 
-  /** Delegation token (TE-JWT) obtained via RFC 8693 token exchange */
-  /** This token has delegation-specific claims (legacy_name, permissions) */
-  delegationToken?: string;
-
-  /** Custom claims from TE-JWT (delegation-specific) */
-  /** e.g., { allowed_operations: ["read"], allowed_services: ["fileserver"] } */
-  customClaims?: Record<string, any>;
+  /** Requestor JWT string (for delegation modules to perform token exchange) */
+  requestorJWT?: string;
 }
 
 /**

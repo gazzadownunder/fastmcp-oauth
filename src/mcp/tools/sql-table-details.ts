@@ -85,6 +85,10 @@ export const createSqlTableDetailsTool: ToolFactory = (context: CoreContext) => 
         {
           tableName: params.tableName,
           schemaName: params.schemaName,
+        },
+        {
+          sessionId: mcpContext.session.sessionId,
+          coreContext: context, // Pass CoreContext for TokenExchangeService access
         }
       );
       console.log('[sql-table-details] Delegation result:', { success: result.success, dataLength: result.data ? (Array.isArray(result.data) ? result.data.length : 'not-array') : 'no-data' });

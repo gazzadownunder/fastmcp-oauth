@@ -31,7 +31,6 @@
 import { MCPOAuthServer } from '../src/mcp/server.js';
 import { PostgreSQLDelegationModule } from '@mcp-oauth/sql-delegation';
 import { KerberosDelegationModule } from '@mcp-oauth/kerberos-delegation';
-import { TokenExchangeService } from '../src/delegation/token-exchange.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -105,33 +104,23 @@ async function main() {
       console.log('      PostgreSQL delegation module detected in config');
       const pgModule = new PostgreSQLDelegationModule();
 
-      // Initialize PostgreSQL module with connection config
+      // Initialize PostgreSQL module with connection config (includes per-module tokenExchange)
       console.log('      Initializing PostgreSQL connection...');
       await pgModule.initialize(delegationConfig.modules.postgresql);
       console.log('✓     PostgreSQL connection initialized');
 
-      // Check if token exchange is configured
-      if (delegationConfig?.tokenExchange) {
-        console.log('      Token exchange detected in config');
-        console.log(`      Token endpoint: ${delegationConfig.tokenExchange.tokenEndpoint}`);
-        console.log(`      Client ID: ${delegationConfig.tokenExchange.clientId}`);
-        console.log(`      Audience: ${delegationConfig.tokenExchange.audience || 'default'}`);
-
-        // Create TokenExchangeService
-        const tokenExchangeService = new TokenExchangeService(
-          delegationConfig.tokenExchange,
-          coreContext.auditService
-        );
-
-        // Inject into PostgreSQL module
-        pgModule.setTokenExchangeService(tokenExchangeService, {
-          tokenEndpoint: delegationConfig.tokenExchange.tokenEndpoint,
-          clientId: delegationConfig.tokenExchange.clientId,
-          clientSecret: delegationConfig.tokenExchange.clientSecret,
-          audience: delegationConfig.tokenExchange.audience,
-        });
-
-        console.log('✓     Token exchange service initialized');
+      // Check if per-module token exchange is configured (Phase 2 design)
+      if (delegationConfig.modules.postgresql.tokenExchange) {
+        const teConfig = delegationConfig.modules.postgresql.tokenExchange;
+        console.log('      Per-module token exchange detected in config');
+        console.log(`      Token endpoint: ${teConfig.tokenEndpoint}`);
+        console.log(`      Client ID: ${teConfig.clientId}`);
+        console.log(`      Audience: ${teConfig.audience || 'default'}`);
+        console.log(`      IDP Name: ${teConfig.idpName || 'default'}`);
+        console.log(`      Required Claim: ${teConfig.requiredClaim || 'legacy_name'}`);
+        console.log('✓     Token exchange will happen on-demand in delegate() method');
+      } else {
+        console.log('      No token exchange configured - will use session.legacyUsername');
       }
 
       await server.registerDelegationModule('postgresql', pgModule);
@@ -155,28 +144,18 @@ async function main() {
         await kerberosModule.initialize(delegationConfig.modules.kerberos);
         console.log('✓     Kerberos service ticket (TGT) obtained');
 
-        // Check if token exchange is configured for Kerberos
-        if (delegationConfig?.tokenExchange) {
-          console.log('      Token exchange detected for Kerberos delegation');
-          console.log(`      Token endpoint: ${delegationConfig.tokenExchange.tokenEndpoint}`);
-          console.log(`      Client ID: ${delegationConfig.tokenExchange.clientId}`);
-          console.log(`      Audience: ${delegationConfig.tokenExchange.audience || 'kerberos-delegation'}`);
-
-          // Create TokenExchangeService (reuse same instance if PostgreSQL already created it)
-          const tokenExchangeService = new TokenExchangeService(
-            delegationConfig.tokenExchange,
-            coreContext.auditService
-          );
-
-          // Inject into Kerberos module
-          kerberosModule.setTokenExchangeService(tokenExchangeService, {
-            tokenEndpoint: delegationConfig.tokenExchange.tokenEndpoint,
-            clientId: delegationConfig.tokenExchange.clientId,
-            clientSecret: delegationConfig.tokenExchange.clientSecret,
-            audience: delegationConfig.tokenExchange.audience,
-          });
-
-          console.log('✓     Token exchange service configured for Kerberos');
+        // Check if per-module token exchange is configured for Kerberos (Phase 2 design)
+        if (delegationConfig.modules.kerberos.tokenExchange) {
+          const teConfig = delegationConfig.modules.kerberos.tokenExchange;
+          console.log('      Per-module token exchange detected for Kerberos');
+          console.log(`      Token endpoint: ${teConfig.tokenEndpoint}`);
+          console.log(`      Client ID: ${teConfig.clientId}`);
+          console.log(`      Audience: ${teConfig.audience || 'kerberos-delegation'}`);
+          console.log(`      IDP Name: ${teConfig.idpName || 'default'}`);
+          console.log(`      Required Claim: ${teConfig.requiredClaim || 'legacy_name'}`);
+          console.log('✓     Token exchange will happen on-demand in delegate() method');
+        } else {
+          console.log('      No token exchange configured - will use session.legacyUsername');
         }
 
         // Display delegation configuration

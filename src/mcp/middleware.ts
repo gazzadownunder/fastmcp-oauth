@@ -107,7 +107,11 @@ export class MCPAuthMiddleware {
       console.log('[MCPAuthMiddleware] ✓ Token extracted, validating...');
 
       // Authenticate with AuthenticationService
-      const authResult = await this.authService.authenticate(token);
+      // CRITICAL: Always use "requestor-jwt" IDP for middleware authentication
+      // This ensures the correct IDP is used when JWT has multiple audiences
+      const authResult = await this.authService.authenticate(token, {
+        idpName: 'requestor-jwt'
+      });
 
       console.log('[MCPAuthMiddleware] Auth result:', {
         rejected: authResult.rejected,

@@ -67,6 +67,19 @@ export interface ValidationContext {
   expectedAudiences: string[];
   clockTolerance: number;
   maxTokenAge: number;
+  /**
+   * Optional IDP name for explicit IDP selection.
+   * When specified, only IDPs with matching name will be considered.
+   * Useful when JWT has multiple audiences that match different IDPs.
+   *
+   * @example
+   * // Requestor JWT validation (middleware)
+   * { idpName: "requestor-jwt" }
+   *
+   * // TE-JWT validation (delegation modules)
+   * { idpName: "sql-delegation-te-jwt" }
+   */
+  idpName?: string;
 }
 
 /**
@@ -144,16 +157,26 @@ export class JWTValidator {
    *
    * CRITICAL: Supports multiple IDPs for different delegation targets
    *
+   * Selection Strategy:
+   * 1. If idpName specified, filter by name first, then issuer+audience
+   * 2. Otherwise, use issuer+audience matching (first match)
+   *
    * @param jwtPayload - Decoded JWT payload
+   * @param idpName - Optional IDP name for explicit selection
    * @returns Matching IDP config or throws error
    */
-  private findIDPConfig(jwtPayload: JWTPayload): IDPConfig {
+  private findIDPConfig(jwtPayload: JWTPayload, idpName?: string): IDPConfig {
     const { iss, aud } = jwtPayload;
 
     // aud can be string or array
     const audiences = Array.isArray(aud) ? aud : [aud];
 
-    // Find config where issuer matches AND audience is in aud array
+    // Strategy 1: Explicit IDP name selection
+    if (idpName) {
+      return this.findIDPByName(idpName, iss, audiences);
+    }
+
+    // Strategy 2: Fallback to issuer+audience matching (first match)
     const config = this.idpConfigs.find(idp =>
       idp.issuer === iss && audiences.includes(idp.audience)
     );
@@ -168,6 +191,50 @@ export class JWTValidator {
 
     const name = config.name || config.audience;
     console.log(`[JWTValidator] Matched IDP config: ${name} (iss: ${iss}, aud: ${config.audience})`);
+    return config;
+  }
+
+  /**
+   * Find IDP by name, then verify issuer and audience match
+   *
+   * Supports multiple IDPs with same name (e.g., geo-redundancy)
+   *
+   * @param idpName - IDP name to match
+   * @param issuer - Expected issuer from JWT
+   * @param audiences - Expected audiences from JWT
+   * @returns Matching IDP config or throws error
+   */
+  private findIDPByName(idpName: string, issuer: string, audiences: string[]): IDPConfig {
+    // Filter IDPs by name
+    const namedIDPs = this.idpConfigs.filter(idp => idp.name === idpName);
+
+    if (namedIDPs.length === 0) {
+      throw createSecurityError(
+        'IDP_NOT_FOUND',
+        `No IDP configuration found with name: ${idpName}`,
+        401
+      );
+    }
+
+    // Find IDP where issuer AND audience both match
+    const config = namedIDPs.find(idp =>
+      idp.issuer === issuer && audiences.includes(idp.audience)
+    );
+
+    if (!config) {
+      // Provide helpful error message
+      const availableIssuers = namedIDPs.map(idp => idp.issuer).join(', ');
+      const availableAudiences = namedIDPs.map(idp => idp.audience).join(', ');
+      throw createSecurityError(
+        'IDP_MISMATCH',
+        `IDP "${idpName}" found but issuer/audience mismatch. ` +
+        `Expected iss="${issuer}", aud="${audiences.join(', ')}". ` +
+        `Available: iss=[${availableIssuers}], aud=[${availableAudiences}]`,
+        401
+      );
+    }
+
+    console.log(`[JWTValidator] Matched IDP by name: ${idpName} (iss: ${issuer}, aud: ${config.audience})`);
     return config;
   }
 
@@ -207,8 +274,8 @@ export class JWTValidator {
       const payloadString = Buffer.from(parts[1], 'base64url').toString('utf-8');
       const decodedPayload = JSON.parse(payloadString) as JWTPayload;
 
-      // Find IDP configuration by issuer + audience
-      const idpConfig = this.findIDPConfig(decodedPayload);
+      // Find IDP configuration by issuer + audience (with optional name filter)
+      const idpConfig = this.findIDPConfig(decodedPayload, context?.idpName);
 
       // Get JWKS resolver
       const jwks = this.jwksSets.get(issuer);

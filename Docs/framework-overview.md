@@ -193,6 +193,11 @@ mcp-oauth/
 │ └── mcp/ - FastMCP integration
 │
 └── packages/ (Optional delegation modules)
+  ├── rest-api-delegation/ (@mcp-oauth/rest-api-delegation)
+  │ ├── src/ (REST API HTTP/JSON integration)
+  │ ├── package.json - Dependencies: zod only
+  │ └── README.md
+  │
   ├── sql-delegation/ (@mcp-oauth/sql-delegation)
   │ ├── src/ (PostgreSQL + SQL Server modules)
   │ ├── package.json - Dependencies: pg, mssql
@@ -212,15 +217,40 @@ mcp-oauth/
 
 ### Optional Delegation Packages
 
-The framework provides two production-ready delegation modules as **optional npm packages**. Install only what you need:
+The framework provides three production-ready delegation modules as **optional npm packages**. Install only what you need:
 
 ```bash
+# Install REST API delegation support (optional - most common use case)
+npm install @mcp-oauth/rest-api-delegation
+
 # Install SQL delegation support (optional)
 npm install @mcp-oauth/sql-delegation
 
 # Install Kerberos delegation support (optional)
 npm install @mcp-oauth/kerberos-delegation
 ```
+
+#### **REST API Delegation** (`@mcp-oauth/rest-api-delegation`) Most Common
+
+**Location:** `packages/rest-api-delegation/`
+**Installation:** `npm install @mcp-oauth/rest-api-delegation`
+
+- **HTTP/JSON API Integration** - Modern REST API support
+- **Token Exchange Support** - RFC 8693 for API-specific JWTs
+- **API Key Fallback** - Static API key authentication
+- **Multiple HTTP Methods** - GET, POST, PUT, PATCH, DELETE
+- **Request Timeouts** - Configurable timeout support
+- **Custom Headers** - Add default headers to all requests
+- **Session Context** - Automatic user ID and role propagation
+- **Comprehensive Error Handling** - Graceful degradation
+
+**Dependencies:** `zod` only (lightweight)
+
+**Use Cases:**
+- LLM agents calling internal REST APIs
+- Multi-service orchestration with token exchange
+- Third-party SaaS API integration
+- Legacy REST/SOAP service integration
 
 #### **SQL Delegation** (`@mcp-oauth/sql-delegation`)
 

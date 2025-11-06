@@ -66,19 +66,20 @@ export class SessionManager {
   /**
    * Create a user session from JWT payload and role mapping result
    *
-   * @param jwtPayload - JWT payload with user claims
-   * @param roleResult - Role mapping result
-   * @param accessToken - Original requestor JWT (for token exchange)
-   * @param delegationToken - Optional TE-JWT from token exchange
-   * @param delegationClaims - Optional claims from TE-JWT
+   * Per-Module Token Exchange Design (Phase 2):
+   * - Session created from requestor JWT only (no token exchange at auth level)
+   * - Requestor JWT stored for delegation modules to use
+   * - Delegation modules perform token exchange on-demand during tool execution
+   *
+   * @param jwtPayload - JWT payload with user claims (from requestor JWT)
+   * @param roleResult - Role mapping result (from requestor JWT roles)
+   * @param requestorJWT - Original requestor JWT string (for delegation modules)
    * @returns UserSession with versioning and rejection tracking
    */
   createSession(
     jwtPayload: JWTPayload,
     roleResult: RoleMapperResult,
-    accessToken?: string,
-    delegationToken?: string,
-    delegationClaims?: Record<string, any>
+    requestorJWT?: string
   ): UserSession {
     // Convert scopes to array
     const scopes = Array.isArray(jwtPayload.scopes)
@@ -90,27 +91,24 @@ export class SessionManager {
     // Generate unique session ID
     const sessionId = randomUUID();
 
-    // Build session with versioning (role-based authorization)
+    // Build session with versioning (role-based authorization from requestor JWT)
     const session: UserSession = {
       _version: this.SESSION_VERSION, // MANDATORY (GAP #6)
       sessionId, // Unique session ID for caching and tracking
       userId: jwtPayload.sub,
       username: jwtPayload.preferred_username || jwtPayload.username || jwtPayload.sub,
-      // Legacy username from TE-JWT takes precedence over requestor JWT
-      legacyUsername: delegationClaims?.legacy_name || jwtPayload.legacy_sam_account,
+      // Legacy username from requestor JWT (optional)
+      // NOTE: TE-JWT may contain different legacy_name for delegation
+      legacyUsername: jwtPayload.legacy_sam_account,
       role: roleResult.primaryRole,
       customRoles: roleResult.customRoles,
       scopes,
       claims: {
         ...jwtPayload,
-        // Store original access token for token exchange (RFC 8693)
-        // This is the subject token that will be exchanged for delegation tokens
-        access_token: accessToken,
       },
       rejected: roleResult.primaryRole === UNASSIGNED_ROLE, // MANDATORY (GAP #1)
-      // Store delegation token and claims (if token exchange was performed)
-      delegationToken,
-      customClaims: delegationClaims,
+      // Store requestor JWT for delegation modules to perform token exchange
+      requestorJWT,
     };
 
     return session;

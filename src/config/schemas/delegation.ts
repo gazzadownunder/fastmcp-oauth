@@ -16,9 +16,19 @@ import { z } from 'zod';
 /**
  * Token exchange configuration for OAuth 2.0 Token Exchange (RFC 8693)
  *
- * Used by TokenExchangeService for on-behalf-of (OBO) delegation.
+ * Used by delegation modules for on-behalf-of (OBO) token exchange.
+ * Each delegation module can have its own token exchange configuration.
+ *
+ * Per-Module Design:
+ * - Each module specifies which IDP to use for TE-JWT validation
+ * - Allows different modules to use different IDPs/audiences
+ * - Example: PostgreSQL uses IDP1, MSSQL uses IDP2
  */
 export const TokenExchangeConfigSchema = z.object({
+  idpName: z
+    .string()
+    .min(1)
+    .describe('IDP name from auth.trustedIDPs to use for TE-JWT validation'),
   tokenEndpoint: z
     .string()
     .url()
@@ -34,6 +44,10 @@ export const TokenExchangeConfigSchema = z.object({
   clientSecret: z.string().min(1).describe('Client secret for token exchange'),
   audience: z.string().optional().describe('Expected audience for delegation tokens'),
   resource: z.string().optional().describe('Resource identifier'),
+  requiredClaim: z
+    .string()
+    .optional()
+    .describe('Required claim in TE-JWT (e.g., legacy_name, sql_user)'),
   defaultScope: z.string().optional().describe('Default scope for token exchange'),
   cache: z
     .object({
@@ -123,6 +137,54 @@ export const KerberosConfigSchema = z.object({
 });
 
 // ============================================================================
+// PostgreSQL Delegation Configuration
+// ============================================================================
+
+/**
+ * PostgreSQL delegation configuration
+ *
+ * Used by PostgreSQLDelegationModule for SET ROLE delegation.
+ */
+export const PostgreSQLConfigSchema = z.object({
+  host: z.string().min(1).describe('PostgreSQL hostname or IP'),
+  port: z.number().int().min(1).max(65535).optional().default(5432).describe('PostgreSQL port'),
+  database: z.string().min(1).describe('Database name'),
+  user: z.string().min(1).describe('Service account username'),
+  password: z.string().min(1).describe('Service account password'),
+  options: z
+    .object({
+      ssl: z.boolean().optional().default(false).describe('Enable SSL/TLS connection'),
+    })
+    .passthrough()
+    .optional()
+    .describe('PostgreSQL connection options'),
+  pool: z
+    .object({
+      max: z.number().int().min(1).optional().default(10).describe('Maximum pool connections'),
+      min: z.number().int().min(0).optional().default(0).describe('Minimum pool connections'),
+      idleTimeoutMillis: z
+        .number()
+        .int()
+        .min(1000)
+        .optional()
+        .default(30000)
+        .describe('Idle timeout in milliseconds'),
+      connectionTimeoutMillis: z
+        .number()
+        .int()
+        .min(1000)
+        .optional()
+        .default(5000)
+        .describe('Connection timeout in milliseconds'),
+    })
+    .optional()
+    .describe('Connection pool settings'),
+  tokenExchange: TokenExchangeConfigSchema.optional().describe(
+    'Per-module token exchange configuration (performs exchange during delegation)'
+  ),
+});
+
+// ============================================================================
 // Delegation Module Registry Configuration
 // ============================================================================
 
@@ -137,7 +199,9 @@ export const DelegationConfigSchema = z.object({
     .record(z.any())
     .optional()
     .describe('Delegation module configurations keyed by module name'),
-  tokenExchange: TokenExchangeConfigSchema.optional().describe('Token exchange configuration'),
+  tokenExchange: TokenExchangeConfigSchema.optional().describe(
+    'DEPRECATED: Global token exchange configuration (use per-module tokenExchange instead)'
+  ),
   sql: SQLConfigSchema.optional().describe('SQL delegation module configuration'),
   kerberos: KerberosConfigSchema.optional().describe('Kerberos delegation module configuration'),
 });
@@ -148,5 +212,6 @@ export const DelegationConfigSchema = z.object({
 
 export type TokenExchangeConfig = z.infer<typeof TokenExchangeConfigSchema>;
 export type SQLConfig = z.infer<typeof SQLConfigSchema>;
+export type PostgreSQLConfig = z.infer<typeof PostgreSQLConfigSchema>;
 export type KerberosConfig = z.infer<typeof KerberosConfigSchema>;
 export type DelegationConfig = z.infer<typeof DelegationConfigSchema>;

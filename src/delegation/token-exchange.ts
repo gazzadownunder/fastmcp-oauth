@@ -37,13 +37,16 @@ import { createSecurityError } from '../utils/errors.js';
  * (TE-JWT) that can be used by delegation modules.
  *
  * Phase 1: Stateless (cache disabled)
- * Phase 2: Encrypted caching (opt-in via config)
+ * Phase 2: Per-module config (shared service, config passed per-call)
  *
- * Usage:
+ * Usage (Phase 2 - Per-Module):
  * ```typescript
- * const service = new TokenExchangeService(config, auditService);
+ * // Create shared service (no config)
+ * const service = new TokenExchangeService(auditService);
+ *
+ * // Delegation modules call with their own config
  * const result = await service.performExchange({
- *   subjectToken: userJWT,
+ *   requestorJWT: userJWT,
  *   audience: 'sql-delegation',
  *   tokenEndpoint: 'https://idp.example.com/token',
  *   clientId: 'mcp-oauth',
@@ -52,45 +55,47 @@ import { createSecurityError } from '../utils/errors.js';
  * ```
  */
 export class TokenExchangeService {
-  private config: TokenExchangeConfig;
   private auditService: any; // Will be typed as AuditService once implemented
-  private cache: EncryptedTokenCache | null = null;
+  private caches: Map<string, EncryptedTokenCache> = new Map();
 
-  constructor(config: TokenExchangeConfig, auditService?: any) {
-    this.config = config;
+  /**
+   * Constructor - Phase 2: No config required (shared service)
+   *
+   * @param auditService - Audit service for logging
+   */
+  constructor(auditService?: any) {
     this.auditService = auditService;
-    this.validateConfig();
-
-    // Initialize cache if enabled (Phase 2)
-    if (config.cache?.enabled) {
-      this.cache = new EncryptedTokenCache(config.cache, auditService);
-    }
   }
 
   /**
    * Perform RFC 8693 token exchange (with optional caching)
    *
-   * @param params - Token exchange parameters
-   * @param sessionId - Optional session ID for caching (Phase 2)
-   * @param jwtSubject - Optional JWT subject for cache ownership validation
+   * Phase 2: Config passed per-call (not in constructor)
+   *
+   * @param params - Token exchange parameters (includes all config)
    * @returns Exchange result with TE-JWT or error
    */
-  async performExchange(
-    params: TokenExchangeParams,
-    sessionId?: string,
-    jwtSubject?: string
-  ): Promise<TokenExchangeResult> {
+  async performExchange(params: TokenExchangeParams): Promise<TokenExchangeResult> {
     const startTime = Date.now();
 
     try {
       // Validate parameters
       this.validateParams(params);
 
+      // Get or create cache for this module (if caching enabled)
+      const cache = this.getOrCreateCache(params);
+      const sessionId = params.sessionId;
+
       // Phase 2: Check cache first (if enabled and session provided)
-      if (this.cache && sessionId) {
+      if (cache && sessionId) {
         // Activate session if not already active
-        if (jwtSubject) {
-          this.cache.activateSession(params.subjectToken, jwtSubject);
+        const requestorJWT = params.requestorJWT || params.subjectToken;
+        if (requestorJWT) {
+          // Extract subject from JWT for cache ownership
+          const jwtSubject = this.extractSubjectFromJWT(requestorJWT);
+          if (jwtSubject) {
+            cache.activateSession(requestorJWT, jwtSubject);
+          }
         }
 
         // Generate cache key from audience
@@ -98,7 +103,7 @@ export class TokenExchangeService {
 
         // Try to get from cache
         console.log('[TokenExchange] Checking cache for delegation token:', { sessionId, cacheKey });
-        const cachedToken = this.cache.get(sessionId, cacheKey, params.subjectToken);
+        const cachedToken = cache.get(sessionId, cacheKey, requestorJWT);
         if (cachedToken) {
           // Cache hit!
           console.log('[TokenExchange] CACHE HIT - using cached delegation token');
@@ -114,11 +119,12 @@ export class TokenExchangeService {
 
       // Build RFC 8693 request body
       const requestBody = this.buildRequestBody(params);
+      const subjectToken = params.requestorJWT || params.subjectToken;
       console.log('[TokenExchange] Making token exchange request to IDP:', {
         tokenEndpoint: params.tokenEndpoint,
         audience: params.audience,
         clientId: params.clientId,
-        subjectTokenLength: params.subjectToken.length,
+        subjectTokenLength: subjectToken?.length,
       });
 
       // Make POST request to IDP token endpoint
@@ -158,15 +164,16 @@ export class TokenExchangeService {
         };
 
         // Phase 2: Store in cache (if enabled and session provided)
-        if (this.cache && sessionId && responseData.expires_in) {
+        if (cache && sessionId && responseData.expires_in) {
           const cacheKey = `te:${params.audience}`;
           const expiresAt = Math.floor(Date.now() / 1000) + responseData.expires_in;
+          const requestorJWT = params.requestorJWT || params.subjectToken;
 
-          this.cache.set(
+          cache.set(
             sessionId,
             cacheKey,
             responseData.access_token,
-            params.subjectToken,
+            requestorJWT,
             expiresAt
           );
         }
@@ -181,7 +188,7 @@ export class TokenExchangeService {
             audience: params.audience,
             tokenEndpoint: params.tokenEndpoint,
             durationMs: Date.now() - startTime,
-            cacheEnabled: !!this.cache,
+            cacheEnabled: !!cache,
           },
         });
 
@@ -269,10 +276,22 @@ export class TokenExchangeService {
   /**
    * Get cache metrics (Phase 2)
    *
-   * @returns Cache metrics or null if caching disabled
+   * @returns Combined cache metrics from all modules
    */
   getCacheMetrics() {
-    return this.cache?.getMetrics() ?? null;
+    const allMetrics = Array.from(this.caches.values()).map(cache => cache.getMetrics());
+    if (allMetrics.length === 0) return null;
+
+    // Aggregate metrics
+    return allMetrics.reduce((acc, metrics) => ({
+      cacheHits: acc.cacheHits + metrics.cacheHits,
+      cacheMisses: acc.cacheMisses + metrics.cacheMisses,
+      decryptionFailures: acc.decryptionFailures + metrics.decryptionFailures,
+      requestorMismatch: acc.requestorMismatch + metrics.requestorMismatch,
+      activeSessions: acc.activeSessions + metrics.activeSessions,
+      totalEntries: acc.totalEntries + metrics.totalEntries,
+      memoryUsageEstimate: acc.memoryUsageEstimate + metrics.memoryUsageEstimate,
+    }));
   }
 
   /**
@@ -281,7 +300,7 @@ export class TokenExchangeService {
    * @param sessionId - Session ID
    */
   heartbeat(sessionId: string): void {
-    this.cache?.heartbeat(sessionId);
+    this.caches.forEach(cache => cache.heartbeat(sessionId));
   }
 
   /**
@@ -290,14 +309,15 @@ export class TokenExchangeService {
    * @param sessionId - Session ID
    */
   clearSession(sessionId: string): void {
-    this.cache?.clearSession(sessionId);
+    this.caches.forEach(cache => cache.clearSession(sessionId));
   }
 
   /**
    * Destroy service and cleanup resources
    */
   destroy(): void {
-    this.cache?.destroy();
+    this.caches.forEach(cache => cache.destroy());
+    this.caches.clear();
   }
 
   // ==========================================================================
@@ -305,49 +325,85 @@ export class TokenExchangeService {
   // ==========================================================================
 
   /**
-   * Validate configuration
+   * Get or create cache for a module
+   *
+   * Phase 2: Each module can have its own cache configuration
+   *
+   * @param params - Token exchange parameters with cache config
+   * @returns Cache instance or null if caching disabled
    */
-  private validateConfig(): void {
-    if (!this.config.tokenEndpoint) {
-      throw createSecurityError(
-        'TOKEN_EXCHANGE_CONFIG_INVALID',
-        'Token exchange config missing tokenEndpoint',
-        500
-      );
+  private getOrCreateCache(params: TokenExchangeParams): EncryptedTokenCache | null {
+    // Check if caching is enabled for this module
+    if (!params.cache?.enabled) {
+      return null;
     }
 
-    // Allow HTTP in development/test mode only
-    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
-    if (!isDev && !this.config.tokenEndpoint.startsWith('https://')) {
-      throw createSecurityError(
-        'TOKEN_EXCHANGE_INSECURE',
-        'Token endpoint must use HTTPS in production',
-        500
-      );
+    // Use audience as cache key (each module/audience gets its own cache)
+    const cacheKey = params.audience || 'default';
+
+    // Return existing cache or create new one
+    if (!this.caches.has(cacheKey)) {
+      this.caches.set(cacheKey, new EncryptedTokenCache(params.cache, this.auditService));
     }
 
-    if (!this.config.clientId || !this.config.clientSecret) {
-      throw createSecurityError(
-        'TOKEN_EXCHANGE_CONFIG_INVALID',
-        'Token exchange config missing clientId or clientSecret',
-        500
-      );
+    return this.caches.get(cacheKey)!;
+  }
+
+  /**
+   * Extract subject from JWT (for cache ownership)
+   *
+   * @param jwt - JWT token
+   * @returns Subject or null
+   */
+  private extractSubjectFromJWT(jwt: string): string | null {
+    try {
+      const parts = jwt.split('.');
+      if (parts.length !== 3) return null;
+
+      const payload = parts[1];
+      const decoded = Buffer.from(payload, 'base64url').toString('utf-8');
+      const claims = JSON.parse(decoded);
+
+      return claims.sub || null;
+    } catch {
+      return null;
     }
   }
 
   /**
    * Validate exchange parameters
+   *
+   * Phase 2: Config now in params (not constructor)
    */
   private validateParams(params: TokenExchangeParams): void {
-    if (!params.subjectToken) {
+    // Validate required token parameter
+    const subjectToken = params.requestorJWT || params.subjectToken;
+    if (!subjectToken) {
       throw createSecurityError(
         'TOKEN_EXCHANGE_INVALID_REQUEST',
-        'Subject token is required',
+        'Subject token (requestorJWT or subjectToken) is required',
         400
       );
     }
 
-    // Allow HTTP in development/test mode only (same as validateConfig)
+    // Validate required config parameters
+    if (!params.tokenEndpoint) {
+      throw createSecurityError(
+        'TOKEN_EXCHANGE_CONFIG_INVALID',
+        'Token exchange config missing tokenEndpoint',
+        400
+      );
+    }
+
+    if (!params.clientId || !params.clientSecret) {
+      throw createSecurityError(
+        'TOKEN_EXCHANGE_CONFIG_INVALID',
+        'Token exchange config missing clientId or clientSecret',
+        400
+      );
+    }
+
+    // Allow HTTP in development/test mode only
     const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
     if (!isDev && !params.tokenEndpoint.startsWith('https://')) {
       throw createSecurityError(
@@ -370,9 +426,12 @@ export class TokenExchangeService {
    * Build RFC 8693 request body
    */
   private buildRequestBody(params: TokenExchangeParams): Record<string, string> {
+    // Use requestorJWT if provided (Phase 2), otherwise subjectToken (backward compat)
+    const subjectToken = params.requestorJWT || params.subjectToken;
+
     const body: Record<string, string> = {
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-      subject_token: params.subjectToken,
+      subject_token: subjectToken,
       // Default to access_token type (RFC 8693) - required by Keycloak and most IDPs
       subject_token_type: params.subjectTokenType || 'urn:ietf:params:oauth:token-type:access_token',
       audience: params.audience,
