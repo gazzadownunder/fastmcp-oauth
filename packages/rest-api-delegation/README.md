@@ -134,6 +134,9 @@ interface RestAPIConfig {
   /** Audience for token exchange requests (default: 'urn:api:rest') */
   tokenExchangeAudience?: string;
 
+  /** Optional OAuth scopes to request during token exchange (space-separated) */
+  scope?: string;
+
   /** Optional default request timeout in milliseconds */
   timeout?: number;
 
@@ -149,6 +152,7 @@ await restApiModule.initialize({
   baseUrl: 'https://api.example.com',
   useTokenExchange: true,
   tokenExchangeAudience: 'urn:api:example',
+  scope: 'openid profile api:read api:write', // Request specific OAuth scopes
   timeout: 30000, // 30 seconds
   defaultHeaders: {
     'X-API-Version': 'v2',
@@ -156,6 +160,12 @@ await restApiModule.initialize({
   }
 });
 ```
+
+**OAuth Scope Support:**
+- Request fine-grained permissions during token exchange
+- Example scopes: `api:read`, `api:write`, `api:admin`
+- IDP determines which scopes to grant based on user roles
+- Enables least-privilege access patterns
 
 ## Token Exchange Flow
 

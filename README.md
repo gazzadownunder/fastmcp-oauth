@@ -134,6 +134,9 @@ The framework follows a **layered modular architecture** with strict one-way dep
 ### Delegation Modules
 -  **REST API Delegation** - Optional package `@mcp-oauth/rest-api-delegation` (HTTP/JSON APIs with token exchange)
 -  **SQL Delegation** - Optional package `@mcp-oauth/sql-delegation` (PostgreSQL + MSSQL)
+  - Multi-database support with separate tool prefixes (sql1-, sql2-, etc.)
+  - Per-database IDP configuration for token exchange
+  - OAuth scope support for fine-grained database permissions
 -  **Kerberos Delegation** - Optional package `@mcp-oauth/kerberos-delegation` (S4U2Self/Proxy)
 -  **GraphQL** - Query/mutation support (example)
 -  **gRPC** - High-performance RPC with retry (example)
@@ -765,6 +768,14 @@ await server.start({ /* ... */ });
         "options": {
           "trustedConnection": true,
           "encrypt": true
+        },
+        "tokenExchange": {
+          "idpName": "sql-delegation-idp",
+          "tokenEndpoint": "https://auth.example.com/token",
+          "clientId": "mcp-server-client",
+          "clientSecret": "SECRET",
+          "audience": "sql-database",
+          "scope": "openid profile sql:read sql:write"
         }
       }
     }
@@ -778,6 +789,76 @@ await server.start({ /* ... */ });
   }
 }
 ```
+
+### Multi-Database Configuration Example
+
+For scenarios with multiple databases using different IDPs and scopes:
+
+```json
+{
+  "auth": {
+    "trustedIDPs": [
+      {
+        "name": "requestor-jwt",
+        "issuer": "https://auth.company.com",
+        "audience": "mcp-oauth"
+      },
+      {
+        "name": "primary-db-idp",
+        "issuer": "https://auth.company.com",
+        "audience": "primary-db"
+      },
+      {
+        "name": "analytics-db-idp",
+        "issuer": "https://analytics-auth.company.com",
+        "audience": "analytics-db"
+      }
+    ]
+  },
+  "delegation": {
+    "modules": {
+      "postgresql1": {
+        "host": "primary.company.com",
+        "database": "app_db",
+        "tokenExchange": {
+          "idpName": "primary-db-idp",
+          "tokenEndpoint": "https://auth.company.com/token",
+          "clientId": "mcp-server-client",
+          "clientSecret": "SECRET1",
+          "audience": "primary-db",
+          "scope": "openid profile sql:read sql:write sql:admin"
+        }
+      },
+      "postgresql2": {
+        "host": "analytics.company.com",
+        "database": "analytics_db",
+        "tokenExchange": {
+          "idpName": "analytics-db-idp",
+          "tokenEndpoint": "https://analytics-auth.company.com/token",
+          "clientId": "analytics-client",
+          "clientSecret": "SECRET2",
+          "audience": "analytics-db",
+          "scope": "openid profile analytics:read"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "enabledTools": {
+      "sql1-delegate": true,
+      "sql1-schema": true,
+      "sql2-delegate": true,
+      "sql2-schema": true
+    }
+  }
+}
+```
+
+**Key Benefits:**
+- **Separate IDPs** - Each database can authenticate with a different identity provider
+- **Scoped Permissions** - `postgresql1` has full access (read/write/admin), `postgresql2` is read-only
+- **Tool Prefixes** - Tools are automatically named `sql1-delegate`, `sql2-delegate` based on module names
+- **Independent Configuration** - Each database has separate credentials and token exchange settings
 
 ## API Reference
 

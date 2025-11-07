@@ -46,11 +46,14 @@ Transform OAuth 2.1 authentication and token exchange from a **6-week developmen
 ### Token Exchange (RFC 8693)
 
 - **On-Behalf-Of Delegation** - Exchange user JWT for downstream resource tokens
-- **Multi-IDP Support** - Configure multiple trusted identity providers
+- **Multi-IDP Support** - Configure multiple trusted identity providers per delegation module
+- **Per-Module IDP Configuration** - Each delegation module can use a different IDP for token exchange
+- **OAuth Scope Support** - Request specific scopes during token exchange (RFC 8693 Section 2.1)
 - **Audience Scoping** - Request resource-specific delegation tokens
-- **Privilege Management** - IDP-controlled privilege elevation/reduction
+- **Privilege Management** - IDP-controlled privilege elevation/reduction via scopes
 - **Machine-to-Machine** - Service identity with user context (`act` claim)
 - **Claims Transformation** - Map modern claims to legacy system requirements
+- **Fine-Grained Authorization** - Space-separated scope lists enable least-privilege access
 
 ### Advanced Security
 
@@ -259,6 +262,9 @@ npm install @mcp-oauth/kerberos-delegation
 
 - **PostgreSQL Support** - Full OBO delegation via `SET SESSION AUTHORIZATION`
 - **SQL Server Support** - `EXECUTE AS USER` impersonation
+- **Multi-Database Support** - Multiple PostgreSQL/MSSQL instances with separate tool prefixes
+- **Per-Database IDP Configuration** - Each database can use different IDP for token exchange
+- **OAuth Scope Support** - Request specific scopes per database (read-only, read-write, admin)
 - **Legacy Username Mapping** - JWT claim → database user account
 - **Parameterized Queries** - SQL injection prevention
 - **Role-Based Permissions** - TE-JWT roles control database access
@@ -266,6 +272,36 @@ npm install @mcp-oauth/kerberos-delegation
 - **TLS Encryption** - Required for SQL connections
 
 **Dependencies:** `pg` (PostgreSQL), `mssql` (SQL Server)
+
+**Multi-Database Example:**
+```json
+{
+  "delegation": {
+    "modules": {
+      "postgresql1": {
+        "database": "primary_db",
+        "tokenExchange": {
+          "idpName": "primary-idp",
+          "scope": "openid profile sql:read sql:write"
+        }
+      },
+      "postgresql2": {
+        "database": "analytics_db",
+        "tokenExchange": {
+          "idpName": "analytics-idp",
+          "scope": "openid profile analytics:read"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "enabledTools": {
+      "sql1-delegate": true,
+      "sql2-delegate": true
+    }
+  }
+}
+```
 
 #### **Kerberos Delegation** (`@mcp-oauth/kerberos-delegation`)
 

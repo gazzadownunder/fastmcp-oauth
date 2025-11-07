@@ -121,9 +121,16 @@ pgModule.setTokenExchangeService(tokenExchangeService, {
   tokenEndpoint: 'https://auth.company.com/token',
   clientId: 'mcp-server',
   clientSecret: 'SECRET',
-  audience: 'postgresql-delegation'
+  audience: 'postgresql-delegation',
+  scope: 'openid profile sql:read sql:write'  // Request specific OAuth scopes
 });
 ```
+
+**OAuth Scope Support (RFC 8693):**
+- Request fine-grained database permissions during token exchange
+- Example scopes: `sql:read` (SELECT only), `sql:write` (INSERT/UPDATE/DELETE), `sql:admin` (DDL operations)
+- IDP controls which scopes are granted based on user roles
+- Enables least-privilege access patterns per database
 
 **TE-JWT Requirements:**
 
@@ -199,6 +206,73 @@ When token exchange is enabled, commands are authorized based on TE-JWT roles:
 | INSERT, UPDATE, DELETE | sql-write |
 | CREATE, ALTER, GRANT | sql-admin |
 | DROP, TRUNCATE | admin |
+
+## Multi-Database Support
+
+The framework supports multiple PostgreSQL or SQL Server instances with separate tool names and IDP configurations:
+
+```typescript
+// postgresql1 module
+const pgModule1 = new PostgreSQLDelegationModule('postgresql1');
+await pgModule1.initialize({
+  host: 'primary.company.com',
+  database: 'app_db',
+  user: 'service_account',
+  password: 'secret'
+});
+pgModule1.setTokenExchangeService(tokenExchangeService, {
+  idpName: 'primary-db-idp',
+  tokenEndpoint: 'https://auth.company.com/token',
+  clientId: 'primary-db-client',
+  clientSecret: 'SECRET1',
+  audience: 'primary-db',
+  scope: 'openid profile sql:read sql:write sql:admin'
+});
+
+// postgresql2 module (analytics, read-only)
+const pgModule2 = new PostgreSQLDelegationModule('postgresql2');
+await pgModule2.initialize({
+  host: 'analytics.company.com',
+  database: 'analytics_db',
+  user: 'analytics_account',
+  password: 'secret'
+});
+pgModule2.setTokenExchangeService(tokenExchangeService, {
+  idpName: 'analytics-db-idp',
+  tokenEndpoint: 'https://analytics-auth.company.com/token',
+  clientId: 'analytics-client',
+  clientSecret: 'SECRET2',
+  audience: 'analytics-db',
+  scope: 'openid profile analytics:read'  // Read-only
+});
+
+// Register both modules
+registry.register(pgModule1);
+registry.register(pgModule2);
+
+// Use SQL tools factory to create tools with prefixes
+import { createSQLToolsForModule } from 'mcp-oauth-framework/mcp/tools';
+
+const sql1Tools = createSQLToolsForModule({
+  toolPrefix: 'sql1',
+  moduleName: 'postgresql1',
+  descriptionSuffix: ' (Primary DB)'
+});
+
+const sql2Tools = createSQLToolsForModule({
+  toolPrefix: 'sql2',
+  moduleName: 'postgresql2',
+  descriptionSuffix: ' (Analytics DB - Read Only)'
+});
+
+// Tools are named: sql1-delegate, sql1-schema, sql2-delegate, sql2-schema
+```
+
+**Key Benefits:**
+- **Separate IDPs** - Each database can use different identity provider
+- **Scoped Permissions** - Primary DB has full access, analytics is read-only
+- **Tool Prefixes** - Clear tool naming: `sql1-delegate`, `sql2-delegate`
+- **Independent Configuration** - Each database has separate credentials and token exchange settings
 
 ## Configuration
 

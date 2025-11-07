@@ -31,6 +31,7 @@
       },
       {
         "name": "sql-delegation-te-jwt",
+        "_comment": "Token Exchange JWT for PostgreSQL1 (primary database)",
         "issuer": "http://192.168.1.137:8080/realms/mcp_security",
         "discoveryUrl": "http://192.168.1.137:8080/realms/mcp_security/.well-known/openid-configuration",
         "jwksUri": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/certs",
@@ -46,6 +47,34 @@
         "roleMappings": {
           "alice-table": ["alice_table"],
           "bob-table": ["bob_table"],
+          "guest": ["guest"],
+          "defaultRole": "guest",
+          "rejectUnmappedRoles": true
+        },
+        "security": {
+          "clockTolerance": 60,
+          "maxTokenAge": 3600,
+          "requireNbf": false
+        }
+      },
+      {
+        "name": "sql2-delegation-te-jwt",
+        "_comment": "Token Exchange JWT for PostgreSQL2 (analytics database) - client: second_sql",
+        "issuer": "http://192.168.1.137:8080/realms/mcp_security",
+        "discoveryUrl": "http://192.168.1.137:8080/realms/mcp_security/.well-known/openid-configuration",
+        "jwksUri": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "audience": "second_sql",
+        "algorithms": ["RS256"],
+        "claimMappings": {
+          "legacyUsername": "legacy_name",
+          "roles": "roles",
+          "scopes": "scope",
+          "userId": "sub",
+          "username": "preferred_username"
+        },
+        "roleMappings": {
+          "analyst": ["data_analyst"],
+          "viewer": ["read_only"],
           "guest": ["guest"],
           "defaultRole": "guest",
           "rejectUnmappedRoles": true
@@ -96,6 +125,7 @@
           "clientId": "mcp-server-client",
           "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
           "audience": "mcp-server-client",
+          "scope": "openid profile sql:read sql:write",
           "requiredClaim": "legacy_name",
           "cache": {
             "enabled": true,
@@ -109,10 +139,10 @@
       "postgresql2": {
         "_comment": "SECONDARY DATABASE - Analytics/Testing database",
         "host": "localhost",
-        "port": 5433,
-        "database": "contextflow_rag",
-        "user": "rag_service",
-        "password": "rag_service_password",
+        "port": 5432,
+        "database": "contextflow_ai",
+        "user": "postgres",
+        "password": "Letmein",
         "options": {
           "ssl": false
         },
@@ -123,12 +153,13 @@
           "connectionTimeoutMillis": 5000
         },
         "tokenExchange": {
-          "_comment": "Per-module token exchange (Phase 2: v3.1+)",
-          "idpName": "sql-delegation-te-jwt",
+          "_comment": "Per-module token exchange (Phase 2: v3.1+) - Analytics database with read-only scope",
+          "idpName": "sql2-delegation-te-jwt",
           "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
-          "clientId": "mcp-server-client",
-          "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
-          "audience": "mcp-server-client",
+          "clientId": "second_sql",
+          "clientSecret": "tErtusngY6ukdctJL7Ouy8oImZK9wHe4",
+          "audience": "second_sql",
+          "scope": "openid profile analytics:read",
           "requiredClaim": "legacy_name",
           "cache": {
             "enabled": true,

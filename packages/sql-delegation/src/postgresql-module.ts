@@ -44,6 +44,12 @@ export interface TokenExchangeConfig {
   /** Expected audience for TE-JWT */
   audience?: string;
 
+  /**
+   * Space-separated list of OAuth scopes to request (RFC 8693)
+   * Examples: "openid profile", "sql:read sql:write", "read write"
+   */
+  scope?: string;
+
   /** Required claim in TE-JWT (e.g., legacy_name) */
   requiredClaim?: string;
 

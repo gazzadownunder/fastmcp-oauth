@@ -144,8 +144,11 @@ export interface TokenExchangeConfig {
   /** Optional: Resource identifier */
   resource?: string;
 
-  /** Optional: Default scope */
-  defaultScope?: string;
+  /**
+   * Optional: Space-separated list of OAuth scopes to request (RFC 8693)
+   * Examples: "openid profile", "sql:read sql:write", "read write"
+   */
+  scope?: string;
 
   /** Optional: Cache configuration */
   cache?: {

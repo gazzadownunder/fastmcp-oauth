@@ -447,6 +447,7 @@ export class TokenExchangeService {
       body.resource = params.resource;
     }
 
+    // RFC 8693: Optional scope parameter (space-separated list)
     if (params.scope) {
       body.scope = params.scope;
     }

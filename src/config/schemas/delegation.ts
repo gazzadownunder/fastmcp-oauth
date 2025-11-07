@@ -44,11 +44,14 @@ export const TokenExchangeConfigSchema = z.object({
   clientSecret: z.string().min(1).describe('Client secret for token exchange'),
   audience: z.string().optional().describe('Expected audience for delegation tokens'),
   resource: z.string().optional().describe('Resource identifier'),
+  scope: z
+    .string()
+    .optional()
+    .describe('Space-separated list of OAuth scopes (RFC 8693). Examples: "openid profile", "sql:read sql:write"'),
   requiredClaim: z
     .string()
     .optional()
     .describe('Required claim in TE-JWT (e.g., legacy_name, sql_user)'),
-  defaultScope: z.string().optional().describe('Default scope for token exchange'),
   cache: z
     .object({
       enabled: z.boolean().optional().default(false).describe('Enable token caching'),
