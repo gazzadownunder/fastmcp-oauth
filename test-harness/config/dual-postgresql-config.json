@@ -69,12 +69,9 @@
     }
   },
   "delegation": {
-    "_DEPRECATED_tokenExchange": {
-      "_comment": "DEPRECATED: Global token exchange config removed in v3.1. Use per-module tokenExchange instead (see postgresql.tokenExchange, kerberos.tokenExchange below)."
-    },
     "modules": {
       "postgresql1": {
-        "_comment": "PRIMARY DATABASE - Main PostgreSQL database",
+        "_comment": "PRIMARY DATABASE - Main application database",
         "host": "localhost",
         "port": 5432,
         "database": "postgres",
@@ -90,7 +87,6 @@
           "connectionTimeoutMillis": 5000
         },
         "tokenExchange": {
-          "_comment": "Per-module token exchange (Phase 2: v3.1+)",
           "idpName": "sql-delegation-te-jwt",
           "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
           "clientId": "mcp-server-client",
@@ -107,12 +103,12 @@
         }
       },
       "postgresql2": {
-        "_comment": "SECONDARY DATABASE - Analytics/Testing database",
+        "_comment": "SECONDARY DATABASE - Analytics/Reporting database",
         "host": "localhost",
-        "port": 5433,
-        "database": "contextflow_rag",
-        "user": "rag_service",
-        "password": "rag_service_password",
+        "port": 5432,
+        "database": "analytics_db",
+        "user": "mcp_service",
+        "password": "ServicePass123!",
         "options": {
           "ssl": false
         },
@@ -123,52 +119,6 @@
           "connectionTimeoutMillis": 5000
         },
         "tokenExchange": {
-          "_comment": "Per-module token exchange (Phase 2: v3.1+)",
-          "idpName": "sql-delegation-te-jwt",
-          "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
-          "clientId": "mcp-server-client",
-          "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
-          "audience": "mcp-server-client",
-          "requiredClaim": "legacy_name",
-          "cache": {
-            "enabled": true,
-            "ttlSeconds": 60,
-            "sessionTimeoutMs": 900000,
-            "maxEntriesPerSession": 10,
-            "maxTotalEntries": 1000
-          }
-        }
-      },
-      "_kerberos": {
-        "enabled": true,
-        "_comment_enabled": "Kerberos delegation ENABLED - Requires Active Directory at w25-dc.w25ad.net",
-        "domainController": "w25-dc.w25ad.net",
-        "servicePrincipalName": "host/mcp-server",
-        "realm": "w25ad.net",
-        "kdc": "w25-dc.w25ad.net:88",
-        "enableS4U2Self": true,
-        "enableS4U2Proxy": true,
-        "allowedDelegationTargets": [
-          "cifs/fileserver.w25ad.net",
-          "cifs/192.168.1.25",
-          "HOST/fileserver.w25ad.net",
-          "HOST/192.168.1.25"
-        ],
-        "_comment_targets": "File server SPNs for Windows file share access via SMB/CIFS",
-        "serviceAccount": {
-          "username": "svc-mcp-server",
-          "password": "YourSecurePassword123!",
-          "_comment_keytabPath": "For Linux: use /etc/keytabs/mcp-server.keytab instead of password"
-        },
-        "ticketCache": {
-          "enabled": true,
-          "ttlSeconds": 3600,
-          "renewThresholdSeconds": 300,
-          "maxEntriesPerSession": 10,
-          "sessionTimeoutMs": 900000
-        },
-        "tokenExchange": {
-          "_comment": "Per-module token exchange for Kerberos (Phase 2: v3.1+)",
           "idpName": "sql-delegation-te-jwt",
           "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
           "clientId": "mcp-server-client",
@@ -187,10 +137,10 @@
     }
   },
   "mcp": {
-    "serverName": "MCP OAuth Phase 3 Test Server (Cache Enabled)",
+    "serverName": "MCP OAuth Dual PostgreSQL Test Server",
     "version": "3.0.0",
     "transport": "http-stream",
-    "port": 3010,
+    "port": 3000,
     "enabledTools": {
       "sql1-delegate": true,
       "sql1-schema": true,
@@ -200,12 +150,7 @@
       "sql2-table-details": true,
       "health-check": true,
       "user-info": true,
-      "audit-log": true,
-      "_kerberos-list-directory": true,
-      "_kerberos-read-file": true,
-      "_kerberos-file-info": true,
-      "_comment_sql": "SQL1 tools connect to primary database (postgres), SQL2 tools connect to analytics database (analytics_db)",
-      "_comment_kerberos": "Kerberos tools automatically perform delegation (S4U2Self/S4U2Proxy) when called. Token exchange provides legacy_name claim."
+      "audit-log": true
     },
     "oauth": {
       "scopes": [

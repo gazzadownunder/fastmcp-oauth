@@ -31,6 +31,7 @@
 import { MCPOAuthServer } from '../src/mcp/server.js';
 import { PostgreSQLDelegationModule } from '@mcp-oauth/sql-delegation';
 import { KerberosDelegationModule } from '@mcp-oauth/kerberos-delegation';
+import { createSQLToolsForModule } from '../src/mcp/tools/sql-tools-factory.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -100,33 +101,59 @@ async function main() {
 
     const delegationConfig = coreContext.configManager.getDelegationConfig();
 
-    if (delegationConfig?.modules?.postgresql) {
-      console.log('      PostgreSQL delegation module detected in config');
-      const pgModule = new PostgreSQLDelegationModule();
+    // Register PostgreSQL modules dynamically (supports multiple instances)
+    const postgresModules = Object.keys(delegationConfig?.modules || {}).filter(
+      key => key.startsWith('postgresql')
+    );
 
-      // Initialize PostgreSQL module with connection config (includes per-module tokenExchange)
-      console.log('      Initializing PostgreSQL connection...');
-      await pgModule.initialize(delegationConfig.modules.postgresql);
-      console.log('✓     PostgreSQL connection initialized');
+    if (postgresModules.length > 0) {
+      console.log(`      Found ${postgresModules.length} PostgreSQL module(s) in config`);
 
-      // Check if per-module token exchange is configured (Phase 2 design)
-      if (delegationConfig.modules.postgresql.tokenExchange) {
-        const teConfig = delegationConfig.modules.postgresql.tokenExchange;
-        console.log('      Per-module token exchange detected in config');
-        console.log(`      Token endpoint: ${teConfig.tokenEndpoint}`);
-        console.log(`      Client ID: ${teConfig.clientId}`);
-        console.log(`      Audience: ${teConfig.audience || 'default'}`);
-        console.log(`      IDP Name: ${teConfig.idpName || 'default'}`);
-        console.log(`      Required Claim: ${teConfig.requiredClaim || 'legacy_name'}`);
-        console.log('✓     Token exchange will happen on-demand in delegate() method');
-      } else {
-        console.log('      No token exchange configured - will use session.legacyUsername');
+      for (const moduleName of postgresModules) {
+        const moduleConfig = delegationConfig.modules[moduleName];
+        console.log(`\n      Registering PostgreSQL module: ${moduleName}`);
+
+        // CRITICAL: Pass moduleName to constructor so each instance has unique name
+        const pgModule = new PostgreSQLDelegationModule(moduleName);
+
+        // Initialize PostgreSQL module with connection config
+        console.log(`      Initializing connection to ${moduleConfig.database}@${moduleConfig.host}:${moduleConfig.port}...`);
+        await pgModule.initialize(moduleConfig);
+        console.log(`✓     PostgreSQL connection initialized for ${moduleName}`);
+
+        // Check if per-module token exchange is configured
+        if (moduleConfig.tokenExchange) {
+          const teConfig = moduleConfig.tokenExchange;
+          console.log('      Per-module token exchange detected in config');
+          console.log(`      Token endpoint: ${teConfig.tokenEndpoint}`);
+          console.log(`      Client ID: ${teConfig.clientId}`);
+          console.log(`      Audience: ${teConfig.audience || 'default'}`);
+          console.log(`      IDP Name: ${teConfig.idpName || 'default'}`);
+          console.log(`      Required Claim: ${teConfig.requiredClaim || 'legacy_name'}`);
+          console.log('✓     Token exchange will happen on-demand in delegate() method');
+        } else {
+          console.log('      No token exchange configured - will use session.legacyUsername');
+        }
+
+        await server.registerDelegationModule(moduleName, pgModule);
+        console.log(`✓     PostgreSQL delegation module '${moduleName}' registered`);
+
+        // Create and register SQL tools for this module
+        const toolPrefix = moduleName === 'postgresql' ? 'sql' : moduleName.replace('postgresql', 'sql');
+        const descriptionSuffix = moduleConfig._comment ? `(${moduleConfig._comment})` : '';
+
+        console.log(`      Creating SQL tools with prefix '${toolPrefix}' for module '${moduleName}'...`);
+        const sqlTools = createSQLToolsForModule({
+          toolPrefix,
+          moduleName,
+          descriptionSuffix,
+        });
+
+        server.registerTools(sqlTools.map(factory => factory(coreContext)));
+        console.log(`✓     Registered ${sqlTools.length} SQL tools for '${moduleName}'\n`);
       }
-
-      await server.registerDelegationModule('postgresql', pgModule);
-      console.log('✓     PostgreSQL delegation module registered\n');
     } else {
-      console.log('      No PostgreSQL module configured\n');
+      console.log('      No PostgreSQL modules configured\n');
     }
 
     // Check for Kerberos delegation module
@@ -198,13 +225,23 @@ async function main() {
     console.log('Available Tools:');
     console.log('  • health-check      - Check delegation service health');
     console.log('  • user-info         - Get current user session info');
-    if (delegationConfig?.modules?.postgresql) {
-      console.log('  • sql-delegate      - Execute SQL queries with positional params ($1, $2, etc.)');
-      console.log('  • sql-schema        - Get list of tables in database schema');
-      console.log('  • sql-table-details - Get column details for a specific table');
+
+    // List SQL tools for each PostgreSQL module
+    for (const moduleName of postgresModules) {
+      const toolPrefix = moduleName === 'postgresql' ? 'sql' : moduleName.replace('postgresql', 'sql');
+      const moduleConfig = delegationConfig.modules[moduleName];
+      const dbLabel = moduleConfig._comment || `${moduleConfig.database}@${moduleConfig.host}`;
+      console.log(`\n  ${toolPrefix.toUpperCase()} Tools (${dbLabel}):`);
+      console.log(`  • ${toolPrefix}-delegate      - Execute SQL queries with positional params ($1, $2, etc.)`);
+      console.log(`  • ${toolPrefix}-schema        - Get list of tables in database schema`);
+      console.log(`  • ${toolPrefix}-table-details - Get column details for a specific table`);
     }
+
     if (delegationConfig?.modules?.kerberos?.enabled) {
-      console.log('  • kerberos-delegate - Obtain Kerberos tickets (S4U2Self/S4U2Proxy)');
+      console.log('\n  Kerberos Tools:');
+      console.log('  • kerberos-list-directory - List directory contents via CIFS');
+      console.log('  • kerberos-read-file      - Read file contents via CIFS');
+      console.log('  • kerberos-file-info      - Get file metadata');
     }
     console.log('');
 

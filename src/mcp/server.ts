@@ -411,10 +411,24 @@ export class MCPOAuthServer {
     });
 
     // 8. Register enabled tools
-    const toolFactories = getAllToolFactories();
+    // Check if custom SQL tools (sql1-, sql2-, etc.) will be registered later
+    // If so, exclude default SQL tools to prevent duplicates
     const enabledTools = mcpConfig?.enabledTools || {};
+    const enabledToolNames = Object.keys(enabledTools);
+    const hasCustomSqlTools = enabledToolNames.some(name =>
+      /^sql\d+-/.test(name) // Matches sql1-, sql2-, etc.
+    );
+
+    console.log(`[MCP OAuth Server] Checking for custom SQL tools...`);
+    console.log(`[MCP OAuth Server]   Enabled tool names:`, enabledToolNames);
+    console.log(`[MCP OAuth Server]   Has custom SQL tools:`, hasCustomSqlTools);
+
+    const toolFactories = getAllToolFactories({ excludeSqlTools: hasCustomSqlTools });
 
     console.log(`[MCP OAuth Server] Found ${toolFactories.length} available tools`);
+    if (hasCustomSqlTools) {
+      console.log(`[MCP OAuth Server] ✓ Custom SQL tools detected - excluding default SQL tools`);
+    }
     console.log(`[MCP OAuth Server] Enabled tools config:`, enabledTools);
 
     let registeredCount = 0;

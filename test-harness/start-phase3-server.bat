@@ -18,7 +18,10 @@ echo   CONFIG_PATH:  %CONFIG_PATH%
 echo   SERVER_PORT:  %SERVER_PORT%
 echo.
 echo This server includes:
-echo   - PostgreSQL Delegation (SET ROLE with token exchange)
+echo   - Multi-Database PostgreSQL Support (2 databases configured)
+echo     * SQL1 Tools: Primary database (postgres)
+echo     * SQL2 Tools: Analytics database (analytics_db)
+echo   - Token Exchange per database module
 echo   - Kerberos Delegation (S4U2Self + S4U2Proxy for file servers)
 echo.
 echo KERBEROS PREREQUISITES (if enabled):

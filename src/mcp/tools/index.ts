@@ -36,6 +36,15 @@ export {
   createFileInfoTool,
 } from './kerberos-file-browse.js';
 
+// Export SQL tools factory for multi-database support
+export {
+  createSQLToolsForModule,
+  createSqlDelegateToolForModule,
+  createSqlSchemaToolForModule,
+  createSqlTableDetailsToolForModule,
+} from './sql-tools-factory.js';
+export type { SQLToolsConfig } from './sql-tools-factory.js';
+
 /**
  * Get all available tool factories
  *
@@ -51,16 +60,25 @@ export {
  *   mcpServer.addTool(tool);
  * }
  * ```
+ *
+ * @param options - Options for filtering tool factories
+ * @param options.excludeSqlTools - Exclude default SQL tools (use when registering custom SQL tools)
  */
-export function getAllToolFactories(): ToolFactory[] {
-  return [
+export function getAllToolFactories(options?: { excludeSqlTools?: boolean }): ToolFactory[] {
+  const sqlTools = options?.excludeSqlTools ? [] : [
     createSqlDelegateTool,
     createSqlSchemaTool,
     createSqlTableDetailsTool,
-    createHealthCheckTool,
-    createUserInfoTool,
     createSQLWriteTool,
     createSQLReadTool,
+  ];
+
+  console.log(`[getAllToolFactories] excludeSqlTools=${options?.excludeSqlTools}, including ${sqlTools.length} SQL tools`);
+
+  return [
+    ...sqlTools,
+    createHealthCheckTool,
+    createUserInfoTool,
     // NOTE: kerberos-delegate is NOT included - delegation happens automatically
     createListDirectoryTool,
     createReadFileTool,

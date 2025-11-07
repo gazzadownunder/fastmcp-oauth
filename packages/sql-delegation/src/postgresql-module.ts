@@ -140,13 +140,23 @@ export interface PostgreSQLConfig {
  * ```
  */
 export class PostgreSQLDelegationModule implements DelegationModule {
-  readonly name = 'postgresql';
+  readonly name: string;
   readonly type = 'database';
 
   private pool: pg.Pool | null = null;
   private config: PostgreSQLConfig | null = null;
   private isConnected = false;
   private tokenExchangeConfig: TokenExchangeConfig | null = null;
+
+  /**
+   * Create a new PostgreSQL delegation module
+   *
+   * @param name - Module name (e.g., 'postgresql', 'postgresql1', 'postgresql2')
+   *               Defaults to 'postgresql' for backward compatibility
+   */
+  constructor(name: string = 'postgresql') {
+    this.name = name;
+  }
 
   /**
    * Initialize PostgreSQL connection pool
