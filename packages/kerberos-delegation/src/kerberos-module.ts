@@ -17,7 +17,11 @@ import { TicketCache } from './ticket-cache.js';
 /**
  * Kerberos delegation module
  *
- * @example
+ * **Multi-Instance Support:**
+ * Multiple Kerberos modules can be registered with different names (e.g., 'kerberos1', 'kerberos2').
+ * Each instance has independent configuration, ticket cache, and delegation settings.
+ *
+ * @example Single instance
  * ```typescript
  * const kerberos = new KerberosDelegationModule();
  * await kerberos.initialize(config);
@@ -27,12 +31,21 @@ import { TicketCache } from './ticket-cache.js';
  *   userPrincipalName: 'ALICE@COMPANY.COM'
  * });
  * ```
+ *
+ * @example Multiple instances
+ * ```typescript
+ * const kerberos1 = new KerberosDelegationModule('kerberos1');
+ * await kerberos1.initialize({ realm: 'DOMAIN1.COM', ... });
+ *
+ * const kerberos2 = new KerberosDelegationModule('kerberos2');
+ * await kerberos2.initialize({ realm: 'DOMAIN2.COM', ... });
+ * ```
  */
 export class KerberosDelegationModule implements DelegationModule {
   /**
    * Module name
    */
-  public readonly name = 'kerberos';
+  public readonly name: string;
 
   /**
    * Module type
@@ -46,14 +59,24 @@ export class KerberosDelegationModule implements DelegationModule {
   private tokenExchangeConfig?: any;  // Unused - maintained for API consistency
 
   /**
+   * Create a new Kerberos delegation module
+   *
+   * @param name - Module name (e.g., 'kerberos', 'kerberos1', 'kerberos2')
+   *               Defaults to 'kerberos' for backward compatibility
+   */
+  constructor(name: string = 'kerberos') {
+    this.name = name;
+  }
+
+  /**
    * Initialize Kerberos delegation module
    *
    * @param config - Kerberos configuration
    * @throws {Error} If initialization fails
    */
   async initialize(config: KerberosConfig): Promise<void> {
-    console.log('\n[KERBEROS-MODULE] Initializing Kerberos delegation module');
-    console.log('[KERBEROS-MODULE] Configuration:', {
+    console.log(`\n[KERBEROS-MODULE:${this.name}] Initializing Kerberos delegation module`);
+    console.log(`[KERBEROS-MODULE:${this.name}] Configuration:`, {
       domainController: config.domainController,
       realm: config.realm,
       servicePrincipalName: config.servicePrincipalName,
@@ -67,12 +90,12 @@ export class KerberosDelegationModule implements DelegationModule {
     this.config = config;
 
     // Initialize Kerberos client
-    console.log('[KERBEROS-MODULE] Creating Kerberos client');
+    console.log(`[KERBEROS-MODULE:${this.name}] Creating Kerberos client`);
     this.client = new KerberosClient(config);
 
     // Initialize ticket cache if enabled
     if (config.ticketCache?.enabled !== false) {
-      console.log('[KERBEROS-MODULE] Initializing ticket cache:', {
+      console.log(`[KERBEROS-MODULE:${this.name}] Initializing ticket cache:`, {
         ttlSeconds: config.ticketCache?.ttlSeconds ?? 3600,
         renewThresholdSeconds: config.ticketCache?.renewThresholdSeconds ?? 300,
       });
@@ -87,11 +110,11 @@ export class KerberosDelegationModule implements DelegationModule {
 
     // Obtain service ticket (TGT) for the MCP Server service account
     try {
-      console.log('[KERBEROS-MODULE] Obtaining service ticket (TGT)');
+      console.log(`[KERBEROS-MODULE:${this.name}] Obtaining service ticket (TGT)`);
       await this.client.obtainServiceTicket();
-      console.log('[KERBEROS-MODULE] ✓ Service ticket obtained successfully');
+      console.log(`[KERBEROS-MODULE:${this.name}] ✓ Service ticket obtained successfully`);
     } catch (error) {
-      console.error('[KERBEROS-MODULE] ✗ Failed to obtain service ticket:', error);
+      console.error(`[KERBEROS-MODULE:${this.name}] ✗ Failed to obtain service ticket:`, error);
       throw new Error(
         `Failed to initialize Kerberos module: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -125,29 +148,29 @@ export class KerberosDelegationModule implements DelegationModule {
       coreContext?: any;
     }
   ): Promise<DelegationResult<T>> {
-    console.log('\n[KERBEROS-MODULE] delegate() called');
-    console.log('[KERBEROS-MODULE] Action:', action);
-    console.log('[KERBEROS-MODULE] Session:', {
+    console.log(`\n[KERBEROS-MODULE:${this.name}] delegate() called`);
+    console.log(`[KERBEROS-MODULE:${this.name}] Action:`, action);
+    console.log(`[KERBEROS-MODULE:${this.name}] Session:`, {
       userId: session.userId,
       legacyUsername: session.legacyUsername,
       sessionId: session.sessionId,
       hasDelegationToken: !!session.delegationToken,
       hasCustomClaims: !!session.customClaims,
     });
-    console.log('[KERBEROS-MODULE] Params:', params);
+    console.log(`[KERBEROS-MODULE:${this.name}] Params:`, params);
 
     // Validate user has legacy_username claim (should be pre-validated by AuthenticationService)
     if (!session.legacyUsername) {
-      console.error('[KERBEROS-MODULE] Missing legacy_username claim in session');
-      console.error('[KERBEROS-MODULE] This should have been validated during authentication!');
+      console.error(`[KERBEROS-MODULE:${this.name}] Missing legacy_username claim in session`);
+      console.error(`[KERBEROS-MODULE:${this.name}] This should have been validated during authentication!`);
       const auditEntry: AuditEntry = {
         timestamp: new Date(),
         userId: session.userId,
-        action: `kerberos:${action}`,
+        action: `${this.name}:${action}`,
         success: false,
         reason: 'User session missing legacy_username claim (authentication validation failed)',
         metadata: { params },
-        source: 'delegation:kerberos',
+        source: `delegation:${this.name}`,
       };
 
       return {
@@ -188,11 +211,11 @@ export class KerberosDelegationModule implements DelegationModule {
           const auditEntry: AuditEntry = {
             timestamp: new Date(),
             userId: session.userId,
-            action: `kerberos:${action}`,
+            action: `${this.name}:${action}`,
             success: false,
             reason: `Unsupported action: ${action}`,
             metadata: { params },
-            source: 'delegation:kerberos',
+            source: `delegation:${this.name}`,
           };
 
           return {
@@ -212,14 +235,14 @@ export class KerberosDelegationModule implements DelegationModule {
       const auditEntry: AuditEntry = {
         timestamp: new Date(),
         userId: session.userId,
-        action: `kerberos:${action}`,
+        action: `${this.name}:${action}`,
         success: true,
         metadata: {
           userPrincipal,
           targetSPN: params.targetSPN,
           cached: result.cached,
         },
-        source: 'delegation:kerberos',
+        source: `delegation:${this.name}`,
       };
 
       console.log('[KERBEROS-MODULE] ✓ Delegation successful');
@@ -239,11 +262,11 @@ export class KerberosDelegationModule implements DelegationModule {
       const auditEntry: AuditEntry = {
         timestamp: new Date(),
         userId: session.userId,
-        action: `kerberos:${action}`,
+        action: `${this.name}:${action}`,
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         metadata: { userPrincipal, params },
-        source: 'delegation:kerberos',
+        source: `delegation:${this.name}`,
       };
 
       return {

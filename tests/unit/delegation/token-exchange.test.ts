@@ -11,7 +11,6 @@ import type { TokenExchangeConfig } from '../../../src/delegation/types.js';
 describe('TokenExchangeService', () => {
   let service: TokenExchangeService;
   let mockAuditService: any;
-  let config: TokenExchangeConfig;
 
   beforeEach(() => {
     // Mock audit service
@@ -19,56 +18,67 @@ describe('TokenExchangeService', () => {
       log: vi.fn().mockResolvedValue(undefined),
     };
 
-    // Default config
-    config = {
-      tokenEndpoint: 'https://idp.example.com/token',
-      clientId: 'test-client',
-      clientSecret: 'test-secret',
-      audience: 'sql-delegation',
-    };
+    // Create service (no config in constructor - Phase 2 architecture)
+    service = new TokenExchangeService(mockAuditService);
 
     // Mock fetch globally
     global.fetch = vi.fn();
   });
 
   describe('Configuration Validation', () => {
-    it('should accept valid HTTPS token endpoint', () => {
+    it('should create service without config (Phase 2 architecture)', () => {
       expect(() => {
-        new TokenExchangeService(config, mockAuditService);
+        new TokenExchangeService(mockAuditService);
       }).not.toThrow();
     });
 
-    it('should reject HTTP token endpoint in production', () => {
+    it('should reject HTTP token endpoint in production during performExchange', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
 
-      const invalidConfig = { ...config, tokenEndpoint: 'http://idp.example.com/token' };
-      expect(() => {
-        new TokenExchangeService(invalidConfig, mockAuditService);
-      }).toThrow('Token endpoint must use HTTPS');
+      const result = await service.performExchange({
+        tokenEndpoint: 'http://idp.example.com/token',
+        clientId: 'test-client',
+        clientSecret: 'test-secret',
+        subjectToken: 'test-token',
+        audience: 'sql-delegation',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorDescription).toContain('must use HTTPS');
 
       process.env.NODE_ENV = originalEnv;
     });
 
-    it('should reject missing token endpoint', () => {
-      const invalidConfig = { ...config, tokenEndpoint: '' };
-      expect(() => {
-        new TokenExchangeService(invalidConfig, mockAuditService);
-      }).toThrow('Token exchange config missing tokenEndpoint');
+    it('should reject missing token endpoint during performExchange', async () => {
+      const result = await service.performExchange({
+        tokenEndpoint: '',
+        clientId: 'test-client',
+        clientSecret: 'test-secret',
+        subjectToken: 'test-token',
+        audience: 'sql-delegation',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorDescription).toContain('missing tokenEndpoint');
     });
 
-    it('should reject missing client credentials', () => {
-      const invalidConfig = { ...config, clientId: '' };
-      expect(() => {
-        new TokenExchangeService(invalidConfig, mockAuditService);
-      }).toThrow('Token exchange config missing clientId or clientSecret');
+    it('should reject missing client credentials during performExchange', async () => {
+      const result = await service.performExchange({
+        tokenEndpoint: 'https://idp.example.com/token',
+        clientId: '',
+        clientSecret: 'test-secret',
+        subjectToken: 'test-token',
+        audience: 'sql-delegation',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorDescription).toContain('missing clientId or clientSecret');
     });
   });
 
   describe('performExchange()', () => {
-    beforeEach(() => {
-      service = new TokenExchangeService(config, mockAuditService);
-    });
+    // Service already created in outer beforeEach
 
     it('should successfully exchange token', async () => {
       const mockResponse = {
@@ -165,7 +175,7 @@ describe('TokenExchangeService', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.errorDescription).toContain('Subject token is required');
+      expect(result.errorDescription).toContain('Subject token (requestorJWT or subjectToken) is required');
     });
 
     it('should reject HTTP token endpoint in params in production', async () => {
@@ -242,9 +252,7 @@ describe('TokenExchangeService', () => {
   });
 
   describe('decodeTokenClaims()', () => {
-    beforeEach(() => {
-      service = new TokenExchangeService(config, mockAuditService);
-    });
+    // Service already created in outer beforeEach
 
     it('should decode valid JWT claims', () => {
       // Create a mock JWT: header.payload.signature
@@ -290,12 +298,10 @@ describe('TokenExchangeService', () => {
   });
 
   describe('Audit Logging', () => {
-    beforeEach(() => {
-      service = new TokenExchangeService(config, mockAuditService);
-    });
+    // Service already created in outer beforeEach
 
     it('should work without audit service (Null Object Pattern)', async () => {
-      const serviceWithoutAudit = new TokenExchangeService(config);
+      const serviceWithoutAudit = new TokenExchangeService();
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
@@ -337,7 +343,11 @@ describe('TokenExchangeService', () => {
     it('should log success with metadata', async () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'token' }),
+        json: async () => ({
+          access_token: 'token',
+          token_type: 'Bearer',
+          expires_in: 3600,
+        }),
       });
 
       await service.performExchange({
@@ -351,6 +361,9 @@ describe('TokenExchangeService', () => {
 
       expect(mockAuditService.log).toHaveBeenCalledWith(
         expect.objectContaining({
+          source: 'delegation:token-exchange',
+          action: 'token_exchange',
+          success: true,
           metadata: expect.objectContaining({
             audience: 'test-audience',
             tokenEndpoint: 'https://idp.example.com/token',

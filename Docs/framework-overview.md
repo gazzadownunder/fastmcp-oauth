@@ -105,28 +105,28 @@ Transform OAuth 2.1 authentication and token exchange from a **6-week developmen
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ MCP Layer │
-│ src/mcp/ - FastMCP Integration │
-│ - MCPAuthMiddleware, ConfigOrchestrator │
-│ - Tool factories with CoreContext injection │
-│ - Imports from: Core, Delegation, Config │
+│ MCP Layer                                               │
+│ src/mcp/ - FastMCP Integration                          │
+│ - MCPAuthMiddleware, ConfigOrchestrator                 │
+│ - Tool factories with CoreContext injection             │
+│ - Imports from: Core, Delegation, Config                │
 └──────────────────┬──────────────────────────────────────┘
- │ depends on ↓
+                   │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Delegation Layer │
-│ src/delegation/ - Pluggable delegation modules │
-│ - DelegationRegistry, TokenExchangeService │
-│ - Custom delegation module support │
-│ - Imports from: Core only │
+│ Delegation Layer                                        │
+│ src/delegation/ - Pluggable delegation modules          │
+│ - DelegationRegistry, TokenExchangeService              │
+│ - Custom delegation module support                      │
+│ - Imports from: Core only                               │
 └──────────────────┬──────────────────────────────────────┘
- │ depends on ↓
+                   │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Core Layer │
-│ src/core/ - Standalone authentication framework │
-│ - AuthenticationService, JWTValidator │
-│ - SessionManager, RoleMapper, AuditService │
-│ - CoreContext, CoreContextValidator │
-│ - NO external layer dependencies │
+│ Core Layer                                              │
+│ src/core/ - Standalone authentication framework         │
+│ - AuthenticationService, JWTValidator                   │
+│ - SessionManager, RoleMapper, AuditService              │
+│ - CoreContext, CoreContextValidator                     │
+│ - NO external layer dependencies                        │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -137,6 +137,49 @@ Transform OAuth 2.1 authentication and token exchange from a **6-week developmen
 3. **Pluggable Delegation** - Add custom modules in <50 lines of code
 4. **CoreContext Injection** - All tools receive dependencies via single CoreContext object
 5. **Fail-Safe Design** - RoleMapper never crashes (returns Unassigned role), AuditService works without config (Null Object Pattern)
+6. **Universal Multi-Instance Support** - All delegation modules support multiple instances with independent configurations
+
+### Multi-Instance Architecture
+
+**ALL delegation modules support multi-instance deployment** - Register unlimited instances of the same module type with independent configurations, connection pools, and token exchange settings.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     MCP OAuth Server                        │
+└─────────────────────────────────────────────────────────────┘
+                           │
+          ┌────────────────┼────────────────────────┐
+          │                │               │        │
+    ┌─────▼─────┐    ┌─────▼─────┐    ┌────▼──────┐ │
+    │   api1-   │    │   sql1-   │    │kerberos1- │ │
+    │ delegate  │    │ delegate  │    │ delegate  │ │
+    │  health   │    │  schema   │    │           │ │
+    └─────┬─────┘    └─────┬─────┘    └────┬──────┘ │
+          │                │               │        │
+    ┌─────▼─────┐    ┌─────▼─────┐    ┌────▼──────┐ │
+    │rest-api1  │    │postgresql1│    │kerberos1  │ │
+    │ Internal  │    │  Primary  │    │  Corp AD  │ │
+    └───────────┘    └───────────┘    └───────────┘ │
+                                                    │
+    ┌─────────────┐    ┌─────────────┐    ┌─────────▼───┐
+    │   api2-     │    │   sql2-     │    │kerberos2-   │
+    │ delegate    │    │ delegate    │    │ delegate    │
+    │  health     │    │  schema     │    │             │
+    └─────┬───────┘    └─────┬───────┘    └────┬────────┘
+          │                  │                 │
+    ┌─────▼───────┐    ┌─────▼───────┐    ┌────▼────────┐
+    │rest-api2    │    │sql2         │    │kerberos2    │
+    │  Partner    │    │  Analytics  │    │ Partner AD  │
+    └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+**Key Features:**
+- **Independent Configurations** - Each instance has its own connection settings, timeouts, pools
+- **Unique Tool Prefixes** - Auto-generated tool names (api1-, sql1-, kerberos1-, etc.)
+- **Per-Instance Token Exchange** - Different IDP audiences and credentials per instance
+- **Dynamic Audit Trails** - All audit entries tagged with module instance name
+- **Dynamic Logging** - All logs include module identifier for troubleshooting
+- **Backward Compatible** - Default names preserve existing single-instance behavior
 
 ### Developer Experience
 
@@ -220,7 +263,7 @@ mcp-oauth/
 
 ### Optional Delegation Packages
 
-The framework provides three production-ready delegation modules as **optional npm packages**. Install only what you need:
+The framework provides three production-ready delegation modules as **optional npm packages**. All modules support **multi-instance deployment** - register multiple instances of the same module type with independent configurations.
 
 ```bash
 # Install REST API delegation support (optional - most common use case)
@@ -239,6 +282,8 @@ npm install @mcp-oauth/kerberos-delegation
 **Installation:** `npm install @mcp-oauth/rest-api-delegation`
 
 - **HTTP/JSON API Integration** - Modern REST API support
+- **Multi-Instance Support** - Multiple API backends with separate tool prefixes (api1-, api2-, api3-)
+- **Per-Instance IDP Configuration** - Each API can use different IDP for token exchange
 - **Token Exchange Support** - RFC 8693 for API-specific JWTs
 - **API Key Fallback** - Static API key authentication
 - **Multiple HTTP Methods** - GET, POST, PUT, PATCH, DELETE
@@ -254,6 +299,7 @@ npm install @mcp-oauth/kerberos-delegation
 - Multi-service orchestration with token exchange
 - Third-party SaaS API integration
 - Legacy REST/SOAP service integration
+- Multiple backend environments (dev, staging, production)
 
 #### **SQL Delegation** (`@mcp-oauth/sql-delegation`)
 
@@ -261,9 +307,10 @@ npm install @mcp-oauth/kerberos-delegation
 **Installation:** `npm install @mcp-oauth/sql-delegation`
 
 - **PostgreSQL Support** - Full OBO delegation via `SET SESSION AUTHORIZATION`
-- **SQL Server Support** - `EXECUTE AS USER` impersonation
-- **Multi-Database Support** - Multiple PostgreSQL/MSSQL instances with separate tool prefixes
-- **Per-Database IDP Configuration** - Each database can use different IDP for token exchange
+- **SQL Server (MSSQL) Support** - `EXECUTE AS USER` impersonation
+- **Multi-Instance Support** - Multiple PostgreSQL/MSSQL instances with separate tool prefixes (sql1-, sql2-, postgresql1-, postgresql2-)
+- **Per-Instance IDP Configuration** - Each database can use different IDP for token exchange
+- **Independent Connection Pools** - Each instance has its own connection pool and configuration
 - **OAuth Scope Support** - Request specific scopes per database (read-only, read-write, admin)
 - **Legacy Username Mapping** - JWT claim → database user account
 - **Parameterized Queries** - SQL injection prevention
@@ -273,29 +320,51 @@ npm install @mcp-oauth/kerberos-delegation
 
 **Dependencies:** `pg` (PostgreSQL), `mssql` (SQL Server)
 
-**Multi-Database Example:**
+**Multi-Instance Example:**
 ```json
 {
   "delegation": {
     "modules": {
       "postgresql1": {
+        "host": "pg-primary.company.com",
         "database": "primary_db",
         "tokenExchange": {
           "idpName": "primary-idp",
+          "audience": "urn:postgresql:primary",
           "scope": "openid profile sql:read sql:write"
         }
       },
       "postgresql2": {
+        "host": "pg-analytics.company.com",
         "database": "analytics_db",
         "tokenExchange": {
           "idpName": "analytics-idp",
+          "audience": "urn:postgresql:analytics",
           "scope": "openid profile analytics:read"
+        }
+      },
+      "sql1": {
+        "server": "mssql-primary.company.com",
+        "database": "AppDB",
+        "tokenExchange": {
+          "idpName": "sql-te-jwt",
+          "audience": "urn:sql:primary"
+        }
+      },
+      "sql2": {
+        "server": "mssql-legacy.company.com",
+        "database": "LegacyDB",
+        "tokenExchange": {
+          "idpName": "sql-te-jwt",
+          "audience": "urn:sql:legacy"
         }
       }
     }
   },
   "mcp": {
     "enabledTools": {
+      "postgresql1-delegate": true,
+      "postgresql2-delegate": true,
       "sql1-delegate": true,
       "sql2-delegate": true
     }
@@ -303,18 +372,87 @@ npm install @mcp-oauth/kerberos-delegation
 }
 ```
 
+**Generated Tools:**
+- `postgresql1-delegate`, `postgresql1-schema`, `postgresql1-table-details`
+- `postgresql2-delegate`, `postgresql2-schema`, `postgresql2-table-details`
+- `sql1-delegate` (MSSQL primary)
+- `sql2-delegate` (MSSQL legacy)
+
 #### **Kerberos Delegation** (`@mcp-oauth/kerberos-delegation`)
 
 **Location:** `packages/kerberos-delegation/`
 **Installation:** `npm install @mcp-oauth/kerberos-delegation`
 
-- **Constrained Delegation** - S4U2Self/S4U2Proxy support
+**Current Status:** ⚠️ **Limited Implementation - S4U2Self/S4U2Proxy Not Available**
+
+- **RunAs Service Account Mode** - Service account Kerberos authentication (available now)
+- **Multi-Instance Support** - Multiple AD domains/realms with separate tool prefixes (kerberos1-, kerberos2-)
+- **Per-Instance Configuration** - Each instance can connect to different AD domain controller
 - **Windows Active Directory** - Enterprise integration
 - **Service Ticket Management** - Automatic ticket lifecycle
-- **Legacy Platform Support** - File shares, Exchange, etc.
+- **Ticket Caching** - Per-instance ticket cache with configurable TTL
+- **Legacy Platform Support** - File shares, Exchange, etc. (via service account)
 - **Cross-Platform** - Windows (SSPI) and Linux (GSSAPI/keytab)
 
 **Dependencies:** `kerberos`, `dns`
+
+**Limitations:**
+
+⚠️ **S4U2Self/S4U2Proxy Not Implemented** - True Kerberos constrained delegation is not available due to Node.js limitations:
+- ❌ No Node.js library supports S4U2Self/S4U2Proxy (confirmed via research)
+- ❌ Keycloak cannot perform S4U2Self or return Kerberos TGTs for arbitrary users
+- ❌ Would require ~2000 lines of custom C++ SSPI bindings (not feasible for most projects)
+- ✅ **RunAs mode available** - Access resources using service account credentials
+- ✅ **User tracking** - Audit logs record actual user identity from JWT
+- ✅ **Sufficient for** - Development, testing, shared resources, non-compliance scenarios
+- ⚠️ **NOT sufficient for** - Per-user ACLs, GDPR/SOX/HIPAA compliance, multi-tenant production
+
+**See:** [KERBEROS-SOLUTION-ANALYSIS.md](./KERBEROS-SOLUTION-ANALYSIS.md) for detailed analysis and [KEYCLOAK-S4U-RESEARCH.md](./KEYCLOAK-S4U-RESEARCH.md) for IDP limitations.
+
+**True Delegation Options (If Required):**
+1. **Windows Service Approach** - C#/.NET service performs S4U2Self/S4U2Proxy, communicates with Node.js via named pipes (200-300 LOC, recommended)
+2. **Domain-Joined Clients Only** - Require SPNEGO authentication, Keycloak forwards existing tickets (corporate intranet only)
+3. **Custom Native Addon** - Build SSPI bindings from scratch (~2000 LOC, 4-6 weeks, not recommended)
+
+**RunAs Service Account Mode Example:**
+```json
+{
+  "delegation": {
+    "modules": {
+      "kerberos1": {
+        "realm": "CORP.COMPANY.COM",
+        "domainController": "dc1.corp.company.com",
+        "servicePrincipalName": "HTTP/mcp-server-corp",
+        "serviceAccount": {
+          "username": "svc-mcp-server",
+          "password": "ServicePassword123!"
+        },
+        "delegation": {
+          "mode": "service-account",
+          "warnOnAccess": true,
+          "auditUserContext": true
+        }
+      },
+      "kerberos2": {
+        "realm": "PARTNER.COMPANY.COM",
+        "domainController": "dc1.partner.company.com",
+        "servicePrincipalName": "HTTP/mcp-server-partner",
+        "serviceAccount": {
+          "username": "svc-mcp-partner",
+          "keytabPath": "/etc/keytabs/svc-mcp-partner.keytab"
+        },
+        "delegation": {
+          "mode": "service-account",
+          "warnOnAccess": true,
+          "auditUserContext": true
+        }
+      }
+    }
+  }
+}
+```
+
+**Note:** Resources accessed via `kerberos1-` and `kerberos2-` tools will see service account identity (e.g., `svc-mcp-server`), NOT individual user identity. User context is tracked in audit logs only.
 
 ### Example Implementations (Production-Ready Templates)
 
@@ -411,6 +549,8 @@ npm install @mcp-oauth/kerberos-delegation
 |----------|---------|-------|--------|
 | **[EXTENDING.md](../Docs/EXTENDING.md)** | 30-minute quickstart tutorial | 450+ lines | Complete |
 | **[TESTING.md](../Docs/TESTING.md)** | Testing guide for custom modules | 700+ lines | Complete |
+| **[MULTI-DATABASE-SETUP.md](../Docs/MULTI-DATABASE-SETUP.md)** | Multi-instance PostgreSQL setup guide | 460+ lines | Complete |
+| **[MULTI-REST-API-SETUP.md](../Docs/MULTI-REST-API-SETUP.md)** | Multi-instance REST API setup guide | 500+ lines | Complete |
 | **[CLAUDE.md](../CLAUDE.md)** | Internal architecture & patterns | 1200+ lines | Complete |
 | **[README.md](../README.md)** | Public-facing documentation | 800+ lines | Complete |
 | **[examples/README.md](../examples/README.md)** | Example usage guidance | 326 lines | Complete |

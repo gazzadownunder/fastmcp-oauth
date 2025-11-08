@@ -19,6 +19,10 @@ describe('KerberosDelegationModule (Placeholder)', () => {
       domainController: 'dc.company.com',
       servicePrincipalName: 'HTTP/webapp.company.com',
       realm: 'COMPANY.COM',
+      serviceAccount: {
+        username: 'svc-mcp-server',
+        password: 'TestPassword123!',
+      },
       kdc: 'kdc.company.com:88',
       enableS4U2Self: true,
       enableS4U2Proxy: true,

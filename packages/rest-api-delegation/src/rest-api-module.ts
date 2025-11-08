@@ -41,7 +41,11 @@ export interface RestAPIConfig {
  * 1. Token exchange: Exchange requestor JWT for API-specific token (recommended)
  * 2. API key: Use static API key for authentication (fallback)
  *
- * @example
+ * **Multi-Instance Support:**
+ * Multiple REST API modules can be registered with different names (e.g., 'rest-api1', 'rest-api2').
+ * Each instance has independent configuration, connection, and token exchange settings.
+ *
+ * @example Single instance
  * ```typescript
  * import { RestAPIDelegationModule } from '@mcp-oauth/rest-api-delegation';
  *
@@ -54,9 +58,18 @@ export interface RestAPIConfig {
  *
  * coreContext.delegationRegistry.register(module);
  * ```
+ *
+ * @example Multiple instances
+ * ```typescript
+ * const api1 = new RestAPIDelegationModule('rest-api1');
+ * await api1.initialize({ baseUrl: 'https://internal-api.com', ... });
+ *
+ * const api2 = new RestAPIDelegationModule('rest-api2');
+ * await api2.initialize({ baseUrl: 'https://partner-api.com', ... });
+ * ```
  */
 export class RestAPIDelegationModule implements DelegationModule {
-  readonly name = 'rest-api';
+  readonly name: string;
   readonly type = 'api';
 
   private config: RestAPIConfig | null = null;
@@ -64,15 +77,25 @@ export class RestAPIDelegationModule implements DelegationModule {
   private tokenExchangeConfig?: any;
 
   /**
+   * Create a new REST API delegation module
+   *
+   * @param name - Module name (e.g., 'rest-api', 'rest-api1', 'rest-api2')
+   *               Defaults to 'rest-api' for backward compatibility
+   */
+  constructor(name: string = 'rest-api') {
+    this.name = name;
+  }
+
+  /**
    * Initialize module with configuration
    */
   async initialize(config: RestAPIConfig): Promise<void> {
     this.config = config;
-    console.log(`[RestAPI] Module initialized: ${config.baseUrl}`);
-    console.log(`[RestAPI] Token exchange: ${config.useTokenExchange ? 'enabled' : 'disabled'}`);
+    console.log(`[RestAPI:${this.name}] Module initialized: ${config.baseUrl}`);
+    console.log(`[RestAPI:${this.name}] Token exchange: ${config.useTokenExchange ? 'enabled' : 'disabled'}`);
 
     if (!config.useTokenExchange && !config.apiKey) {
-      console.warn('[RestAPI] WARNING: Neither token exchange nor API key configured - authentication may fail');
+      console.warn(`[RestAPI:${this.name}] WARNING: Neither token exchange nor API key configured - authentication may fail`);
     }
   }
 
@@ -88,7 +111,7 @@ export class RestAPIDelegationModule implements DelegationModule {
       audience?: string;
     }
   ): void {
-    console.log('[RestAPI] Token exchange service configured');
+    console.log(`[RestAPI:${this.name}] Token exchange service configured`);
     this.tokenExchangeService = service;
     this.tokenExchangeConfig = config;
   }
@@ -129,9 +152,9 @@ export class RestAPIDelegationModule implements DelegationModule {
 
     const auditEntry: AuditEntry = {
       timestamp: new Date(),
-      source: 'delegation:rest-api',
+      source: `delegation:${this.name}`,
       userId: session.userId,
-      action: `rest-api:${action}`,
+      action: `${this.name}:${action}`,
       success: false,
       metadata: { action, params },
     };
@@ -142,13 +165,13 @@ export class RestAPIDelegationModule implements DelegationModule {
 
       if (this.config.useTokenExchange && this.tokenExchangeService) {
         // Use token exchange
-        console.log('[RestAPI] Using token exchange for authentication');
+        console.log(`[RestAPI:${this.name}] Using token exchange for authentication`);
         const delegationToken = await this.performTokenExchange(session, context);
         authHeader = `Bearer ${delegationToken}`;
         auditEntry.metadata = { ...auditEntry.metadata, authMethod: 'token-exchange' };
       } else if (this.config.apiKey) {
         // Use API key fallback
-        console.log('[RestAPI] Using API key for authentication');
+        console.log(`[RestAPI:${this.name}] Using API key for authentication`);
         authHeader = `Bearer ${this.config.apiKey}`;
         auditEntry.metadata = { ...auditEntry.metadata, authMethod: 'api-key' };
       } else {
@@ -160,7 +183,7 @@ export class RestAPIDelegationModule implements DelegationModule {
       const method = params.method || 'POST';
       const url = `${this.config.baseUrl}/${endpoint}`;
 
-      console.log(`[RestAPI] ${method} ${url}`);
+      console.log(`[RestAPI:${this.name}] ${method} ${url}`);
 
       // Build headers
       const headers: Record<string, string> = {
@@ -203,7 +226,7 @@ export class RestAPIDelegationModule implements DelegationModule {
       }
     } catch (error) {
       auditEntry.error = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[RestAPI] Error:', auditEntry.error);
+      console.error(`[RestAPI:${this.name}] Error:`, auditEntry.error);
 
       return {
         success: false,
@@ -296,7 +319,7 @@ export class RestAPIDelegationModule implements DelegationModule {
       });
       return response.ok;
     } catch (error) {
-      console.error('[RestAPI] Health check failed:', error);
+      console.error(`[RestAPI:${this.name}] Health check failed:`, error);
       return false;
     }
   }
@@ -305,7 +328,7 @@ export class RestAPIDelegationModule implements DelegationModule {
    * Cleanup resources
    */
   async destroy(): Promise<void> {
-    console.log('[RestAPI] Module destroyed');
+    console.log(`[RestAPI:${this.name}] Module destroyed`);
     this.config = null;
     this.tokenExchangeService = undefined;
     this.tokenExchangeConfig = undefined;

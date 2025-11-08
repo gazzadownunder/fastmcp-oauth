@@ -6,6 +6,29 @@
 import type { DelegationModuleConfig } from '../base.js';
 
 /**
+ * Service account configuration for Kerberos authentication
+ */
+export interface ServiceAccountConfig {
+  /**
+   * Service account username
+   * @example "svc-mcp-server"
+   */
+  username: string;
+
+  /**
+   * Service account password (Windows SSPI)
+   * @example "ServicePassword123!"
+   */
+  password?: string;
+
+  /**
+   * Path to keytab file (Linux/Unix GSSAPI)
+   * @example "/etc/keytabs/svc-mcp-server.keytab"
+   */
+  keytabPath?: string;
+}
+
+/**
  * Kerberos delegation configuration
  */
 export interface KerberosConfig extends DelegationModuleConfig {
@@ -26,6 +49,12 @@ export interface KerberosConfig extends DelegationModuleConfig {
    * @example "COMPANY.COM"
    */
   realm: string;
+
+  /**
+   * Service account credentials for Kerberos authentication
+   * Required for obtaining service tickets (TGT)
+   */
+  serviceAccount: ServiceAccountConfig;
 
   /**
    * Key Distribution Center (KDC) address
@@ -50,6 +79,15 @@ export interface KerberosConfig extends DelegationModuleConfig {
    * @example ["MSSQLSvc/sql01.company.com:1433", "HTTP/api.company.com"]
    */
   allowedDelegationTargets?: string[];
+
+  /**
+   * Ticket cache configuration
+   */
+  ticketCache?: {
+    enabled?: boolean;
+    ttlSeconds?: number;
+    renewThresholdSeconds?: number;
+  };
 }
 
 /**

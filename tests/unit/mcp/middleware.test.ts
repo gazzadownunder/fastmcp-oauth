@@ -57,7 +57,7 @@ describe('MCP Middleware', () => {
 
         expect(result.authenticated).toBe(true);
         expect(result.session).toEqual(mockSession);
-        expect(mockAuthService.authenticate).toHaveBeenCalledWith('test-token-123');
+        expect(mockAuthService.authenticate).toHaveBeenCalledWith('test-token-123', { idpName: 'requestor-jwt' });
       });
 
       it('should handle Authorization header (capital A)', async () => {
@@ -88,7 +88,7 @@ describe('MCP Middleware', () => {
         const result = await middleware.authenticate(request);
 
         expect(result.authenticated).toBe(true);
-        expect(mockAuthService.authenticate).toHaveBeenCalledWith('test-token-456');
+        expect(mockAuthService.authenticate).toHaveBeenCalledWith('test-token-456', { idpName: 'requestor-jwt' });
       });
 
       it('should return error if Authorization header is missing', async () => {

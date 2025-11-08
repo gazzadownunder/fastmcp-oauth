@@ -122,7 +122,11 @@ export interface SQLConfig {
  * - SQL identifier validation enforced
  * - Context automatically reverted on error
  *
- * Usage:
+ * **Multi-Instance Support:**
+ * Multiple SQL Server modules can be registered with different names (e.g., 'sql1', 'sql2').
+ * Each instance has independent configuration, connection pool, and token exchange settings.
+ *
+ * @example Single instance
  * ```typescript
  * const sqlModule = new SQLDelegationModule();
  * await sqlModule.initialize(config);
@@ -131,9 +135,18 @@ export interface SQLConfig {
  *   params: { id: 123 }
  * });
  * ```
+ *
+ * @example Multiple instances
+ * ```typescript
+ * const sql1 = new SQLDelegationModule('sql1');
+ * await sql1.initialize({ server: 'db1.company.com', ... });
+ *
+ * const sql2 = new SQLDelegationModule('sql2');
+ * await sql2.initialize({ server: 'db2.company.com', ... });
+ * ```
  */
 export class SQLDelegationModule implements DelegationModule {
-  readonly name = 'sql';
+  readonly name: string;
   readonly type = 'database';
 
   private pool: sql.ConnectionPool | null = null;
@@ -141,6 +154,16 @@ export class SQLDelegationModule implements DelegationModule {
   private isConnected = false;
   private tokenExchangeService: TokenExchangeService | null = null;
   private tokenExchangeConfig: TokenExchangeConfig | null = null;
+
+  /**
+   * Create a new SQL Server delegation module
+   *
+   * @param name - Module name (e.g., 'sql', 'sql1', 'sql2')
+   *               Defaults to 'sql' for backward compatibility
+   */
+  constructor(name: string = 'sql') {
+    this.name = name;
+  }
 
   /**
    * Initialize SQL connection pool
@@ -163,7 +186,7 @@ export class SQLDelegationModule implements DelegationModule {
     // Store token exchange config if provided (Phase 2: Per-module config)
     if (config.tokenExchange) {
       this.tokenExchangeConfig = config.tokenExchange;
-      console.log('[SQLModule] Token exchange enabled with IDP:', config.tokenExchange.idpName);
+      console.log(`[SQLModule:${this.name}] Token exchange enabled with IDP:`, config.tokenExchange.idpName);
     }
 
     try {
@@ -229,9 +252,9 @@ export class SQLDelegationModule implements DelegationModule {
           error: error instanceof Error ? error.message : 'Initialization failed',
           auditTrail: {
             timestamp: new Date(),
-            source: 'delegation:sql',
+            source: `delegation:${this.name}`,
             userId: session.userId,
-            action: `sql_delegation:${action}`,
+            action: `${this.name}_delegation:${action}`,
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
           },
@@ -254,9 +277,9 @@ export class SQLDelegationModule implements DelegationModule {
             error: 'Token exchange configured but TokenExchangeService not available in context',
             auditTrail: {
               timestamp: new Date(),
-              source: 'delegation:sql',
+              source: `delegation:${this.name}`,
               userId: session.userId,
-              action: `sql_delegation:${action}`,
+              action: `${this.name}_delegation:${action}`,
               success: false,
               reason: 'TokenExchangeService not in context',
             },
@@ -272,9 +295,9 @@ export class SQLDelegationModule implements DelegationModule {
             error: 'Session missing requestorJWT (required for token exchange)',
             auditTrail: {
               timestamp: new Date(),
-              source: 'delegation:sql',
+              source: `delegation:${this.name}`,
               userId: session.userId,
-              action: `sql_delegation:${action}`,
+              action: `${this.name}_delegation:${action}`,
               success: false,
               reason: 'Missing requestorJWT in session',
             },
@@ -304,9 +327,9 @@ export class SQLDelegationModule implements DelegationModule {
             error: `Token exchange failed: ${exchangeResult.errorDescription || exchangeResult.error}`,
             auditTrail: {
               timestamp: new Date(),
-              source: 'delegation:sql',
+              source: `delegation:${this.name}`,
               userId: session.userId,
-              action: `sql_delegation:${action}`,
+              action: `${this.name}_delegation:${action}`,
               success: false,
               reason: `Token exchange error: ${exchangeResult.error}`,
             },
@@ -326,9 +349,9 @@ export class SQLDelegationModule implements DelegationModule {
             error: `TE-JWT missing required claim: ${requiredClaim}`,
             auditTrail: {
               timestamp: new Date(),
-              source: 'delegation:sql',
+              source: `delegation:${this.name}`,
               userId: session.userId,
-              action: `sql_delegation:${action}`,
+              action: `${this.name}_delegation:${action}`,
               success: false,
               reason: `TE-JWT missing ${requiredClaim} claim`,
             },
@@ -348,7 +371,7 @@ export class SQLDelegationModule implements DelegationModule {
           error: error instanceof Error ? error.message : 'Token exchange failed',
           auditTrail: {
             timestamp: new Date(),
-            source: 'delegation:sql',
+            source: `delegation:${this.name}`,
             userId: session.userId,
             action: `sql_delegation:${action}`,
             success: false,
@@ -365,7 +388,7 @@ export class SQLDelegationModule implements DelegationModule {
         error: 'Unable to determine legacy username for SQL delegation (configure tokenExchange or provide legacyUsername in JWT)',
         auditTrail: {
           timestamp: new Date(),
-          source: 'delegation:sql',
+          source: `delegation:${this.name}`,
           userId: session.userId,
           action: `sql_delegation:${action}`,
           success: false,
@@ -397,9 +420,9 @@ export class SQLDelegationModule implements DelegationModule {
             error: `Unknown action: ${action}`,
             auditTrail: {
               timestamp: new Date(),
-              source: 'delegation:sql',
+              source: `delegation:${this.name}`,
               userId: session.userId,
-              action: `sql_delegation:${action}`,
+              action: `${this.name}_delegation:${action}`,
               success: false,
               reason: `Unknown action type: ${action}`,
             },
@@ -411,7 +434,7 @@ export class SQLDelegationModule implements DelegationModule {
         data: result,
         auditTrail: {
           timestamp: new Date(),
-          source: 'delegation:sql',
+          source: `delegation:${this.name}`,
           userId: session.userId,
           action: `sql_delegation:${action}`,
           success: true,
@@ -428,7 +451,7 @@ export class SQLDelegationModule implements DelegationModule {
         error: error instanceof Error ? error.message : 'SQL operation failed',
         auditTrail: {
           timestamp: new Date(),
-          source: 'delegation:sql',
+          source: `delegation:${this.name}`,
           userId: session.userId,
           action: `sql_delegation:${action}`,
           success: false,

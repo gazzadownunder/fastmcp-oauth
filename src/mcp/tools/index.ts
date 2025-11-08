@@ -9,8 +9,6 @@
 import { createSqlDelegateTool } from './sql-delegate.js';
 import { createHealthCheckTool } from './health-check.js';
 import { createUserInfoTool } from './user-info.js';
-import { createSQLWriteTool } from './sql-write.js';
-import { createSQLReadTool } from './sql-read.js';
 import { createSqlSchemaTool } from './sql-schema.js';
 import { createSqlTableDetailsTool } from './sql-table-details.js';
 // NOTE: kerberos-delegate is NOT exported - it's an internal implementation detail
@@ -25,8 +23,6 @@ import type { ToolFactory } from '../types.js';
 export { createSqlDelegateTool } from './sql-delegate.js';
 export { createHealthCheckTool } from './health-check.js';
 export { createUserInfoTool } from './user-info.js';
-export { createSQLWriteTool } from './sql-write.js';
-export { createSQLReadTool } from './sql-read.js';
 export { createSqlSchemaTool } from './sql-schema.js';
 export { createSqlTableDetailsTool } from './sql-table-details.js';
 // NOTE: kerberos-delegate is NOT exported - see comment above
@@ -44,6 +40,14 @@ export {
   createSqlTableDetailsToolForModule,
 } from './sql-tools-factory.js';
 export type { SQLToolsConfig } from './sql-tools-factory.js';
+
+// Export REST API tools factory for multi-API support
+export {
+  createRESTAPIToolsForModule,
+  createRESTAPIDelegateToolForModule,
+  createRESTAPIHealthToolForModule,
+} from './rest-api-tools-factory.js';
+export type { RESTAPIToolsConfig } from './rest-api-tools-factory.js';
 
 /**
  * Get all available tool factories
@@ -69,8 +73,6 @@ export function getAllToolFactories(options?: { excludeSqlTools?: boolean }): To
     createSqlDelegateTool,
     createSqlSchemaTool,
     createSqlTableDetailsTool,
-    createSQLWriteTool,
-    createSQLReadTool,
   ];
 
   console.log(`[getAllToolFactories] excludeSqlTools=${options?.excludeSqlTools}, including ${sqlTools.length} SQL tools`);
