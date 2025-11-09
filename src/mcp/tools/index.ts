@@ -69,13 +69,13 @@ export type { RESTAPIToolsConfig } from './rest-api-tools-factory.js';
  * @param options.excludeSqlTools - Exclude default SQL tools (use when registering custom SQL tools)
  */
 export function getAllToolFactories(options?: { excludeSqlTools?: boolean }): ToolFactory[] {
-  const sqlTools = options?.excludeSqlTools ? [] : [
-    createSqlDelegateTool,
-    createSqlSchemaTool,
-    createSqlTableDetailsTool,
-  ];
+  const sqlTools = options?.excludeSqlTools
+    ? []
+    : [createSqlDelegateTool, createSqlSchemaTool, createSqlTableDetailsTool];
 
-  console.log(`[getAllToolFactories] excludeSqlTools=${options?.excludeSqlTools}, including ${sqlTools.length} SQL tools`);
+  console.log(
+    `[getAllToolFactories] excludeSqlTools=${options?.excludeSqlTools}, including ${sqlTools.length} SQL tools`
+  );
 
   return [
     ...sqlTools,

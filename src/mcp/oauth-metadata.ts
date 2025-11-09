@@ -80,9 +80,7 @@ export function generateProtectedResourceMetadata(
 
   // Extract all supported signing algorithms from trusted IDPs
   const supportedAlgorithms = Array.from(
-    new Set(
-      authConfig.trustedIDPs.flatMap((idp: any) => idp.algorithms || ['RS256', 'ES256'])
-    )
+    new Set(authConfig.trustedIDPs.flatMap((idp: any) => idp.algorithms || ['RS256', 'ES256']))
   );
 
   return {
@@ -162,11 +160,7 @@ export function generateWWWAuthenticateHeader(
  * @param scope - Space-separated list of required scopes (optional)
  * @returns Bearer header value
  */
-function generateBearerHeader(
-  authConfig: any,
-  realm: string,
-  scope?: string
-): string {
+function generateBearerHeader(authConfig: any, realm: string, scope?: string): string {
   // Use first trusted IDP as primary authorization server
   const authServer = authConfig.trustedIDPs[0]?.issuer || 'unknown';
 

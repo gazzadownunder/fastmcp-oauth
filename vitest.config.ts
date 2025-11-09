@@ -18,7 +18,11 @@ export default defineConfig({
       '**/dist/**',
       // Exclude legacy tests (v1.x architecture - deprecated)
       '**/tests/unit/jwt-validator.test.ts',
-      '**/tests/integration/basic-functionality.test.ts'
+      '**/tests/integration/basic-functionality.test.ts',
+      // Exclude optional delegation tests (run separately with npm run test:sql)
+      '**/test-harness/sql-delegation.test.ts',
+      '**/test-harness/phase3-integration.test.ts',
+      '**/test-harness/phase3-performance.test.ts'
     ],
     coverage: {
       provider: 'v8',

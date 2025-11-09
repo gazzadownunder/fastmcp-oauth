@@ -177,8 +177,8 @@ export class JWTValidator {
     }
 
     // Strategy 2: Fallback to issuer+audience matching (first match)
-    const config = this.idpConfigs.find(idp =>
-      idp.issuer === iss && audiences.includes(idp.audience)
+    const config = this.idpConfigs.find(
+      (idp) => idp.issuer === iss && audiences.includes(idp.audience)
     );
 
     if (!config) {
@@ -190,7 +190,9 @@ export class JWTValidator {
     }
 
     const name = config.name || config.audience;
-    console.log(`[JWTValidator] Matched IDP config: ${name} (iss: ${iss}, aud: ${config.audience})`);
+    console.log(
+      `[JWTValidator] Matched IDP config: ${name} (iss: ${iss}, aud: ${config.audience})`
+    );
     return config;
   }
 
@@ -206,7 +208,7 @@ export class JWTValidator {
    */
   private findIDPByName(idpName: string, issuer: string, audiences: string[]): IDPConfig {
     // Filter IDPs by name
-    const namedIDPs = this.idpConfigs.filter(idp => idp.name === idpName);
+    const namedIDPs = this.idpConfigs.filter((idp) => idp.name === idpName);
 
     if (namedIDPs.length === 0) {
       throw createSecurityError(
@@ -217,24 +219,26 @@ export class JWTValidator {
     }
 
     // Find IDP where issuer AND audience both match
-    const config = namedIDPs.find(idp =>
-      idp.issuer === issuer && audiences.includes(idp.audience)
+    const config = namedIDPs.find(
+      (idp) => idp.issuer === issuer && audiences.includes(idp.audience)
     );
 
     if (!config) {
       // Provide helpful error message
-      const availableIssuers = namedIDPs.map(idp => idp.issuer).join(', ');
-      const availableAudiences = namedIDPs.map(idp => idp.audience).join(', ');
+      const availableIssuers = namedIDPs.map((idp) => idp.issuer).join(', ');
+      const availableAudiences = namedIDPs.map((idp) => idp.audience).join(', ');
       throw createSecurityError(
         'IDP_MISMATCH',
         `IDP "${idpName}" found but issuer/audience mismatch. ` +
-        `Expected iss="${issuer}", aud="${audiences.join(', ')}". ` +
-        `Available: iss=[${availableIssuers}], aud=[${availableAudiences}]`,
+          `Expected iss="${issuer}", aud="${audiences.join(', ')}". ` +
+          `Available: iss=[${availableIssuers}], aud=[${availableAudiences}]`,
         401
       );
     }
 
-    console.log(`[JWTValidator] Matched IDP by name: ${idpName} (iss: ${issuer}, aud: ${config.audience})`);
+    console.log(
+      `[JWTValidator] Matched IDP by name: ${idpName} (iss: ${issuer}, aud: ${config.audience})`
+    );
     return config;
   }
 
@@ -268,7 +272,11 @@ export class JWTValidator {
       // Decode JWT payload to get full iss + aud for matching
       const parts = token.split('.');
       if (parts.length !== 3) {
-        throw createSecurityError('INVALID_TOKEN_FORMAT', 'Invalid JWT: Token format is invalid', 401);
+        throw createSecurityError(
+          'INVALID_TOKEN_FORMAT',
+          'Invalid JWT: Token format is invalid',
+          401
+        );
       }
 
       const payloadString = Buffer.from(parts[1], 'base64url').toString('utf-8');
@@ -280,11 +288,7 @@ export class JWTValidator {
       // Get JWKS resolver
       const jwks = this.jwksSets.get(issuer);
       if (!jwks) {
-        throw createSecurityError(
-          'JWKS_NOT_FOUND',
-          `JWKS not found for issuer: ${issuer}`,
-          500
-        );
+        throw createSecurityError('JWKS_NOT_FOUND', `JWKS not found for issuer: ${issuer}`, 500);
       }
 
       // Prepare validation context
@@ -327,13 +331,13 @@ export class JWTValidator {
 
         // JWTExpired: Token has expired (401 - Unauthorized)
         // CRITICAL: Message MUST start with "Unauthorized" for mcp-proxy error detection
-        if (errorName === 'JWTExpired' || errorMessage.includes('"exp" claim timestamp check failed')) {
-          throw createSecurityError(
-            'TOKEN_EXPIRED',
-            'Unauthorized: Token has expired',
-            401,
-            { originalError: errorMessage }
-          );
+        if (
+          errorName === 'JWTExpired' ||
+          errorMessage.includes('"exp" claim timestamp check failed')
+        ) {
+          throw createSecurityError('TOKEN_EXPIRED', 'Unauthorized: Token has expired', 401, {
+            originalError: errorMessage,
+          });
         }
 
         // JWTClaimValidationFailed: Invalid claims (iss, aud, nbf, etc.) (401 - Unauthorized)
@@ -434,11 +438,7 @@ export class JWTValidator {
     // Check azp claim (critical for OAuth 2.1 security)
     const azp = (payload as any).azp;
     if (azp && azp !== idpConfig.audience) {
-      throw createSecurityError(
-        'AZP_MISMATCH',
-        'Token authorized party claim is invalid',
-        403
-      );
+      throw createSecurityError('AZP_MISMATCH', 'Token authorized party claim is invalid', 403);
     }
 
     // RFC 8725 validations
@@ -464,7 +464,10 @@ export class JWTValidator {
   /**
    * Extract claims using IDP mapping configuration
    */
-  private extractMappedClaims(payload: JoseJWTPayload, idpConfig: IDPConfig): Record<string, unknown> {
+  private extractMappedClaims(
+    payload: JoseJWTPayload,
+    idpConfig: IDPConfig
+  ): Record<string, unknown> {
     const claimMappings = idpConfig.claimMappings;
 
     // Extract mapped claims (support nested paths)

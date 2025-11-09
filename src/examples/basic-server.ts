@@ -35,7 +35,6 @@ async function main() {
       await server.stop();
       process.exit(0);
     });
-
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

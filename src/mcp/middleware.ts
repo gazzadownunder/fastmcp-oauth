@@ -88,7 +88,7 @@ export class MCPAuthMiddleware {
     console.log('[MCPAuthMiddleware] Authenticating request:', {
       method: request.method,
       path: request.path,
-      hasAuthHeader: !!(request.headers['authorization'] || request.headers['Authorization'])
+      hasAuthHeader: !!(request.headers['authorization'] || request.headers['Authorization']),
     });
 
     try {
@@ -110,7 +110,7 @@ export class MCPAuthMiddleware {
       // CRITICAL: Always use "requestor-jwt" IDP for middleware authentication
       // This ensures the correct IDP is used when JWT has multiple audiences
       const authResult = await this.authService.authenticate(token, {
-        idpName: 'requestor-jwt'
+        idpName: 'requestor-jwt',
       });
 
       console.log('[MCPAuthMiddleware] Auth result:', {
@@ -118,7 +118,7 @@ export class MCPAuthMiddleware {
         sessionRejected: authResult.session.rejected,
         role: authResult.session.role,
         customRoles: authResult.session.customRoles,
-        userId: authResult.session.userId
+        userId: authResult.session.userId,
       });
 
       // CRITICAL (GAP #1): Dual rejection check
@@ -132,14 +132,13 @@ export class MCPAuthMiddleware {
 
         // Log technical details for debugging
         if (authResult.rejectionReason) {
-          console.log('[MCPAuthMiddleware] Technical rejection reason:', authResult.rejectionReason);
+          console.log(
+            '[MCPAuthMiddleware] Technical rejection reason:',
+            authResult.rejectionReason
+          );
         }
 
-        throw createSecurityError(
-          'UNAUTHORIZED',
-          userMessage,
-          403
-        );
+        throw createSecurityError('UNAUTHORIZED', userMessage, 403);
       }
 
       // Check 2: session.rejected (from UserSession)
@@ -162,7 +161,7 @@ export class MCPAuthMiddleware {
     } catch (error) {
       // Generate WWW-Authenticate header for 401 responses
       let wwwAuthenticate: string | undefined;
-      if (this.coreContext && (error instanceof OAuthSecurityError && error.statusCode === 401)) {
+      if (this.coreContext && error instanceof OAuthSecurityError && error.statusCode === 401) {
         try {
           wwwAuthenticate = generateWWWAuthenticateHeader(
             this.coreContext,
@@ -170,7 +169,10 @@ export class MCPAuthMiddleware {
             undefined // TODO: Extract required scopes from error
           );
         } catch (headerError) {
-          console.error('[MCPAuthMiddleware] Failed to generate WWW-Authenticate header:', headerError);
+          console.error(
+            '[MCPAuthMiddleware] Failed to generate WWW-Authenticate header:',
+            headerError
+          );
           // Fallback to basic header if generation fails
           wwwAuthenticate = 'Bearer realm="MCP Server"';
         }
@@ -178,7 +180,10 @@ export class MCPAuthMiddleware {
 
       // Convert to FastMCP auth result with statusCode and WWW-Authenticate header
       if (error instanceof OAuthSecurityError) {
-        console.log('[MCPAuthMiddleware] ❌ Authentication error (statusCode: ' + error.statusCode + '):', error.message);
+        console.log(
+          '[MCPAuthMiddleware] ❌ Authentication error (statusCode: ' + error.statusCode + '):',
+          error.message
+        );
         return {
           authenticated: false,
           error: error.message,
@@ -286,4 +291,3 @@ export function requireRole(context: MCPContext, requiredRole: string): void {
   const auth = new Authorization();
   auth.requireRole(context, requiredRole);
 }
-

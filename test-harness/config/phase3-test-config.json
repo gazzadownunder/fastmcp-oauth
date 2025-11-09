@@ -6,7 +6,10 @@
         "issuer": "http://192.168.1.137:8080/realms/mcp_security",
         "discoveryUrl": "http://192.168.1.137:8080/realms/mcp_security/.well-known/openid-configuration",
         "jwksUri": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "clientId": "mcp-oauth",
         "audience": "mcp-oauth",
+        "scope": "openid profile",
+        "_note": "This is the IDP for USER AUTHENTICATION (Step 2) - use mcp-oauth public client",
         "algorithms": ["RS256"],
         "claimMappings": {
           "legacyUsername": "legacy_name",
@@ -21,7 +24,8 @@
           "write": ["mcp-oauth-write"],
           "read": ["mcp-oauth-read"],
           "guest": ["guest", "anonymous"],
-          "defaultRole": "guest"
+          "defaultRole": "guest",
+          "rejectUnmappedRoles": true
         },
         "security": {
           "clockTolerance": 60,
@@ -45,11 +49,15 @@
           "username": "preferred_username"
         },
         "roleMappings": {
+          "sql-read": ["sql-read", "alice_table"],
+          "sql-write": ["sql-write", "bob_table"],
+          "sql-admin": ["sql-admin"],
+          "admin": ["admin"],
           "alice-table": ["alice_table"],
           "bob-table": ["bob_table"],
           "guest": ["guest"],
           "defaultRole": "guest",
-          "rejectUnmappedRoles": true
+          "rejectUnmappedRoles": false
         },
         "security": {
           "clockTolerance": 60,
@@ -125,8 +133,9 @@
           "clientId": "mcp-server-client",
           "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
           "audience": "mcp-server-client",
-          "scope": "openid profile sql:read sql:write",
+          "scope": "openid profile",
           "requiredClaim": "legacy_name",
+          "rolesClaim": "roles",
           "cache": {
             "enabled": true,
             "ttlSeconds": 60,
@@ -159,7 +168,7 @@
           "clientId": "second_sql",
           "clientSecret": "tErtusngY6ukdctJL7Ouy8oImZK9wHe4",
           "audience": "second_sql",
-          "scope": "openid profile analytics:read",
+          "scope": "openid profile",
           "requiredClaim": "legacy_name",
           "cache": {
             "enabled": true,
@@ -221,7 +230,7 @@
     "serverName": "MCP OAuth Phase 3 Test Server (Cache Enabled)",
     "version": "3.0.0",
     "transport": "http-stream",
-    "port": 3010,
+    "port": 3000,
     "enabledTools": {
       "sql1-delegate": true,
       "sql1-schema": true,

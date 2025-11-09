@@ -18,11 +18,7 @@
 import { UNASSIGNED_ROLE } from './types.js';
 import type { UserSession, AuditEntry, RoleMapperResult } from './types.js';
 import { JWTValidator } from './jwt-validator.js';
-import type {
-  JWTPayload,
-  IDPConfig,
-  ValidationContext,
-} from './jwt-validator.js';
+import type { JWTPayload, IDPConfig, ValidationContext } from './jwt-validator.js';
 import { RoleMapper } from './role-mapper.js';
 import type { RoleMappingConfig } from './role-mapper.js';
 import { SessionManager } from './session-manager.js';
@@ -119,10 +115,7 @@ export class AuthenticationService {
    * @param config - Authentication configuration
    * @param auditService - Optional audit service (Null Object Pattern if not provided)
    */
-  constructor(
-    config: AuthConfig,
-    auditService?: AuditService
-  ) {
+  constructor(config: AuthConfig, auditService?: AuditService) {
     this.config = config;
     this.jwtValidator = new JWTValidator();
     this.roleMapper = new RoleMapper(config.roleMappings);
@@ -175,10 +168,7 @@ export class AuthenticationService {
   ): Promise<AuthenticationResult> {
     try {
       // Step 1: Validate requestor JWT (may throw on invalid token)
-      const validationResult = await this.jwtValidator.validateJWT(
-        token,
-        context
-      );
+      const validationResult = await this.jwtValidator.validateJWT(token, context);
 
       console.log('[AuthenticationService] Requestor JWT validated:', {
         userId: validationResult.claims.sub,
@@ -189,7 +179,8 @@ export class AuthenticationService {
       // NOTE: We now use the requestor JWT's IDP config for role claim extraction
       //       The idpName in context tells us which IDP config to use
       const idpName = context?.idpName || 'requestor-jwt';
-      const idpConfig = this.config.idpConfigs.find(idp => idp.name === idpName) || this.config.idpConfigs[0];
+      const idpConfig =
+        this.config.idpConfigs.find((idp) => idp.name === idpName) || this.config.idpConfigs[0];
       const rolesClaimPath = idpConfig.claimMappings.roles;
       const rolesFromClaims = validationResult.claims[rolesClaimPath];
 
@@ -203,9 +194,12 @@ export class AuthenticationService {
       });
 
       // Let RoleMapper handle validation - pass raw value
-      const rolesInput = typeof rolesFromClaims === 'string'
-        ? [rolesFromClaims] // String -> single-element array
-        : rolesFromClaims; // Pass as-is (array, undefined, null, number, etc.)
+      // String -> single-element array, otherwise pass through (including null/undefined)
+      // RoleMapper will validate arrays and reject invalid types
+      const rolesInput =
+        typeof rolesFromClaims === 'string'
+          ? [rolesFromClaims] // String -> single-element array
+          : rolesFromClaims; // Pass through: array, null, undefined, or invalid types
 
       const roleResult: RoleMapperResult = this.roleMapper.determineRoles(
         rolesInput as string[] // Type assertion - RoleMapper will validate

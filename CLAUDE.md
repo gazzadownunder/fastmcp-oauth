@@ -16,7 +16,7 @@ The framework follows a **layered modular architecture** with strict one-way dep
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     MCP Layer                            │
+│                     MCP Layer                           │
 │  src/mcp/ - FastMCP Integration                         │
 │  - MCPAuthMiddleware, ConfigOrchestrator                │
 │  - Tool factories with CoreContext injection            │
@@ -24,16 +24,16 @@ The framework follows a **layered modular architecture** with strict one-way dep
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
-│                  Delegation Layer                        │
+│                  Delegation Layer                       │
 │  src/delegation/ - Core delegation infrastructure       │
 │  - DelegationRegistry, TokenExchangeService             │
 │  - EncryptedTokenCache, Base interfaces                 │
-│  - Imports from: Core only                               │
+│  - Imports from: Core only                              │
 │  - NOTE: Delegation modules moved to packages/          │
 └──────────────────┬──────────────────────────────────────┘
                    │
 ┌─────────────────────────────────────────────────────────┐
-│             Optional Delegation Packages                 │
+│             Optional Delegation Packages                │
 │  packages/ - Standalone npm packages                    │
 │  - @mcp-oauth/sql-delegation (PostgreSQL, MSSQL)        │
 │  - @mcp-oauth/kerberos-delegation (S4U2Self/Proxy)      │
@@ -41,12 +41,12 @@ The framework follows a **layered modular architecture** with strict one-way dep
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
-│                    Core Layer                            │
+│                    Core Layer                           │
 │  src/core/ - Standalone authentication framework        │
-│  - AuthenticationService, JWTValidator                   │
+│  - AuthenticationService, JWTValidator                  │
 │  - SessionManager, RoleMapper, AuditService             │
-│  - CoreContext, CoreContextValidator                     │
-│  - NO external layer dependencies                        │
+│  - CoreContext, CoreContextValidator                    │
+│  - NO external layer dependencies                       │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -80,7 +80,7 @@ This project uses **official npm packages** that include full OAuth stateless au
 #### 1. FastMCP (Core Framework)
 
 - **Package**: `fastmcp@^3.19.0` (npm registry)
-- **Original**: https://github.com/modelcontextprotocol/fastmcp
+- **Original**: https://github.com/punkpeye/fastmcp
 - **Package.json entry**: `"fastmcp": "^3.19.0"`
 
 **Built-in OAuth Features:**
@@ -92,7 +92,7 @@ This project uses **official npm packages** that include full OAuth stateless au
 #### 2. MCP-Proxy (HTTP Stream Transport)
 
 - **Package**: `mcp-proxy@^5.8.0` (npm registry)
-- **Original**: https://github.com/modelcontextprotocol/mcp-proxy
+- **Original**: https://github.com/punkpeye/mcp-proxy
 - **Package.json entry**: `"mcp-proxy": "^5.8.0"`
 
 **Built-in OAuth Features:**
@@ -100,8 +100,6 @@ This project uses **official npm packages** that include full OAuth stateless au
 2. Per-Request Authentication - Validates JWT on every request in stateless mode
 3. Session ID Management - Creates and returns real UUID session IDs
 4. Stateless Support - Full support for stateless OAuth sessions
-
-**Verification:** See [Docs/NPM-LIBRARY-VERIFICATION.md](Docs/NPM-LIBRARY-VERIFICATION.md) for code-level verification that npm packages contain all required OAuth features.
 
 ## Common Commands
 
@@ -196,7 +194,7 @@ The framework implements **RFC 8693 OAuth 2.0 Token Exchange** for on-behalf-of 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                    Stage 1: MCP Tool Access                      │
-│  Requestor JWT → JWT Validation → Role/Permission Check         │
+│  Requestor JWT → JWT Validation → Role/Permission Check          │
 │  Authorization: Can user access this MCP tool?                   │
 └────────────────────────────┬─────────────────────────────────────┘
                              ↓
@@ -302,26 +300,26 @@ Token exchange with external IDPs introduces latency (150-300ms per request). Fo
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                  EncryptedTokenCache Security                    │
-│                                                                   │
+│                  EncryptedTokenCache Security                   │
+│                                                                 │
 │  1. Session-Specific Encryption Keys (256-bit AES)              │
 │     - Unique key per session (perfect forward secrecy)          │
 │     - Keys destroyed on session cleanup (secure zeroing)        │
-│                                                                   │
-│  2. Additional Authenticated Data (AAD) Binding                  │
+│                                                                 │
+│  2. Additional Authenticated Data (AAD) Binding                 │
 │     - AAD = SHA-256 hash of requestor JWT                       │
 │     - Decryption fails if JWT changes (automatic invalidation)  │
 │     - Prevents impersonation even with stolen ciphertext        │
-│                                                                   │
-│  3. Automatic Invalidation on JWT Refresh                        │
+│                                                                 │
+│  3. Automatic Invalidation on JWT Refresh                       │
 │     - New JWT hash → AAD mismatch → cache miss → new exchange   │
 │     - Seamless transition without manual cache clearing         │
-│                                                                   │
-│  4. TTL Synchronization                                          │
+│                                                                 │
+│  4. TTL Synchronization                                         │
 │     - TTL = min(delegation token exp, configured TTL)           │
 │     - Prevents serving expired tokens                           │
-│                                                                   │
-│  5. Heartbeat-Based Session Cleanup                              │
+│                                                                 │
+│  5. Heartbeat-Based Session Cleanup                             │
 │     - Sessions timeout after inactivity (default: 15 minutes)   │
 │     - Automatic key destruction on timeout                      │
 └─────────────────────────────────────────────────────────────────┘
@@ -597,26 +595,26 @@ canAccess: (context) => {
 #### S4U2Self/S4U2Proxy Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │          Windows Kerberos Constrained Delegation                 │
-│                                                                   │
+│                                                                  │
 │  1. MCP Server authenticates as SERVICE ACCOUNT                  │
 │     - Credentials: svc-mcp-server + password (Windows)           │
 │     - Credentials: svc-mcp-server + keytab (Linux)               │
 │     - Obtains: TGT for service account                           │
-│                                                                   │
+│                                                                  │
 │  2. S4U2Self: Protocol Transition                                │
 │     - Input: User principal from JWT (alice@W25AD.NET)           │
 │     - NO PASSWORD NEEDED for alice!                              │
 │     - Service requests ticket "as if" alice requested it         │
 │     - Output: Forwardable ticket for alice → mcp-server          │
-│                                                                   │
+│                                                                  │
 │  3. S4U2Proxy: Constrained Delegation                            │
 │     - Input: User ticket from S4U2Self                           │
 │     - Input: Target SPN (cifs/fileserver.w25ad.net)              │
 │     - Output: Proxy ticket for alice → fileserver                │
 │     - Allows: MCP server accesses fileserver AS alice            │
-└─────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 #### Active Directory Prerequisites
@@ -695,32 +693,32 @@ Per the **MCP OAuth 2.1 specification**, this framework implements the **Resourc
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│               MCP-Compliant OAuth 2.1 Flow                        │
-│                                                                   │
+│               MCP-Compliant OAuth 2.1 Flow                       │
+│                                                                  │
 │  1. MCP Client → Authorization Server (IDP)                      │
-│     GET /authorize?client_id=...&redirect_uri=...&              │
+│     GET /authorize?client_id=...&redirect_uri=...&               │
 │         code_challenge=...&response_type=code                    │
 │     (Client handles PKCE, state parameter)                       │
-│                                                                   │
+│                                                                  │
 │  2. User authenticates at IDP                                    │
 │     User enters credentials, consents to scopes                  │
-│                                                                   │
+│                                                                  │
 │  3. IDP → MCP Client                                             │
-│     Redirect: https://client.com/callback?code=ABC&state=...    │
-│                                                                   │
+│     Redirect: https://client.com/callback?code=ABC&state=...     │
+│                                                                  │
 │  4. MCP Client → Authorization Server (IDP)                      │
-│     POST /token                                                   │
+│     POST /token                                                  │
 │     grant_type=authorization_code&code=ABC&                      │
 │     code_verifier=...&redirect_uri=...                           │
-│                                                                   │
+│                                                                  │
 │  5. IDP → MCP Client                                             │
 │     { access_token, token_type: "Bearer", expires_in: 3600 }     │
-│                                                                   │
+│                                                                  │
 │  6. MCP Client → MCP Server                                      │
-│     POST /mcp                                                     │
+│     POST /mcp                                                    │
 │     Authorization: Bearer <access_token>                         │
 │     { jsonrpc: "2.0", method: "tools/call", ... }                │
-│                                                                   │
+│                                                                  │
 │  7. MCP Server validates token:                                  │
 │     - Verify JWT signature using IDP's JWKS                      │
 │     - Validate issuer, audience, expiration                      │

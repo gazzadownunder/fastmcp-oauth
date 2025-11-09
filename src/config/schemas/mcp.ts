@@ -22,8 +22,16 @@ import { z } from 'zod';
  * All fields are optional - if not provided, metadata will be derived from trustedIDPs config.
  */
 export const OAuthMetadataSchema = z.object({
-  issuer: z.string().url().optional().describe('OAuth issuer URL (defaults to first trustedIDP issuer)'),
-  jwksUri: z.string().url().optional().describe('JWKS endpoint URL (defaults to first trustedIDP jwksUri)'),
+  issuer: z
+    .string()
+    .url()
+    .optional()
+    .describe('OAuth issuer URL (defaults to first trustedIDP issuer)'),
+  jwksUri: z
+    .string()
+    .url()
+    .optional()
+    .describe('JWKS endpoint URL (defaults to first trustedIDP jwksUri)'),
   tokenEndpoint: z.string().url().optional().describe('Token endpoint URL'),
   authorizationEndpoint: z.string().url().optional().describe('Authorization endpoint URL'),
   supportedGrantTypes: z
@@ -34,7 +42,9 @@ export const OAuthMetadataSchema = z.object({
   scopes: z
     .array(z.string())
     .optional()
-    .describe('OAuth scopes to advertise in metadata (e.g., ["mcp:read", "mcp:write", "sql:query"])'),
+    .describe(
+      'OAuth scopes to advertise in metadata (e.g., ["mcp:read", "mcp:write", "sql:query"])'
+    ),
 });
 
 /**
@@ -48,13 +58,29 @@ export const ToolEnablementSchema = z.object({
   'user-info': z.boolean().optional().default(true).describe('Enable user info tool'),
   'audit-log': z.boolean().optional().default(false).describe('Enable audit log tool (admin only)'),
   // NOTE: kerberos-delegate is NOT a user-facing tool - delegation happens automatically
-  'kerberos-list-directory': z.boolean().optional().default(false).describe('Enable Kerberos file listing tool'),
-  'kerberos-read-file': z.boolean().optional().default(false).describe('Enable Kerberos file reading tool'),
-  'kerberos-file-info': z.boolean().optional().default(false).describe('Enable Kerberos file info tool'),
+  'kerberos-list-directory': z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Enable Kerberos file listing tool'),
+  'kerberos-read-file': z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Enable Kerberos file reading tool'),
+  'kerberos-file-info': z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Enable Kerberos file info tool'),
   'sql-read': z.boolean().optional().default(false).describe('Enable SQL read tool'),
   'sql-write': z.boolean().optional().default(false).describe('Enable SQL write tool'),
   'sql-schema': z.boolean().optional().default(false).describe('Enable SQL schema tool'),
-  'sql-table-details': z.boolean().optional().default(false).describe('Enable SQL table details tool'),
+  'sql-table-details': z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Enable SQL table details tool'),
   'oauth-metadata': z.boolean().optional().default(false).describe('Enable OAuth metadata tool'),
 });
 
@@ -72,7 +98,13 @@ export const MCPConfigSchema = z.object({
     .optional()
     .default('http-stream')
     .describe('Transport protocol'),
-  port: z.number().min(1).max(65535).optional().default(3000).describe('Server port (for http-stream)'),
+  port: z
+    .number()
+    .min(1)
+    .max(65535)
+    .optional()
+    .default(3000)
+    .describe('Server port (for http-stream)'),
   oauth: OAuthMetadataSchema.optional().describe('OAuth metadata configuration'),
   enabledTools: ToolEnablementSchema.optional().describe('Tool enablement configuration'),
 });

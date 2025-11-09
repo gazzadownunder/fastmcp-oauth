@@ -153,13 +153,15 @@ export class ConfigManager {
 
     // Validate rate limiting is not too permissive
     if (authConfig.rateLimiting && authConfig.rateLimiting.maxRequests > 1000) {
-      console.warn(
-        'Rate limiting allows more than 1000 requests - consider lowering for security'
-      );
+      console.warn('Rate limiting allows more than 1000 requests - consider lowering for security');
     }
 
     // Ensure audit logging is enabled for production
-    if (this.env.NODE_ENV === 'production' && authConfig.audit && !authConfig.audit.logAllAttempts) {
+    if (
+      this.env.NODE_ENV === 'production' &&
+      authConfig.audit &&
+      !authConfig.audit.logAllAttempts
+    ) {
       console.warn('Audit logging should be enabled in production environments');
     }
   }

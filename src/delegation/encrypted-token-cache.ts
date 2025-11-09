@@ -283,8 +283,9 @@ export class EncryptedTokenCache {
     // Enforce maxEntriesPerSession limit
     if (session.entries.size >= this.config.maxEntriesPerSession) {
       // Evict oldest entry
-      const oldestKey = Array.from(session.entries.entries())
-        .sort((a, b) => a[1].createdAt - b[1].createdAt)[0][0];
+      const oldestKey = Array.from(session.entries.entries()).sort(
+        (a, b) => a[1].createdAt - b[1].createdAt
+      )[0][0];
       session.entries.delete(oldestKey);
       this.updateMetrics();
     }
@@ -514,10 +515,7 @@ export class EncryptedTokenCache {
     cipher.setAAD(Buffer.from(aad, 'utf-8'));
 
     // Encrypt
-    const ciphertext = Buffer.concat([
-      cipher.update(plaintext, 'utf-8'),
-      cipher.final(),
-    ]);
+    const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf-8'), cipher.final()]);
 
     // Get authentication tag
     const authTag = cipher.getAuthTag();
@@ -545,10 +543,7 @@ export class EncryptedTokenCache {
     decipher.setAuthTag(authTag);
 
     // Decrypt
-    const plaintext = Buffer.concat([
-      decipher.update(ciphertext),
-      decipher.final(),
-    ]);
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 
     return plaintext.toString('utf-8');
   }

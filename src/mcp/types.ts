@@ -109,10 +109,7 @@ export interface MCPContext {
  * };
  * ```
  */
-export type ToolHandler<P = any, R = LLMResponse> = (
-  params: P,
-  context: MCPContext
-) => Promise<R>;
+export type ToolHandler<P = any, R = LLMResponse> = (params: P, context: MCPContext) => Promise<R>;
 
 // ============================================================================
 // Tool Registration Types

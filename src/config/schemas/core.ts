@@ -30,8 +30,8 @@ export const RoleMappingSchema = z
       .default(false)
       .describe(
         'Reject authentication if JWT roles do not match any mapping. ' +
-        'When true, returns UNASSIGNED_ROLE for unmapped roles. ' +
-        'When false, falls back to defaultRole. Default: false'
+          'When true, returns UNASSIGNED_ROLE for unmapped roles. ' +
+          'When false, falls back to defaultRole. Default: false'
       ),
   })
   .passthrough(); // Allow additional custom role mappings
@@ -159,11 +159,7 @@ export const AuditConfigSchema = z.object({
   enabled: z.boolean().optional().default(true).describe('Enable audit logging'),
   logAllAttempts: z.boolean().describe('Log all authentication attempts (success and failure)'),
   logFailedAttempts: z.boolean().optional().default(true).describe('Log failed attempts'),
-  retentionDays: z
-    .number()
-    .min(1)
-    .max(365)
-    .describe('Audit log retention period in days'),
+  retentionDays: z.number().min(1).max(365).describe('Audit log retention period in days'),
 });
 
 // ============================================================================
@@ -179,10 +175,7 @@ export const AuditConfigSchema = z.object({
  * Authorization is role-based from JWT claims, not static permissions.
  */
 export const CoreAuthConfigSchema = z.object({
-  trustedIDPs: z
-    .array(IDPConfigSchema)
-    .min(1)
-    .describe('List of trusted identity providers'),
+  trustedIDPs: z.array(IDPConfigSchema).min(1).describe('List of trusted identity providers'),
   rateLimiting: RateLimitConfigSchema.optional().describe('Rate limiting settings'),
   audit: AuditConfigSchema.optional().describe('Audit logging settings'),
 });

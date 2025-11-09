@@ -57,8 +57,7 @@ export function createSqlDelegateToolForModule(
 
   return (context: CoreContext) => ({
     name: `${toolPrefix}-delegate`,
-    description:
-      `Execute PostgreSQL queries on behalf of the authenticated user using their delegated role. Use positional parameters ($1, $2, etc.). Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
+    description: `Execute PostgreSQL queries on behalf of the authenticated user using their delegated role. Use positional parameters ($1, $2, etc.). Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
     schema: sqlDelegateSchema,
 
     canAccess: (mcpContext: MCPContext) => {
@@ -149,8 +148,7 @@ export function createSqlSchemaToolForModule(
 
   return (context: CoreContext) => ({
     name: `${toolPrefix}-schema`,
-    description:
-      `Get list of tables in the database schema. Shows table names and types (BASE TABLE, VIEW, etc.). Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
+    description: `Get list of tables in the database schema. Shows table names and types (BASE TABLE, VIEW, etc.). Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
     schema: sqlSchemaSchema,
 
     canAccess: (mcpContext: MCPContext) => {
@@ -200,14 +198,20 @@ export function createSqlSchemaToolForModule(
           data: {
             schema: params.schemaName,
             tableCount: tables.length,
-            tables: tables.map(t => ({
+            tables: tables.map((t) => ({
               name: t.table_name,
               type: t.table_type,
             })),
           },
         };
       } catch (error) {
-        return handleToolError(error, `${toolPrefix}-schema`, mcpContext, context.auditService, params);
+        return handleToolError(
+          error,
+          `${toolPrefix}-schema`,
+          mcpContext,
+          context.auditService,
+          params
+        );
       }
     },
   });
@@ -235,8 +239,7 @@ export function createSqlTableDetailsToolForModule(
 
   return (context: CoreContext) => ({
     name: `${toolPrefix}-table-details`,
-    description:
-      `Get detailed column information for a specific table. Shows column names, data types, nullable status, and defaults. Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
+    description: `Get detailed column information for a specific table. Shows column names, data types, nullable status, and defaults. Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
     schema: sqlTableDetailsSchema,
 
     canAccess: (mcpContext: MCPContext) => {
@@ -247,7 +250,10 @@ export function createSqlTableDetailsToolForModule(
       return auth.hasAnyRole(mcpContext, ['user', 'admin']);
     },
 
-    handler: async (params: SqlTableDetailsParams, mcpContext: MCPContext): Promise<LLMResponse> => {
+    handler: async (
+      params: SqlTableDetailsParams,
+      mcpContext: MCPContext
+    ): Promise<LLMResponse> => {
       try {
         const auth = new Authorization();
         auth.requireAnyRole(mcpContext, ['user', 'admin']);
@@ -296,7 +302,7 @@ export function createSqlTableDetailsToolForModule(
             table: params.tableName,
             schema: params.schemaName,
             columnCount: columns.length,
-            columns: columns.map(c => ({
+            columns: columns.map((c) => ({
               name: c.column_name,
               type: c.data_type,
               nullable: c.is_nullable === 'YES',
@@ -306,7 +312,13 @@ export function createSqlTableDetailsToolForModule(
           },
         };
       } catch (error) {
-        return handleToolError(error, `${toolPrefix}-table-details`, mcpContext, context.auditService, params);
+        return handleToolError(
+          error,
+          `${toolPrefix}-table-details`,
+          mcpContext,
+          context.auditService,
+          params
+        );
       }
     },
   });
@@ -337,6 +349,10 @@ export function createSQLToolsForModule(config: SQLToolsConfig): ToolFactory[] {
   return [
     createSqlDelegateToolForModule(config.toolPrefix, config.moduleName, config.descriptionSuffix),
     createSqlSchemaToolForModule(config.toolPrefix, config.moduleName, config.descriptionSuffix),
-    createSqlTableDetailsToolForModule(config.toolPrefix, config.moduleName, config.descriptionSuffix),
+    createSqlTableDetailsToolForModule(
+      config.toolPrefix,
+      config.moduleName,
+      config.descriptionSuffix
+    ),
   ];
 }

@@ -58,7 +58,10 @@ export const createSqlTableDetailsTool: ToolFactory = (context: CoreContext) => 
 
   handler: async (params: SqlTableDetailsParams, mcpContext: MCPContext): Promise<LLMResponse> => {
     try {
-      console.log('[sql-table-details] Starting handler', { tableName: params.tableName, schemaName: params.schemaName });
+      console.log('[sql-table-details] Starting handler', {
+        tableName: params.tableName,
+        schemaName: params.schemaName,
+      });
 
       // Require user or admin role
       const auth = new Authorization();
@@ -78,7 +81,9 @@ export const createSqlTableDetailsTool: ToolFactory = (context: CoreContext) => 
       console.log('[sql-table-details] Got PostgreSQL delegation module');
 
       // Delegate table details query
-      console.log('[sql-table-details] Calling delegationModule.delegate with action: table-details');
+      console.log(
+        '[sql-table-details] Calling delegationModule.delegate with action: table-details'
+      );
       const result = await delegationModule.delegate(
         mcpContext.session,
         'table-details',
@@ -91,7 +96,14 @@ export const createSqlTableDetailsTool: ToolFactory = (context: CoreContext) => 
           coreContext: context, // Pass CoreContext for TokenExchangeService access
         }
       );
-      console.log('[sql-table-details] Delegation result:', { success: result.success, dataLength: result.data ? (Array.isArray(result.data) ? result.data.length : 'not-array') : 'no-data' });
+      console.log('[sql-table-details] Delegation result:', {
+        success: result.success,
+        dataLength: result.data
+          ? Array.isArray(result.data)
+            ? result.data.length
+            : 'not-array'
+          : 'no-data',
+      });
 
       if (!result.success) {
         console.error('[sql-table-details] Delegation failed:', result.error);
@@ -119,7 +131,7 @@ export const createSqlTableDetailsTool: ToolFactory = (context: CoreContext) => 
           table: params.tableName,
           schema: params.schemaName,
           columnCount: columns.length,
-          columns: columns.map(c => ({
+          columns: columns.map((c) => ({
             name: c.column_name,
             type: c.data_type,
             nullable: c.is_nullable === 'YES',

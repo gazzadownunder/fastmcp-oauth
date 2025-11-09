@@ -103,10 +103,7 @@ export class ConfigOrchestrator {
     const auditService = this.createAuditService(config);
 
     // Create AuthenticationService (NO token exchange service - Phase 2)
-    const authenticationService = this.createAuthenticationService(
-      config,
-      auditService
-    );
+    const authenticationService = this.createAuthenticationService(config, auditService);
 
     // Create TokenExchangeService (Phase 2: shared by all delegation modules)
     // NOTE: Delegation modules will specify their own IDP/audience/cache config
@@ -151,7 +148,6 @@ export class ConfigOrchestrator {
     });
   }
 
-
   /**
    * Create AuthenticationService from configuration
    *
@@ -176,23 +172,32 @@ export class ConfigOrchestrator {
     console.log('[ConfigOrchestrator] Raw roleMappings from config:', roleMappings);
 
     // Build role mapping config with support for custom roles
-    const customRolesExtracted = roleMappings ? Object.keys(roleMappings)
-      .filter(key => !['admin', 'user', 'guest', 'defaultRole', 'rejectUnmappedRoles'].includes(key))
-      .reduce((acc, key) => {
-        acc[key] = roleMappings[key as keyof typeof roleMappings] as string[];
-        return acc;
-      }, {} as Record<string, string[]>) : {};
+    const customRolesExtracted = roleMappings
+      ? Object.keys(roleMappings)
+          .filter(
+            (key) => !['admin', 'user', 'guest', 'defaultRole', 'rejectUnmappedRoles'].includes(key)
+          )
+          .reduce(
+            (acc, key) => {
+              acc[key] = roleMappings[key as keyof typeof roleMappings] as string[];
+              return acc;
+            },
+            {} as Record<string, string[]>
+          )
+      : {};
 
     console.log('[ConfigOrchestrator] Extracted custom roles:', customRolesExtracted);
 
-    const roleMappingConfig = roleMappings ? {
-      adminRoles: roleMappings.admin,
-      userRoles: roleMappings.user,
-      guestRoles: roleMappings.guest,
-      defaultRole: roleMappings.defaultRole,
-      rejectUnmappedRoles: roleMappings.rejectUnmappedRoles,
-      customRoles: customRolesExtracted
-    } : undefined;
+    const roleMappingConfig = roleMappings
+      ? {
+          adminRoles: roleMappings.admin,
+          userRoles: roleMappings.user,
+          guestRoles: roleMappings.guest,
+          defaultRole: roleMappings.defaultRole,
+          rejectUnmappedRoles: roleMappings.rejectUnmappedRoles,
+          customRoles: customRolesExtracted,
+        }
+      : undefined;
 
     console.log('[ConfigOrchestrator] Final role mapping config:', roleMappingConfig);
 

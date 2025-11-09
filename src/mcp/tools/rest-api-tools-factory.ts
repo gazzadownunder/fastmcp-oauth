@@ -45,7 +45,10 @@ export function createRESTAPIDelegateToolForModule(
 ): ToolFactory {
   const restApiDelegateSchema = z.object({
     endpoint: z.string().describe('API endpoint path (e.g., "users/123/profile")'),
-    method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('POST').describe('HTTP method'),
+    method: z
+      .enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+      .default('POST')
+      .describe('HTTP method'),
     data: z.record(z.any()).optional().describe('Request body data (for POST/PUT/PATCH)'),
     query: z.record(z.string()).optional().describe('Query parameters (for GET requests)'),
     headers: z.record(z.string()).optional().describe('Additional request headers'),
@@ -55,8 +58,7 @@ export function createRESTAPIDelegateToolForModule(
 
   return (context: CoreContext) => ({
     name: `${toolPrefix}-delegate`,
-    description:
-      `Make HTTP requests to external REST API on behalf of the authenticated user. Supports GET, POST, PUT, PATCH, DELETE operations with token exchange authentication. Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
+    description: `Make HTTP requests to external REST API on behalf of the authenticated user. Supports GET, POST, PUT, PATCH, DELETE operations with token exchange authentication. Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
     schema: restApiDelegateSchema,
 
     canAccess: (mcpContext: MCPContext) => {
@@ -67,7 +69,10 @@ export function createRESTAPIDelegateToolForModule(
       return auth.hasAnyRole(mcpContext, ['user', 'admin']);
     },
 
-    handler: async (params: RestApiDelegateParams, mcpContext: MCPContext): Promise<LLMResponse> => {
+    handler: async (
+      params: RestApiDelegateParams,
+      mcpContext: MCPContext
+    ): Promise<LLMResponse> => {
       try {
         const auth = new Authorization();
         auth.requireAnyRole(mcpContext, ['user', 'admin']);
@@ -143,8 +148,7 @@ export function createRESTAPIHealthToolForModule(
 
   return (context: CoreContext) => ({
     name: `${toolPrefix}-health`,
-    description:
-      `Check health status of the REST API backend. Returns connectivity status and response time. Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
+    description: `Check health status of the REST API backend. Returns connectivity status and response time. Requires user or admin role.${descriptionSuffix ? ' ' + descriptionSuffix : ''}`,
     schema: restApiHealthSchema,
 
     canAccess: (mcpContext: MCPContext) => {
@@ -183,7 +187,13 @@ export function createRESTAPIHealthToolForModule(
           },
         };
       } catch (error) {
-        return handleToolError(error, `${toolPrefix}-health`, mcpContext, context.auditService, params);
+        return handleToolError(
+          error,
+          `${toolPrefix}-health`,
+          mcpContext,
+          context.auditService,
+          params
+        );
       }
     },
   });
@@ -212,7 +222,15 @@ export function createRESTAPIHealthToolForModule(
  */
 export function createRESTAPIToolsForModule(config: RESTAPIToolsConfig): ToolFactory[] {
   return [
-    createRESTAPIDelegateToolForModule(config.toolPrefix, config.moduleName, config.descriptionSuffix),
-    createRESTAPIHealthToolForModule(config.toolPrefix, config.moduleName, config.descriptionSuffix),
+    createRESTAPIDelegateToolForModule(
+      config.toolPrefix,
+      config.moduleName,
+      config.descriptionSuffix
+    ),
+    createRESTAPIHealthToolForModule(
+      config.toolPrefix,
+      config.moduleName,
+      config.descriptionSuffix
+    ),
   ];
 }

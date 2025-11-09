@@ -37,7 +37,13 @@
  * @see Phase 4.3 of refactor.md
  */
 
-import type { LegacyConfig, UnifiedConfig, CoreAuthConfig, DelegationConfig, MCPConfig } from './schemas/index.js';
+import type {
+  LegacyConfig,
+  UnifiedConfig,
+  CoreAuthConfig,
+  DelegationConfig,
+  MCPConfig,
+} from './schemas/index.js';
 import { UnifiedConfigSchema, DEFAULT_MCP_CONFIG } from './schemas/index.js';
 
 // ============================================================================

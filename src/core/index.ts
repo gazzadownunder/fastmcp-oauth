@@ -15,31 +15,19 @@
 // ============================================================================
 
 export { AuthenticationService } from './authentication-service.js';
-export type {
-  AuthConfig,
-  AuthenticationResult,
-} from './authentication-service.js';
+export type { AuthConfig, AuthenticationResult } from './authentication-service.js';
 
 export { SessionManager } from './session-manager.js';
-export type {
-  JWTPayload,
-} from './session-manager.js';
+export type { JWTPayload } from './session-manager.js';
 
 export { JWTValidator } from './jwt-validator.js';
-export type {
-  IDPConfig,
-  ValidationContext,
-  JWTValidationResult,
-} from './jwt-validator.js';
+export type { IDPConfig, ValidationContext, JWTValidationResult } from './jwt-validator.js';
 
 export { RoleMapper } from './role-mapper.js';
 export type { RoleMappingConfig } from './role-mapper.js';
 
 export { AuditService } from './audit-service.js';
-export type {
-  AuditServiceConfig,
-  AuditStorage,
-} from './audit-service.js';
+export type { AuditServiceConfig, AuditStorage } from './audit-service.js';
 
 export { CoreContextValidator } from './validators.js';
 
@@ -58,12 +46,7 @@ export type {
 // Constants
 // ============================================================================
 
-export {
-  UNASSIGNED_ROLE,
-  ROLE_ADMIN,
-  ROLE_USER,
-  ROLE_GUEST,
-} from './types.js';
+export { UNASSIGNED_ROLE, ROLE_ADMIN, ROLE_USER, ROLE_GUEST } from './types.js';
 
 // ============================================================================
 // Utilities

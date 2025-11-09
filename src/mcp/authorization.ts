@@ -152,13 +152,10 @@ export class Authorization {
     }
 
     // Combine primary role with custom roles
-    const allUserRoles = [
-      context.session.role,
-      ...(context.session.customRoles || [])
-    ];
+    const allUserRoles = [context.session.role, ...(context.session.customRoles || [])];
 
     // Check if user has all required roles
-    return roles.every(role => allUserRoles.includes(role));
+    return roles.every((role) => allUserRoles.includes(role));
   }
 
   // ==========================================================================
@@ -250,10 +247,7 @@ export class Authorization {
     this.requireAuth(context);
 
     if (!this.hasAllRoles(context, roles)) {
-      const userRoles = [
-        context.session.role,
-        ...(context.session.customRoles || [])
-      ];
+      const userRoles = [context.session.role, ...(context.session.customRoles || [])];
       throw createSecurityError(
         'INSUFFICIENT_PERMISSIONS',
         `This tool requires all of these roles: ${roles.join(', ')}. Your roles: ${userRoles.join(', ')}`,
@@ -261,7 +255,6 @@ export class Authorization {
       );
     }
   }
-
 }
 
 // ============================================================================
@@ -292,4 +285,3 @@ export function requireRole(context: MCPContext, requiredRole: string): void {
   const auth = new Authorization();
   auth.requireRole(context, requiredRole);
 }
-

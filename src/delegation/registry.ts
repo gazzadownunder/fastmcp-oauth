@@ -74,9 +74,7 @@ export class DelegationRegistry {
    */
   register(module: DelegationModule): void {
     if (this.modules.has(module.name)) {
-      throw new Error(
-        `Delegation module already registered: ${module.name}`
-      );
+      throw new Error(`Delegation module already registered: ${module.name}`);
     }
 
     this.modules.set(module.name, module);
@@ -188,7 +186,10 @@ export class DelegationRegistry {
         action: 'delegation_failed',
         success: false,
         reason: `Module not found: ${moduleName}`,
-        metadata: { requestedModule: moduleName, availableModules: Array.from(this.modules.keys()) },
+        metadata: {
+          requestedModule: moduleName,
+          availableModules: Array.from(this.modules.keys()),
+        },
         // SECURITY (SEC-1): Registry verification for module-not-found case
         registryVerifiedSuccess: false,
         registryTimestamp: new Date(),
@@ -298,10 +299,10 @@ export class DelegationRegistry {
     }
 
     // If any module failed, throw error with details
-    const failures = results.filter(r => !r.success);
+    const failures = results.filter((r) => !r.success);
     if (failures.length > 0) {
       throw new Error(
-        `Module initialization failed: ${failures.map(f => `${f.module} (${f.error})`).join(', ')}`
+        `Module initialization failed: ${failures.map((f) => `${f.module} (${f.error})`).join(', ')}`
       );
     }
   }

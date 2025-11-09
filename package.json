@@ -47,6 +47,7 @@
     "test:unit": "vitest tests/unit",
     "test:phase3": "vitest test-harness/phase3-integration.test.ts --no-coverage",
     "test:phase3:performance": "vitest test-harness/phase3-performance.test.ts --no-coverage",
+    "test:sql": "vitest test-harness/sql-delegation.test.ts --no-coverage",
     "test:coverage": "vitest --coverage",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
@@ -54,7 +55,8 @@
     "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
     "start": "node dist/start-server.js",
     "clean": "rimraf dist && npm run clean --workspaces --if-present",
-    "serve": "http-server ./test-harness/mcp-client -p 8081"
+    "test:mcp-client": "http-server ./test-harness/mcp-client -p 8081",
+    "test:oauth-ui": "http-server ./test-harness/oauth-test -p 8082 --cors"
   },
   "keywords": [
     "fastmcp",
@@ -94,6 +96,7 @@
     "@typescript-eslint/parser": "^8.0.0",
     "@vitest/coverage-v8": "^2.0.0",
     "eslint": "^9.0.0",
+    "http-server": "^14.1.1",
     "prettier": "^3.0.0",
     "rimraf": "^6.0.0",
     "tsup": "^8.0.0",

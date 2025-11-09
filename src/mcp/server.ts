@@ -68,7 +68,7 @@ export class MCPOAuthServer {
       onAuditOverflow: (entries) => {
         console.warn(
           `[MCP OAuth Server] Audit overflow: ${entries.length} entries discarded. ` +
-          'Consider implementing persistent storage for audit logs.'
+            'Consider implementing persistent storage for audit logs.'
         );
       },
     });
@@ -95,7 +95,7 @@ export class MCPOAuthServer {
     if (!this.coreContext) {
       throw new Error(
         'Cannot register delegation module before server initialization. ' +
-        'Call start() first, or register modules in the start callback.'
+          'Call start() first, or register modules in the start callback.'
       );
     }
 
@@ -142,14 +142,14 @@ export class MCPOAuthServer {
     if (!this.coreContext) {
       throw new Error(
         'Cannot register tool before server initialization. ' +
-        'CoreContext must be created first. Call start() or ensure configuration is loaded.'
+          'CoreContext must be created first. Call start() or ensure configuration is loaded.'
       );
     }
 
     if (!this.mcpServer) {
       throw new Error(
         'Cannot register tool before server start. ' +
-        'Call start() first to initialize the FastMCP server.'
+          'Call start() first to initialize the FastMCP server.'
       );
     }
 
@@ -310,16 +310,24 @@ export class MCPOAuthServer {
 
     // Add oauth_endpoints if explicitly configured in mcp.oauth.oauth_endpoints
     // This allows explicit control when multiple IDPs are configured
-    console.log('[MCP OAuth Server] DEBUG - mcpConfig.oauth:', JSON.stringify(mcpConfig?.oauth, null, 2));
+    console.log(
+      '[MCP OAuth Server] DEBUG - mcpConfig.oauth:',
+      JSON.stringify(mcpConfig?.oauth, null, 2)
+    );
     if (mcpConfig?.oauth?.oauth_endpoints) {
       oauthConfig.oauth_endpoints = mcpConfig.oauth.oauth_endpoints;
-      console.log('[MCP OAuth Server]   OAuth endpoints (explicit): ' +
-        `${mcpConfig.oauth.oauth_endpoints.authorization_endpoint}`);
+      console.log(
+        '[MCP OAuth Server]   OAuth endpoints (explicit): ' +
+          `${mcpConfig.oauth.oauth_endpoints.authorization_endpoint}`
+      );
     } else {
       console.log('[MCP OAuth Server]   WARNING: No oauth_endpoints configured in mcp.oauth');
     }
 
-    console.log('[MCP OAuth Server] DEBUG - Final oauthConfig:', JSON.stringify(oauthConfig, null, 2));
+    console.log(
+      '[MCP OAuth Server] DEBUG - Final oauthConfig:',
+      JSON.stringify(oauthConfig, null, 2)
+    );
     return oauthConfig;
   }
 
@@ -415,8 +423,8 @@ export class MCPOAuthServer {
     // If so, exclude default SQL tools to prevent duplicates
     const enabledTools = mcpConfig?.enabledTools || {};
     const enabledToolNames = Object.keys(enabledTools);
-    const hasCustomSqlTools = enabledToolNames.some(name =>
-      /^sql\d+-/.test(name) // Matches sql1-, sql2-, etc.
+    const hasCustomSqlTools = enabledToolNames.some(
+      (name) => /^sql\d+-/.test(name) // Matches sql1-, sql2-, etc.
     );
 
     console.log(`[MCP OAuth Server] Checking for custom SQL tools...`);
@@ -511,18 +519,23 @@ export class MCPOAuthServer {
       });
     }
 
-    console.log(`[MCP OAuth Server] Successfully registered ${registeredCount} of ${toolFactories.length} available tools`);
+    console.log(
+      `[MCP OAuth Server] Successfully registered ${registeredCount} of ${toolFactories.length} available tools`
+    );
 
     // 9. Start server
     console.log('[MCP OAuth Server] Starting FastMCP server...');
     await this.mcpServer.start({
       transportType: transport as any,
-      httpStream: transport === 'httpStream' ? {
-        host: '0.0.0.0', // Bind to all network interfaces (allows remote connections)
-        port,
-        endpoint: '/mcp',
-        stateless: true, // OAuth requires stateless mode
-      } : undefined,
+      httpStream:
+        transport === 'httpStream'
+          ? {
+              host: '0.0.0.0', // Bind to all network interfaces (allows remote connections)
+              port,
+              endpoint: '/mcp',
+              stateless: true, // OAuth requires stateless mode
+            }
+          : undefined,
     });
 
     this.isRunning = true;
@@ -540,8 +553,12 @@ export class MCPOAuthServer {
       console.log(`  Endpoint:         /mcp`);
       console.log(`  URL (local):      http://localhost:${port}/mcp`);
       console.log(`  URL (network):    http://<server-ip>:${port}/mcp`);
-      console.log(`  OAuth Metadata:   http://localhost:${port}/.well-known/oauth-authorization-server`);
-      console.log(`  Resource Metadata: http://localhost:${port}/.well-known/oauth-protected-resource`);
+      console.log(
+        `  OAuth Metadata:   http://localhost:${port}/.well-known/oauth-authorization-server`
+      );
+      console.log(
+        `  Resource Metadata: http://localhost:${port}/.well-known/oauth-protected-resource`
+      );
     }
     console.log(`  Authentication:   OAuth 2.1 with JWT`);
     console.log(`  Tools Registered: ${toolFactories.length}`);
@@ -611,9 +628,7 @@ export class MCPOAuthServer {
    */
   getCoreContext(): CoreContext {
     if (!this.coreContext) {
-      throw new Error(
-        'CoreContext not initialized. Call start() first.'
-      );
+      throw new Error('CoreContext not initialized. Call start() first.');
     }
     return this.coreContext;
   }

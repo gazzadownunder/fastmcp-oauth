@@ -76,11 +76,16 @@ export const createSqlSchemaTool: ToolFactory = (context: CoreContext) => ({
       console.log('[sql-schema] Got PostgreSQL delegation module');
 
       // Delegate schema query
-      console.log('[sql-schema] VERSION: Phase2-Fix-2025-01-06-v3 - Passing CoreContext to delegate()');
+      console.log(
+        '[sql-schema] VERSION: Phase2-Fix-2025-01-06-v3 - Passing CoreContext to delegate()'
+      );
       console.log('[sql-schema] DEBUG: context type:', typeof context);
       console.log('[sql-schema] DEBUG: context keys:', Object.keys(context));
       console.log('[sql-schema] DEBUG: has tokenExchangeService?', !!context.tokenExchangeService);
-      console.log('[sql-schema] DEBUG: tokenExchangeService type:', typeof context.tokenExchangeService);
+      console.log(
+        '[sql-schema] DEBUG: tokenExchangeService type:',
+        typeof context.tokenExchangeService
+      );
       console.log('[sql-schema] Calling delegationModule.delegate with action: schema');
 
       const result = await delegationModule.delegate(
@@ -92,7 +97,14 @@ export const createSqlSchemaTool: ToolFactory = (context: CoreContext) => ({
           coreContext: context, // Pass CoreContext for TokenExchangeService access
         }
       );
-      console.log('[sql-schema] Delegation result:', { success: result.success, dataLength: result.data ? (Array.isArray(result.data) ? result.data.length : 'not-array') : 'no-data' });
+      console.log('[sql-schema] Delegation result:', {
+        success: result.success,
+        dataLength: result.data
+          ? Array.isArray(result.data)
+            ? result.data.length
+            : 'not-array'
+          : 'no-data',
+      });
 
       if (!result.success) {
         console.error('[sql-schema] Delegation failed:', result.error);
@@ -112,7 +124,7 @@ export const createSqlSchemaTool: ToolFactory = (context: CoreContext) => ({
         data: {
           schema: params.schemaName,
           tableCount: tables.length,
-          tables: tables.map(t => ({
+          tables: tables.map((t) => ({
             name: t.table_name,
             type: t.table_type,
           })),

@@ -12,7 +12,10 @@
 import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import type { CoreContext } from '../core/types.js';
-import { generateProtectedResourceMetadata, generateWWWAuthenticateHeader } from './oauth-metadata.js';
+import {
+  generateProtectedResourceMetadata,
+  generateWWWAuthenticateHeader,
+} from './oauth-metadata.js';
 
 /**
  * HTTP Server Options
@@ -49,7 +52,7 @@ export function createOAuthMetadataServer(
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id');
-    res.header('Access-Control-Expose-Headers', 'WWW-Authenticate');
+    res.header('Access-Control-Expose-Headers', 'WWW-Authenticate, Mcp-Session-Id');
 
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
@@ -156,8 +159,12 @@ export function startHTTPServer(app: express.Application, port: number): Promise
 
     server.listen(port, () => {
       console.log(`[HTTP Server] Listening on port ${port}`);
-      console.log(`[HTTP Server] OAuth metadata: http://localhost:${port}/.well-known/oauth-authorization-server`);
-      console.log(`[HTTP Server] Resource metadata: http://localhost:${port}/.well-known/oauth-protected-resource`);
+      console.log(
+        `[HTTP Server] OAuth metadata: http://localhost:${port}/.well-known/oauth-authorization-server`
+      );
+      console.log(
+        `[HTTP Server] Resource metadata: http://localhost:${port}/.well-known/oauth-protected-resource`
+      );
       resolve(server);
     });
   });

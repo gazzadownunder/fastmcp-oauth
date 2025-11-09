@@ -32,13 +32,16 @@ export const TokenExchangeConfigSchema = z.object({
   tokenEndpoint: z
     .string()
     .url()
-    .refine((url) => {
-      // Allow HTTP for development/testing environments
-      const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
-      return isDev || url.startsWith('https://');
-    }, {
-      message: 'Token endpoint must use HTTPS (HTTP allowed in development/test)',
-    })
+    .refine(
+      (url) => {
+        // Allow HTTP for development/testing environments
+        const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+        return isDev || url.startsWith('https://');
+      },
+      {
+        message: 'Token endpoint must use HTTPS (HTTP allowed in development/test)',
+      }
+    )
     .describe('IDP token endpoint URL (HTTPS required in production)'),
   clientId: z.string().min(1).describe('Client ID for token exchange'),
   clientSecret: z.string().min(1).describe('Client secret for token exchange'),
@@ -47,7 +50,9 @@ export const TokenExchangeConfigSchema = z.object({
   scope: z
     .string()
     .optional()
-    .describe('Space-separated list of OAuth scopes (RFC 8693). Examples: "openid profile", "sql:read sql:write"'),
+    .describe(
+      'Space-separated list of OAuth scopes (RFC 8693). Examples: "openid profile", "sql:read sql:write"'
+    ),
   requiredClaim: z
     .string()
     .optional()
@@ -127,10 +132,7 @@ export const KerberosConfigSchema = z.object({
     .string()
     .min(1)
     .describe('Service account for Kerberos delegation (e.g., svc_mcp_oauth)'),
-  keytabPath: z
-    .string()
-    .min(1)
-    .describe('Path to service account keytab file'),
+  keytabPath: z.string().min(1).describe('Path to service account keytab file'),
   realm: z.string().min(1).describe('Kerberos realm (e.g., COMPANY.COM)'),
   kdc: z.string().min(1).describe('Key Distribution Center (KDC) hostname'),
   allowedSpns: z

@@ -68,10 +68,7 @@ export const createHealthCheckTool: ToolFactory = (context: CoreContext) => ({
     return auth.hasAnyRole(mcpContext, ['admin', 'user']);
   },
 
-  handler: async (
-    params: HealthCheckParams,
-    mcpContext: MCPContext
-  ): Promise<LLMResponse> => {
+  handler: async (params: HealthCheckParams, mcpContext: MCPContext): Promise<LLMResponse> => {
     try {
       // Require authentication
       const auth = new Authorization();

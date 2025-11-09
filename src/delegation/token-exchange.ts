@@ -84,14 +84,28 @@ export class TokenExchangeService {
 
       // Get or create cache for this module (if caching enabled)
       const cache = this.getOrCreateCache(params);
-      const sessionId = params.sessionId;
+      let sessionId = params.sessionId;
 
-      // Phase 2: Check cache first (if enabled and session provided)
+      // Phase 2: Auto-generate session ID from JWT if not provided (stateless mode support)
+      // This enables caching in stateless OAuth mode where no explicit session ID exists
+      const requestorJWT = params.requestorJWT || params.subjectToken;
+      if (!sessionId && cache && requestorJWT) {
+        const jwtSubject = this.extractSubjectFromJWT(requestorJWT);
+        if (jwtSubject) {
+          // activateSession generates sessionId from JWT hash and returns it
+          sessionId = cache.activateSession(requestorJWT, jwtSubject);
+          console.log(
+            '[TokenExchange] Auto-generated session ID from JWT for stateless mode:',
+            sessionId.substring(0, 16) + '...'
+          );
+        }
+      }
+
+      // Phase 2: Check cache first (if enabled and session available)
       if (cache && sessionId) {
-        // Activate session if not already active
-        const requestorJWT = params.requestorJWT || params.subjectToken;
-        if (requestorJWT) {
-          // Extract subject from JWT for cache ownership
+        // In stateful mode, activate session if not already active
+        // In stateless mode, session was already activated above
+        if (params.sessionId && requestorJWT) {
           const jwtSubject = this.extractSubjectFromJWT(requestorJWT);
           if (jwtSubject) {
             cache.activateSession(requestorJWT, jwtSubject);
@@ -102,7 +116,10 @@ export class TokenExchangeService {
         const cacheKey = `te:${params.audience}`;
 
         // Try to get from cache
-        console.log('[TokenExchange] Checking cache for delegation token:', { sessionId, cacheKey });
+        console.log('[TokenExchange] Checking cache for delegation token:', {
+          sessionId,
+          cacheKey,
+        });
         const cachedToken = cache.get(sessionId, cacheKey, requestorJWT);
         if (cachedToken) {
           // Cache hit!
@@ -132,7 +149,7 @@ export class TokenExchangeService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: new URLSearchParams(requestBody).toString(),
       });
@@ -140,7 +157,7 @@ export class TokenExchangeService {
       console.log('[TokenExchange] IDP response status:', response.status);
 
       // Parse response
-      const responseData = await response.json() as Record<string, any>;
+      const responseData = (await response.json()) as Record<string, any>;
       console.log('[TokenExchange] IDP response data:', {
         hasAccessToken: !!responseData.access_token,
         tokenType: responseData.token_type,
@@ -156,26 +173,29 @@ export class TokenExchangeService {
         const result: TokenExchangeResult = {
           success: true,
           accessToken: responseData.access_token,
-          issuedTokenType: responseData.issued_token_type || 'urn:ietf:params:oauth:token-type:access_token',
+          issuedTokenType:
+            responseData.issued_token_type || 'urn:ietf:params:oauth:token-type:access_token',
           tokenType: responseData.token_type || 'Bearer',
           expiresIn: responseData.expires_in,
           scope: responseData.scope,
           refreshToken: responseData.refresh_token,
         };
 
-        // Phase 2: Store in cache (if enabled and session provided)
+        // Phase 2: Store in cache (if enabled and session available)
+        // Note: sessionId may be explicit (stateful) or auto-generated from JWT (stateless)
         if (cache && sessionId && responseData.expires_in) {
           const cacheKey = `te:${params.audience}`;
           const expiresAt = Math.floor(Date.now() / 1000) + responseData.expires_in;
-          const requestorJWT = params.requestorJWT || params.subjectToken;
+          const storeRequestorJWT = params.requestorJWT || params.subjectToken;
 
-          cache.set(
-            sessionId,
-            cacheKey,
-            responseData.access_token,
-            requestorJWT,
-            expiresAt
-          );
+          if (storeRequestorJWT) {
+            cache.set(sessionId, cacheKey, responseData.access_token, storeRequestorJWT, expiresAt);
+            console.log('[TokenExchange] Stored delegation token in cache:', {
+              sessionId: sessionId.substring(0, 16) + '...',
+              cacheKey,
+              expiresAt,
+            });
+          }
         }
 
         // Audit success
@@ -279,7 +299,7 @@ export class TokenExchangeService {
    * @returns Combined cache metrics from all modules
    */
   getCacheMetrics() {
-    const allMetrics = Array.from(this.caches.values()).map(cache => cache.getMetrics());
+    const allMetrics = Array.from(this.caches.values()).map((cache) => cache.getMetrics());
     if (allMetrics.length === 0) return null;
 
     // Aggregate metrics
@@ -300,7 +320,7 @@ export class TokenExchangeService {
    * @param sessionId - Session ID
    */
   heartbeat(sessionId: string): void {
-    this.caches.forEach(cache => cache.heartbeat(sessionId));
+    this.caches.forEach((cache) => cache.heartbeat(sessionId));
   }
 
   /**
@@ -309,14 +329,14 @@ export class TokenExchangeService {
    * @param sessionId - Session ID
    */
   clearSession(sessionId: string): void {
-    this.caches.forEach(cache => cache.clearSession(sessionId));
+    this.caches.forEach((cache) => cache.clearSession(sessionId));
   }
 
   /**
    * Destroy service and cleanup resources
    */
   destroy(): void {
-    this.caches.forEach(cache => cache.destroy());
+    this.caches.forEach((cache) => cache.destroy());
     this.caches.clear();
   }
 
@@ -414,11 +434,7 @@ export class TokenExchangeService {
     }
 
     if (!params.audience) {
-      throw createSecurityError(
-        'TOKEN_EXCHANGE_INVALID_REQUEST',
-        'Audience is required',
-        400
-      );
+      throw createSecurityError('TOKEN_EXCHANGE_INVALID_REQUEST', 'Audience is required', 400);
     }
   }
 
@@ -433,7 +449,8 @@ export class TokenExchangeService {
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
       subject_token: subjectToken,
       // Default to access_token type (RFC 8693) - required by Keycloak and most IDPs
-      subject_token_type: params.subjectTokenType || 'urn:ietf:params:oauth:token-type:access_token',
+      subject_token_type:
+        params.subjectTokenType || 'urn:ietf:params:oauth:token-type:access_token',
       audience: params.audience,
       client_id: params.clientId,
       client_secret: params.clientSecret,

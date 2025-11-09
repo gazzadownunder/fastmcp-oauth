@@ -10,12 +10,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import {
-  UNASSIGNED_ROLE,
-  ROLE_ADMIN,
-  ROLE_USER,
-  ROLE_GUEST,
-} from './types.js';
+import { UNASSIGNED_ROLE, ROLE_ADMIN, ROLE_USER, ROLE_GUEST } from './types.js';
 import type { UserSession, RoleMapperResult } from './types.js';
 
 // ============================================================================
@@ -163,10 +158,7 @@ export class SessionManager {
       rawSession._version = 1;
 
       // Add rejected field if missing
-      if (
-        rawSession.role === UNASSIGNED_ROLE &&
-        !('rejected' in rawSession)
-      ) {
+      if (rawSession.role === UNASSIGNED_ROLE && !('rejected' in rawSession)) {
         rawSession.rejected = true;
       }
 

@@ -64,10 +64,7 @@ class InMemoryAuditStorage implements AuditStorage {
   private readonly maxEntries: number;
   private onOverflow?: (entries: AuditEntry[]) => void;
 
-  constructor(
-    maxEntries: number = 10000,
-    onOverflow?: (entries: AuditEntry[]) => void
-  ) {
+  constructor(maxEntries: number = 10000, onOverflow?: (entries: AuditEntry[]) => void) {
     this.maxEntries = maxEntries;
     this.onOverflow = onOverflow;
   }
@@ -174,7 +171,7 @@ export class AuditService {
     if (!entry.source) {
       throw new Error(
         'CRITICAL: AuditEntry missing required field: source. ' +
-        'All audit entries must include a source field for audit trail integrity.'
+          'All audit entries must include a source field for audit trail integrity.'
       );
     }
 

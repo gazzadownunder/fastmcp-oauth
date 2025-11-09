@@ -108,7 +108,7 @@ export class RoleMapper {
       userRoles: this.config.userRoles,
       guestRoles: this.config.guestRoles,
       customRoles: this.config.customRoles,
-      defaultRole: this.config.defaultRole
+      defaultRole: this.config.defaultRole,
     });
 
     try {
@@ -124,7 +124,7 @@ export class RoleMapper {
       }
 
       // Filter out null/undefined values
-      const validRoles = roles.filter(r => typeof r === 'string' && r.length > 0);
+      const validRoles = roles.filter((r) => typeof r === 'string' && r.length > 0);
       console.log('[RoleMapper] Valid roles after filtering:', validRoles);
 
       if (validRoles.length === 0) {
@@ -179,24 +179,24 @@ export class RoleMapper {
    */
   private determinePrimaryRole(roles: string[]): string {
     // Priority 1: Admin roles
-    if (this.config.adminRoles?.some(adminRole => roles.includes(adminRole))) {
+    if (this.config.adminRoles?.some((adminRole) => roles.includes(adminRole))) {
       return ROLE_ADMIN;
     }
 
     // Priority 2: User roles
-    if (this.config.userRoles?.some(userRole => roles.includes(userRole))) {
+    if (this.config.userRoles?.some((userRole) => roles.includes(userRole))) {
       return ROLE_USER;
     }
 
     // Priority 3: Guest roles
-    if (this.config.guestRoles?.some(guestRole => roles.includes(guestRole))) {
+    if (this.config.guestRoles?.some((guestRole) => roles.includes(guestRole))) {
       return ROLE_GUEST;
     }
 
     // Priority 4: Custom roles (first match wins)
     if (this.config.customRoles) {
       for (const [customRoleName, customRoleValues] of Object.entries(this.config.customRoles)) {
-        if (customRoleValues.some(value => roles.includes(value))) {
+        if (customRoleValues.some((value) => roles.includes(value))) {
           return customRoleName;
         }
       }
@@ -229,7 +229,7 @@ export class RoleMapper {
       }
 
       // Check if any JWT roles match this custom role
-      if (customRoleValues.some(value => roles.includes(value))) {
+      if (customRoleValues.some((value) => roles.includes(value))) {
         customRoles.push(customRoleName);
       }
     }

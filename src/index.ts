@@ -16,7 +16,7 @@ export {
   type UnifiedConfig,
   type CoreAuthConfig,
   type DelegationConfig,
-  type MCPConfig
+  type MCPConfig,
 } from './config/index.js';
 
 // Utility exports

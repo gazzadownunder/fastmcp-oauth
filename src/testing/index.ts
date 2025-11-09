@@ -273,7 +273,7 @@ export class MockDelegationModule implements DelegationModule {
   }
 
   wasCalledWith(action: string, params?: any): boolean {
-    return this.delegateCallLog.some(call => {
+    return this.delegateCallLog.some((call) => {
       const actionMatches = call.action === action;
       if (!params) return actionMatches;
       return actionMatches && JSON.stringify(call.params) === JSON.stringify(params);
@@ -327,7 +327,7 @@ export async function waitFor(
     if (Date.now() - startTime > timeoutMs) {
       throw new Error(`Timeout waiting for condition after ${timeoutMs}ms`);
     }
-    await new Promise(resolve => setTimeout(resolve, checkIntervalMs));
+    await new Promise((resolve) => setTimeout(resolve, checkIntervalMs));
   }
 }
 
@@ -355,7 +355,9 @@ export function createMockAuditEntry(overrides: Partial<AuditEntry> = {}): Audit
  * const result = await module.delegate(session, 'action', {});
  * assertDelegationSuccess(result);
  */
-export function assertDelegationSuccess<T>(result: DelegationResult<T>): asserts result is DelegationResult<T> & { success: true; data: T } {
+export function assertDelegationSuccess<T>(
+  result: DelegationResult<T>
+): asserts result is DelegationResult<T> & { success: true; data: T } {
   if (!result.success) {
     throw new Error(`Expected delegation to succeed, but got error: ${result.error}`);
   }
@@ -371,7 +373,9 @@ export function assertDelegationSuccess<T>(result: DelegationResult<T>): asserts
  * const result = await module.delegate(session, 'invalid-action', {});
  * assertDelegationFailure(result);
  */
-export function assertDelegationFailure<T>(result: DelegationResult<T>): asserts result is DelegationResult<T> & { success: false; error: string } {
+export function assertDelegationFailure<T>(
+  result: DelegationResult<T>
+): asserts result is DelegationResult<T> & { success: false; error: string } {
   if (result.success) {
     throw new Error('Expected delegation to fail, but it succeeded');
   }
@@ -381,13 +385,6 @@ export function assertDelegationFailure<T>(result: DelegationResult<T>): asserts
 }
 
 // Re-export types for convenience
-export type {
-  UserSession,
-  AuditEntry,
-  CoreContext,
-} from '../core/index.js';
+export type { UserSession, AuditEntry, CoreContext } from '../core/index.js';
 
-export type {
-  DelegationModule,
-  DelegationResult,
-} from '../delegation/base.js';
+export type { DelegationModule, DelegationResult } from '../delegation/base.js';

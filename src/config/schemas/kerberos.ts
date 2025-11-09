@@ -16,35 +16,24 @@ import { z } from 'zod';
 /**
  * Service account configuration
  */
-export const KerberosServiceAccountSchema = z.object({
-  username: z
-    .string()
-    .min(1)
-    .describe('Service account username (e.g., svc-mcp-server)'),
-  password: z
-    .string()
-    .optional()
-    .describe('Service account password (if not using keytab)'),
-  keytabPath: z
-    .string()
-    .optional()
-    .describe('Path to keytab file (for Linux, alternative to password)'),
-}).refine(
-  (data) => data.password || data.keytabPath,
-  {
+export const KerberosServiceAccountSchema = z
+  .object({
+    username: z.string().min(1).describe('Service account username (e.g., svc-mcp-server)'),
+    password: z.string().optional().describe('Service account password (if not using keytab)'),
+    keytabPath: z
+      .string()
+      .optional()
+      .describe('Path to keytab file (for Linux, alternative to password)'),
+  })
+  .refine((data) => data.password || data.keytabPath, {
     message: 'Either password or keytabPath must be provided',
-  }
-);
+  });
 
 /**
  * Ticket cache configuration
  */
 export const KerberosTicketCacheSchema = z.object({
-  enabled: z
-    .boolean()
-    .optional()
-    .default(true)
-    .describe('Enable ticket caching'),
+  enabled: z.boolean().optional().default(true).describe('Enable ticket caching'),
   ttlSeconds: z
     .number()
     .min(60)
@@ -79,15 +68,13 @@ export const KerberosTicketCacheSchema = z.object({
  * Kerberos configuration schema
  */
 export const KerberosConfigSchema = z.object({
-  enabled: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe('Enable Kerberos delegation module'),
+  enabled: z.boolean().optional().default(false).describe('Enable Kerberos delegation module'),
   domainController: z
     .string()
     .min(1)
-    .describe('Active Directory domain controller FQDN or IP (e.g., dc.company.com or 192.168.1.25)'),
+    .describe(
+      'Active Directory domain controller FQDN or IP (e.g., dc.company.com or 192.168.1.25)'
+    ),
   servicePrincipalName: z
     .string()
     .min(1)

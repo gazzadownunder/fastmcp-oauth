@@ -13,11 +13,7 @@
 // Base Types and Interfaces
 // ============================================================================
 
-export type {
-  DelegationModule,
-  DelegationResult,
-  DelegationModuleConfig,
-} from './base.js';
+export type { DelegationModule, DelegationResult, DelegationModuleConfig } from './base.js';
 
 // ============================================================================
 // Token Exchange (RFC 8693)

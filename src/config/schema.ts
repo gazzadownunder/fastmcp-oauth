@@ -2,12 +2,14 @@ import { z } from 'zod';
 
 // Role mapping configuration for flexible role determination
 // Allows custom role keys (e.g., "write", "read", "auditor") in addition to standard roles
-export const RoleMappingSchema = z.object({
-  admin: z.array(z.string()).optional().default(['admin', 'administrator']),
-  user: z.array(z.string()).optional().default(['user']),
-  guest: z.array(z.string()).optional().default([]),
-  defaultRole: z.enum(['admin', 'user', 'guest']).optional().default('guest'),
-}).passthrough(); // Allow additional custom role mappings
+export const RoleMappingSchema = z
+  .object({
+    admin: z.array(z.string()).optional().default(['admin', 'administrator']),
+    user: z.array(z.string()).optional().default(['user']),
+    guest: z.array(z.string()).optional().default([]),
+    defaultRole: z.enum(['admin', 'user', 'guest']).optional().default('guest'),
+  })
+  .passthrough(); // Allow additional custom role mappings
 
 // Zod schemas for configuration validation
 export const ClaimMappingsSchema = z.object({
@@ -25,25 +27,43 @@ export const SecurityConfigSchema = z.object({
 });
 
 export const IDPConfigSchema = z.object({
-  issuer: z.string().url().refine((url) => {
-    // Allow HTTP for development/testing environments
-    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
-    return isDev || url.startsWith('https://');
-  }, {
-    message: 'Issuer must use HTTPS (HTTP allowed in development/test)',
-  }),
-  discoveryUrl: z.string().url().refine((url) => {
-    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
-    return isDev || url.startsWith('https://');
-  }, {
-    message: 'Discovery URL must use HTTPS (HTTP allowed in development/test)',
-  }),
-  jwksUri: z.string().url().refine((url) => {
-    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
-    return isDev || url.startsWith('https://');
-  }, {
-    message: 'JWKS URI must use HTTPS (HTTP allowed in development/test)',
-  }),
+  issuer: z
+    .string()
+    .url()
+    .refine(
+      (url) => {
+        // Allow HTTP for development/testing environments
+        const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+        return isDev || url.startsWith('https://');
+      },
+      {
+        message: 'Issuer must use HTTPS (HTTP allowed in development/test)',
+      }
+    ),
+  discoveryUrl: z
+    .string()
+    .url()
+    .refine(
+      (url) => {
+        const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+        return isDev || url.startsWith('https://');
+      },
+      {
+        message: 'Discovery URL must use HTTPS (HTTP allowed in development/test)',
+      }
+    ),
+  jwksUri: z
+    .string()
+    .url()
+    .refine(
+      (url) => {
+        const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+        return isDev || url.startsWith('https://');
+      },
+      {
+        message: 'JWKS URI must use HTTPS (HTTP allowed in development/test)',
+      }
+    ),
   audience: z.string().min(1),
   algorithms: z
     .array(z.enum(['RS256', 'ES256']))
@@ -77,10 +97,12 @@ export const KerberosConfigSchema = z.object({
 export const SQLConfigSchema = z.object({
   server: z.string().min(1),
   database: z.string().min(1),
-  options: z.object({
-    trustedConnection: z.boolean(),
-    enableArithAbort: z.boolean(),
-  }).passthrough(),
+  options: z
+    .object({
+      trustedConnection: z.boolean(),
+      enableArithAbort: z.boolean(),
+    })
+    .passthrough(),
 });
 
 export const OAuthOBOConfigSchema = z.object({

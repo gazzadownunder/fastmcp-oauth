@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP OAuth Authentication Validator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input[type="file"],
+        .form-group input[type="text"],
+        .form-group input[type="password"],
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .jwt-display {
+            margin-top: 20px;
+        }
+
+        .jwt-raw {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            font-size: 0.9em;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .jwt-decoded {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .jwt-decoded pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        .delegation-modules {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .module-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .module-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+
+        .module-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .module-card p {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .config-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 968px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .copy-btn {
+            background: #6c757d;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.85em;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            padding: 10px;
+        }
+
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: -1;
+        }
+
+        .step:first-child::before {
+            left: 50%;
+        }
+
+        .step:last-child::before {
+            right: 50%;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: #e0e0e0;
+            color: #999;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .step.active .step-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .step.completed .step-number {
+            background: #28a745;
+            color: white;
+        }
+
+        .step-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .step.active .step-label {
+            color: #667eea;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔐 MCP OAuth Authentication Validator</h1>
+            <p>Test OAuth 2.1 authentication flows and token exchange with your MCP configuration</p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="card">
+            <div class="step-indicator">
+                <div class="step active" id="step1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Load Config</div>
+                </div>
+                <div class="step" id="step2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Authenticate</div>
+                </div>
+                <div class="step" id="step3">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Token Exchange</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 1: Configuration Upload -->
+        <div class="card" id="configCard">
+            <h2>Step 1: Load MCP OAuth Configuration</h2>
+            <div class="form-group">
+                <label for="configFile">Select Configuration File:</label>
+                <input type="file" id="configFile" accept=".json" />
+            </div>
+            <div id="configStatus"></div>
+            <div id="configDisplay" class="hidden">
+                <h3 style="margin-top: 20px; color: #667eea;">Configuration Summary</h3>
+                <div class="config-display" id="configContent"></div>
+            </div>
+        </div>
+
+        <!-- Step 2: IDP Selection & Authentication -->
+        <div class="card hidden" id="authCard">
+            <h2>Step 2: Authenticate with IDP</h2>
+
+            <div class="form-group" id="idpSelectionGroup">
+                <label for="idpSelect">Select Trusted IDP:</label>
+                <select id="idpSelect">
+                    <option value="">-- Select an IDP --</option>
+                </select>
+            </div>
+
+            <div id="idpDetails" class="hidden">
+                <div class="status info">
+                    <strong>IDP Details:</strong>
+                    <div id="idpInfo" style="margin-top: 10px;"></div>
+                </div>
+            </div>
+
+            <div class="status info">
+                <strong>OAuth 2.1 Authorization Flow:</strong><br>
+                Clicking "Authenticate" will redirect you to your IDP's login page. After successful authentication, you will be redirected back here with an authorization code.
+            </div>
+
+            <button class="btn" id="loginBtn" disabled>🔑 Redirect to IDP Login</button>
+
+            <div id="authStatus"></div>
+
+            <!-- Requestor JWT Display -->
+            <div id="requestorJwtDisplay" class="hidden jwt-display">
+                <h3 style="color: #28a745; margin-top: 20px;">✅ Requestor JWT (Subject Token)</h3>
+
+                <div style="margin-top: 15px;">
+                    <strong>Raw JWT:</strong>
+                    <button class="copy-btn" onclick="copyToClipboard('requestorJwtRaw')">📋 Copy</button>
+                    <div class="jwt-raw" id="requestorJwtRaw"></div>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <strong>Decoded Claims:</strong>
+                    <button class="copy-btn" onclick="copyToClipboard('requestorJwtDecoded')">📋 Copy</button>
+                    <div class="jwt-decoded">
+                        <pre id="requestorJwtDecoded"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Token Exchange -->
+        <div class="card hidden" id="exchangeCard">
+            <h2>Step 3: Token Exchange for Delegation</h2>
+
+            <div id="moduleSelectionInfo" class="status info">
+                Select a delegation module below to perform token exchange:
+            </div>
+
+            <div class="delegation-modules" id="delegationModules">
+                <!-- Modules will be populated dynamically -->
+            </div>
+
+            <div id="exchangeStatus"></div>
+
+            <!-- Exchanged JWT Display -->
+            <div id="exchangedJwtDisplay" class="hidden jwt-display">
+                <h3 style="color: #28a745; margin-top: 20px;">✅ Delegated JWT (Exchanged Token)</h3>
+
+                <div style="margin-top: 15px;">
+                    <strong>Module:</strong> <span id="selectedModuleName" style="color: #667eea; font-weight: 600;"></span>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <strong>Raw JWT:</strong>
+                    <button class="copy-btn" onclick="copyToClipboard('exchangedJwtRaw')">📋 Copy</button>
+                    <div class="jwt-raw" id="exchangedJwtRaw"></div>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <strong>Decoded Claims:</strong>
+                    <button class="copy-btn" onclick="copyToClipboard('exchangedJwtDecoded')">📋 Copy</button>
+                    <div class="jwt-decoded">
+                        <pre id="exchangedJwtDecoded"></pre>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="exchangeAnother()">🔄 Exchange Another Token</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let config = null;
+        let selectedIdp = null;
+        let requestorJwt = null;
+        let discoveryData = null;
+
+        // PKCE helper functions
+        function generateRandomString(length) {
+            const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+            const randomValues = new Uint8Array(length);
+            crypto.getRandomValues(randomValues);
+            return Array.from(randomValues)
+                .map(v => charset[v % charset.length])
+                .join('');
+        }
+
+        async function sha256(plain) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(plain);
+            const hash = await crypto.subtle.digest('SHA-256', data);
+            return hash;
+        }
+
+        function base64urlEncode(arrayBuffer) {
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary)
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+
+        async function generateCodeChallenge(codeVerifier) {
+            const hashed = await sha256(codeVerifier);
+            return base64urlEncode(hashed);
+        }
+
+        // Check for OAuth callback on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+
+            if (error) {
+                // OAuth error occurred
+                showStatus('authStatus', 'error', `OAuth error: ${error} - ${urlParams.get('error_description') || 'Unknown error'}`);
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return;
+            }
+
+            if (code) {
+                // We have an authorization code - exchange it for tokens
+                await handleOAuthCallback(code);
+            }
+        });
+
+        // Step management
+        function updateStep(stepNumber) {
+            for (let i = 1; i <= 3; i++) {
+                const step = document.getElementById(`step${i}`);
+                step.classList.remove('active', 'completed');
+                if (i < stepNumber) {
+                    step.classList.add('completed');
+                } else if (i === stepNumber) {
+                    step.classList.add('active');
+                }
+            }
+        }
+
+        // Configuration file handling
+        document.getElementById('configFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                config = JSON.parse(text);
+
+                // Validate configuration
+                if (!config.auth || !config.auth.trustedIDPs || config.auth.trustedIDPs.length === 0) {
+                    showStatus('configStatus', 'error', 'Invalid configuration: No trusted IDPs found');
+                    return;
+                }
+
+                showStatus('configStatus', 'success', `✅ Configuration loaded: ${config.auth.trustedIDPs.length} IDP(s) found`);
+
+                // Display configuration summary
+                document.getElementById('configDisplay').classList.remove('hidden');
+                document.getElementById('configContent').textContent = JSON.stringify(config, null, 2);
+
+                // Populate IDP selector
+                const idpSelect = document.getElementById('idpSelect');
+                idpSelect.innerHTML = '<option value="">-- Select an IDP --</option>';
+
+                config.auth.trustedIDPs.forEach((idp, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${idp.name || idp.issuer} (${idp.issuer})`;
+                    idpSelect.appendChild(option);
+                });
+
+                // Show authentication card
+                document.getElementById('authCard').classList.remove('hidden');
+                updateStep(2);
+
+            } catch (error) {
+                showStatus('configStatus', 'error', `Error loading configuration: ${error.message}`);
+            }
+        });
+
+        // IDP selection
+        document.getElementById('idpSelect').addEventListener('change', async (e) => {
+            const idpIndex = e.target.value;
+            if (!idpIndex) {
+                document.getElementById('idpDetails').classList.add('hidden');
+                document.getElementById('loginBtn').disabled = true;
+                return;
+            }
+
+            selectedIdp = config.auth.trustedIDPs[idpIndex];
+
+            // Fetch discovery document
+            try {
+                showStatus('authStatus', 'info', '🔄 Fetching IDP discovery document...');
+
+                const discoveryUrl = selectedIdp.discoveryUrl ||
+                    `${selectedIdp.issuer}/.well-known/openid-configuration`;
+
+                const response = await fetch(discoveryUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch discovery document: ${response.status}`);
+                }
+
+                discoveryData = await response.json();
+
+                // Display IDP details
+                document.getElementById('idpDetails').classList.remove('hidden');
+                document.getElementById('idpInfo').innerHTML = `
+                    <strong>Issuer:</strong> ${selectedIdp.issuer}<br>
+                    <strong>Token Endpoint:</strong> ${discoveryData.token_endpoint}<br>
+                    <strong>Authorization Endpoint:</strong> ${discoveryData.authorization_endpoint || 'N/A'}<br>
+                    <strong>Discovery URL:</strong> ${discoveryUrl}
+                `;
+
+                document.getElementById('loginBtn').disabled = false;
+                showStatus('authStatus', 'success', '✅ IDP discovery successful');
+
+            } catch (error) {
+                showStatus('authStatus', 'error', `Error fetching IDP details: ${error.message}`);
+                document.getElementById('loginBtn').disabled = true;
+            }
+        });
+
+        // Authentication (OAuth 2.1 Authorization Code flow with PKCE)
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            if (!discoveryData || !discoveryData.authorization_endpoint) {
+                showStatus('authStatus', 'error', 'Authorization endpoint not available');
+                return;
+            }
+
+            try {
+                // Generate PKCE parameters
+                const codeVerifier = generateRandomString(128);
+                const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+                // Store code_verifier in sessionStorage for callback
+                sessionStorage.setItem('pkce_code_verifier', codeVerifier);
+                sessionStorage.setItem('oauth_config', JSON.stringify(config));
+
+                // Store the selected IDP index (use the option value, not the findIndex)
+                const selectedOption = document.getElementById('idpSelect');
+                sessionStorage.setItem('idp_index', selectedOption.value);
+
+                // Build authorization URL
+                const redirectUri = window.location.origin + window.location.pathname;
+                const scope = selectedIdp.scope || 'openid profile';
+                const clientId = selectedIdp.clientId || selectedIdp.audience;
+
+                if (!clientId) {
+                    throw new Error('No clientId or audience configured for this IDP');
+                }
+
+                // Build auth URL exactly as in the example
+                const params = new URLSearchParams({
+                    client_id: clientId,
+                    redirect_uri: redirectUri,
+                    response_type: 'code',
+                    scope: scope,
+                    code_challenge: codeChallenge,
+                    code_challenge_method: 'S256',
+                    prompt: 'login',
+                    max_age: '0'
+                });
+
+                const authUrl = `${discoveryData.authorization_endpoint}?${params.toString()}`;
+
+                // Redirect to IDP
+                showStatus('authStatus', 'info', '🔄 Redirecting to IDP login page...');
+                console.log('[OAuth] Redirecting to:', authUrl);
+                window.location.href = authUrl;
+
+            } catch (error) {
+                showStatus('authStatus', 'error', `Error initiating OAuth flow: ${error.message}`);
+            }
+        });
+
+        // Handle OAuth callback
+        async function handleOAuthCallback(code) {
+            try {
+                console.log('========== OAuth Callback Handler ==========');
+                console.log('[OAuth] Authorization code received:', code.substring(0, 20) + '...');
+
+                // Restore state from sessionStorage
+                const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+                const storedConfigJson = sessionStorage.getItem('oauth_config');
+                const idpIndex = sessionStorage.getItem('idp_index');
+
+                console.log('[OAuth] SessionStorage state:');
+                console.log('  - codeVerifier:', codeVerifier ? codeVerifier.substring(0, 20) + '... (length: ' + codeVerifier.length + ')' : 'MISSING');
+                console.log('  - config:', storedConfigJson ? 'PRESENT' : 'MISSING');
+                console.log('  - idpIndex:', idpIndex);
+
+                if (!codeVerifier || !storedConfigJson || !idpIndex) {
+                    console.error('[OAuth] ERROR: Missing required sessionStorage data');
+                    throw new Error('OAuth state not found. Please start authentication again.');
+                }
+
+                config = JSON.parse(storedConfigJson);
+                console.log('[OAuth] Configuration restored from sessionStorage');
+
+                // Show UI elements first
+                document.getElementById('configCard').classList.remove('hidden');
+                document.getElementById('authCard').classList.remove('hidden');
+
+                // Restore configuration display
+                document.getElementById('configDisplay').classList.remove('hidden');
+                document.getElementById('configContent').textContent = JSON.stringify(config, null, 2);
+                showStatus('configStatus', 'success', `✅ Configuration loaded: ${config.auth.trustedIDPs.length} IDP(s) found`);
+
+                // Populate IDP selector
+                const idpSelect = document.getElementById('idpSelect');
+                idpSelect.innerHTML = '<option value="">-- Select an IDP --</option>';
+                config.auth.trustedIDPs.forEach((idp, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${idp.name || idp.issuer} (${idp.issuer})`;
+                    if (index === parseInt(idpIndex)) {
+                        option.selected = true;
+                    }
+                    idpSelect.appendChild(option);
+                });
+
+                // Restore IDP selection
+                selectedIdp = config.auth.trustedIDPs[parseInt(idpIndex)];
+                console.log('[OAuth] Selected IDP:', selectedIdp.name || selectedIdp.issuer);
+                console.log('[OAuth] IDP clientId:', selectedIdp.clientId || selectedIdp.audience);
+
+                // Fetch discovery document
+                const discoveryUrl = selectedIdp.discoveryUrl ||
+                    `${selectedIdp.issuer}/.well-known/openid-configuration`;
+                console.log('[OAuth] Fetching discovery document from:', discoveryUrl);
+                const discoveryResponse = await fetch(discoveryUrl);
+                discoveryData = await discoveryResponse.json();
+                console.log('[OAuth] Discovery document received');
+
+                // Display IDP details
+                const idpInfo = document.getElementById('idpInfo');
+                idpInfo.innerHTML = `
+                    <strong>Issuer:</strong> ${selectedIdp.issuer}<br>
+                    <strong>Authorization Endpoint:</strong> ${discoveryData.authorization_endpoint}<br>
+                    <strong>Token Endpoint:</strong> ${discoveryData.token_endpoint}
+                `;
+                document.getElementById('idpDetails').classList.remove('hidden');
+
+                // Update step progress
+                updateStep(2);
+
+                showStatus('authStatus', 'info', '🔄 Exchanging authorization code for tokens...');
+
+                // Exchange authorization code for tokens
+                const redirectUri = window.location.origin + window.location.pathname;
+
+                // Use clientId if present, otherwise use audience as fallback
+                const clientId = selectedIdp.clientId || selectedIdp.audience;
+                if (!clientId) {
+                    console.error('[OAuth] ERROR: No clientId or audience in config');
+                    throw new Error('No clientId or audience configured for this IDP');
+                }
+
+                console.log('[OAuth] ========== Token Exchange Request ==========');
+                console.log('[OAuth] Token endpoint:', discoveryData.token_endpoint);
+                console.log('[OAuth] Parameters:');
+                console.log('  - grant_type: authorization_code');
+                console.log('  - code:', code.substring(0, 20) + '...');
+                console.log('  - redirect_uri:', redirectUri);
+                console.log('  - client_id:', clientId);
+                console.log('  - code_verifier:', codeVerifier.substring(0, 20) + '... (length: ' + codeVerifier.length + ')');
+                console.log('  - client_secret: NOT SENT (public client)');
+
+                const tokenParams = new URLSearchParams();
+                tokenParams.append('grant_type', 'authorization_code');
+                tokenParams.append('code', code);
+                tokenParams.append('redirect_uri', redirectUri);
+                tokenParams.append('client_id', clientId);
+                tokenParams.append('code_verifier', codeVerifier);
+
+                // PUBLIC CLIENT: No client_secret (PKCE provides security)
+                console.log('[OAuth] Sending token exchange request...');
+
+                const response = await fetch(discoveryData.token_endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: tokenParams
+                });
+
+                console.log('[OAuth] Token exchange response status:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('[OAuth] ========== TOKEN EXCHANGE ERROR ==========');
+                    console.error('[OAuth] HTTP Status:', response.status, response.statusText);
+                    console.error('[OAuth] Response body:', errorText);
+                    console.error('[OAuth] Troubleshooting:');
+                    console.error('  1. Check Keycloak client "' + clientId + '" settings');
+                    console.error('  2. Client authentication should be OFF (public client)');
+                    console.error('  3. PKCE Code Challenge Method should be S256');
+                    console.error('  4. Valid Redirect URIs should include: ' + redirectUri);
+                    console.error('  5. Standard Flow should be ENABLED');
+                    console.error('[OAuth] ============================================');
+                    throw new Error(`Token exchange failed (${response.status}): ${errorText}`);
+                }
+
+                console.log('[OAuth] ✓ Token exchange successful!');
+
+                const tokenData = await response.json();
+                requestorJwt = tokenData.access_token;
+
+                // Decode JWT
+                const decoded = decodeJwt(requestorJwt);
+
+                // Display requestor JWT
+                document.getElementById('requestorJwtRaw').textContent = requestorJwt;
+                document.getElementById('requestorJwtDecoded').textContent = JSON.stringify(decoded, null, 2);
+                document.getElementById('requestorJwtDisplay').classList.remove('hidden');
+
+                showStatus('authStatus', 'success', '✅ Authentication successful!');
+
+                // Show token exchange card
+                populateDelegationModules();
+                document.getElementById('exchangeCard').classList.remove('hidden');
+                updateStep(3);
+
+                // Clean up
+                sessionStorage.removeItem('pkce_code_verifier');
+                sessionStorage.removeItem('idp_index');
+                window.history.replaceState({}, document.title, window.location.pathname);
+
+            } catch (error) {
+                showStatus('authStatus', 'error', `Authentication error: ${error.message}`);
+                sessionStorage.removeItem('pkce_code_verifier');
+                sessionStorage.removeItem('oauth_config');
+                sessionStorage.removeItem('idp_index');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        // Populate delegation modules
+        function populateDelegationModules() {
+            const modulesContainer = document.getElementById('delegationModules');
+            modulesContainer.innerHTML = '';
+
+            // Find all delegation modules with token exchange configuration
+            const delegationConfig = config.delegation || {};
+            const modules = [];
+
+            // Check SQL module
+            if (delegationConfig.sql && delegationConfig.sql.tokenExchange) {
+                modules.push({
+                    name: 'SQL Delegation',
+                    type: 'sql',
+                    config: delegationConfig.sql.tokenExchange,
+                    description: 'Exchange token for SQL Server delegation'
+                });
+            }
+
+            // Check Kerberos module
+            if (delegationConfig.kerberos && delegationConfig.kerberos.tokenExchange) {
+                modules.push({
+                    name: 'Kerberos Delegation',
+                    type: 'kerberos',
+                    config: delegationConfig.kerberos.tokenExchange,
+                    description: 'Exchange token for Kerberos delegation'
+                });
+            }
+
+            // Check custom modules
+            if (delegationConfig.modules) {
+                Object.entries(delegationConfig.modules).forEach(([key, module]) => {
+                    if (module.tokenExchange) {
+                        modules.push({
+                            name: module.name || key,
+                            type: key,
+                            config: module.tokenExchange,
+                            description: module.description || `Exchange token for ${key} delegation`
+                        });
+                    }
+                });
+            }
+
+            if (modules.length === 0) {
+                modulesContainer.innerHTML = '<div class="status error">No delegation modules with token exchange configured</div>';
+                return;
+            }
+
+            // Create module cards
+            modules.forEach(module => {
+                const card = document.createElement('div');
+                card.className = 'module-card';
+                card.innerHTML = `
+                    <h3>${module.name}</h3>
+                    <p>${module.description}</p>
+                    <p><strong>Token Endpoint:</strong><br>${module.config.tokenEndpoint || module.config.idpConfig?.tokenExchange?.tokenEndpoint || 'N/A'}</p>
+                    <p><strong>Audience:</strong> ${module.config.audience || module.config.idpConfig?.tokenExchange?.audience || 'N/A'}</p>
+                `;
+                card.onclick = () => performTokenExchange(module);
+                modulesContainer.appendChild(card);
+            });
+        }
+
+        // Perform token exchange
+        async function performTokenExchange(module) {
+            try {
+                showStatus('exchangeStatus', 'info', `🔄 Performing token exchange for ${module.name}...`);
+
+                // Get token exchange configuration
+                const teConfig = module.config;
+
+                // Determine token endpoint
+                let tokenEndpoint = teConfig.tokenEndpoint;
+                if (!tokenEndpoint && teConfig.idpConfig && teConfig.idpConfig.tokenExchange) {
+                    tokenEndpoint = teConfig.idpConfig.tokenExchange.tokenEndpoint;
+                }
+
+                if (!tokenEndpoint) {
+                    // Try to use the selected IDP's token endpoint
+                    tokenEndpoint = discoveryData.token_endpoint;
+                }
+
+                if (!tokenEndpoint) {
+                    throw new Error('Token endpoint not configured for this module');
+                }
+
+                // Build token exchange request (RFC 8693)
+                const exchangeParams = new URLSearchParams();
+                exchangeParams.append('grant_type', 'urn:ietf:params:oauth:grant-type:token-exchange');
+                exchangeParams.append('subject_token', requestorJwt);
+                exchangeParams.append('subject_token_type', 'urn:ietf:params:oauth:token-type:access_token');
+
+                // Get client credentials
+                const clientId = teConfig.clientId || teConfig.idpConfig?.tokenExchange?.clientId || selectedIdp.clientId;
+                const clientSecret = teConfig.clientSecret || teConfig.idpConfig?.tokenExchange?.clientSecret || selectedIdp.clientSecret;
+
+                if (clientId) {
+                    exchangeParams.append('client_id', clientId);
+                }
+                if (clientSecret) {
+                    exchangeParams.append('client_secret', clientSecret);
+                }
+
+                // Add audience
+                const audience = teConfig.audience || teConfig.idpConfig?.tokenExchange?.audience;
+                if (audience) {
+                    exchangeParams.append('audience', audience);
+                }
+
+                // Add scope if configured
+                const scope = teConfig.scope || teConfig.idpConfig?.tokenExchange?.scope;
+                if (scope) {
+                    exchangeParams.append('scope', scope);
+                }
+
+                const response = await fetch(tokenEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: exchangeParams
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Token exchange failed (${response.status}): ${errorText}`);
+                }
+
+                const tokenData = await response.json();
+                const exchangedJwt = tokenData.access_token;
+
+                // Decode JWT
+                const decoded = decodeJwt(exchangedJwt);
+
+                // Display exchanged JWT
+                document.getElementById('selectedModuleName').textContent = module.name;
+                document.getElementById('exchangedJwtRaw').textContent = exchangedJwt;
+                document.getElementById('exchangedJwtDecoded').textContent = JSON.stringify(decoded, null, 2);
+                document.getElementById('exchangedJwtDisplay').classList.remove('hidden');
+
+                showStatus('exchangeStatus', 'success', `✅ Token exchange successful for ${module.name}!`);
+
+            } catch (error) {
+                showStatus('exchangeStatus', 'error', `Token exchange error: ${error.message}`);
+            }
+        }
+
+        // Exchange another token
+        function exchangeAnother() {
+            document.getElementById('exchangedJwtDisplay').classList.add('hidden');
+            document.getElementById('exchangeStatus').innerHTML = '';
+        }
+
+        // Decode JWT
+        function decodeJwt(token) {
+            try {
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('Invalid JWT format');
+                }
+
+                const payload = parts[1];
+                const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+
+                // Add human-readable timestamps
+                if (decoded.exp) {
+                    decoded.exp_readable = new Date(decoded.exp * 1000).toISOString();
+                }
+                if (decoded.iat) {
+                    decoded.iat_readable = new Date(decoded.iat * 1000).toISOString();
+                }
+                if (decoded.nbf) {
+                    decoded.nbf_readable = new Date(decoded.nbf * 1000).toISOString();
+                }
+
+                return decoded;
+            } catch (error) {
+                return { error: `Failed to decode JWT: ${error.message}` };
+            }
+        }
+
+        // Show status message
+        function showStatus(elementId, type, message) {
+            const statusElement = document.getElementById(elementId);
+            statusElement.className = `status ${type}`;
+            statusElement.textContent = message;
+            statusElement.style.display = 'block';
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -41,36 +41,34 @@ export class CoreContextValidator {
   static validate(context: CoreContext): void {
     // Validate context exists
     if (!context || typeof context !== 'object') {
-      throw new Error(
-        'CoreContext missing required field: context must be a valid object'
-      );
+      throw new Error('CoreContext missing required field: context must be a valid object');
     }
 
     if (!context.authService) {
       throw new Error(
         'CoreContext missing required field: authService. ' +
-        'Ensure AuthenticationService is initialized before calling validate().'
+          'Ensure AuthenticationService is initialized before calling validate().'
       );
     }
 
     if (!context.auditService) {
       throw new Error(
         'CoreContext missing required field: auditService. ' +
-        'Ensure AuditService is initialized before calling validate().'
+          'Ensure AuditService is initialized before calling validate().'
       );
     }
 
     if (!context.delegationRegistry) {
       throw new Error(
         'CoreContext missing required field: delegationRegistry. ' +
-        'Ensure DelegationRegistry is initialized before calling validate().'
+          'Ensure DelegationRegistry is initialized before calling validate().'
       );
     }
 
     if (!context.configManager) {
       throw new Error(
         'CoreContext missing required field: configManager. ' +
-        'Ensure ConfigManager is initialized before calling validate().'
+          'Ensure ConfigManager is initialized before calling validate().'
       );
     }
   }

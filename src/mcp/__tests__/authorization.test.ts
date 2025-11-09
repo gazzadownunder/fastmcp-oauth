@@ -15,19 +15,21 @@ describe('Authorization', () => {
 
   // Helper to create mock context
   const createContext = (session?: Partial<UserSession>): MCPContext => ({
-    session: session ? ({
-      _version: 1,
-      sessionId: 'test-session',
-      userId: 'test-user',
-      username: 'testuser',
-      role: 'user',
-      customRoles: [],
-      scopes: [],
-      customClaims: {},
-      claims: {},
-      rejected: false,
-      ...session,
-    } as UserSession) : undefined,
+    session: session
+      ? ({
+          _version: 1,
+          sessionId: 'test-session',
+          userId: 'test-user',
+          username: 'testuser',
+          role: 'user',
+          customRoles: [],
+          scopes: [],
+          customClaims: {},
+          claims: {},
+          rejected: false,
+          ...session,
+        } as UserSession)
+      : undefined,
   });
 
   // =========================================================================
@@ -99,7 +101,7 @@ describe('Authorization', () => {
     it('should return true when user has all roles (primary + custom)', () => {
       const context = createContext({
         role: 'admin',
-        customRoles: ['auditor', 'reviewer']
+        customRoles: ['auditor', 'reviewer'],
       });
       expect(auth.hasAllRoles(context, ['admin', 'auditor'])).toBe(true);
     });
@@ -107,7 +109,7 @@ describe('Authorization', () => {
     it('should return false when user is missing one role', () => {
       const context = createContext({
         role: 'admin',
-        customRoles: ['reviewer']
+        customRoles: ['reviewer'],
       });
       expect(auth.hasAllRoles(context, ['admin', 'auditor'])).toBe(false);
     });
@@ -125,7 +127,7 @@ describe('Authorization', () => {
     it('should work with only custom roles', () => {
       const context = createContext({
         role: 'user',
-        customRoles: ['auditor', 'reviewer']
+        customRoles: ['auditor', 'reviewer'],
       });
       expect(auth.hasAllRoles(context, ['auditor', 'reviewer'])).toBe(true);
     });
@@ -230,7 +232,7 @@ describe('Authorization', () => {
     it('should not throw when user has all roles', () => {
       const context = createContext({
         role: 'admin',
-        customRoles: ['auditor']
+        customRoles: ['auditor'],
       });
       expect(() => auth.requireAllRoles(context, ['admin', 'auditor'])).not.toThrow();
     });
@@ -238,7 +240,7 @@ describe('Authorization', () => {
     it('should throw 403 when user is missing one role', () => {
       const context = createContext({
         role: 'admin',
-        customRoles: []
+        customRoles: [],
       });
       expect(() => auth.requireAllRoles(context, ['admin', 'auditor'])).toThrow();
 
