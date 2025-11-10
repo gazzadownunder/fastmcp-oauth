@@ -21,6 +21,9 @@ export interface TokenExchangeParams {
   /** The requestor's JWT (subject token) */
   subjectToken: string;
 
+  /** Alias for subjectToken (backward compatibility) */
+  requestorJWT?: string;
+
   /** Type of the subject token (urn:ietf:params:oauth:token-type:jwt) */
   subjectTokenType: string;
 
@@ -44,6 +47,27 @@ export interface TokenExchangeParams {
 
   /** Optional: Scope for the exchanged token */
   scope?: string;
+
+  /** Optional: Session ID for caching */
+  sessionId?: string;
+
+  /** Optional: Cache configuration */
+  cache?: {
+    /** Whether cache is enabled (default: false) */
+    enabled?: boolean;
+
+    /** Cache TTL in seconds (default: 60) */
+    ttlSeconds?: number;
+
+    /** Session timeout in milliseconds (default: 900000 = 15 min) */
+    sessionTimeoutMs?: number;
+
+    /** Max entries per session (default: 10) */
+    maxEntriesPerSession?: number;
+
+    /** Max total entries across all sessions (default: 1000) */
+    maxTotalEntries?: number;
+  };
 }
 
 /**

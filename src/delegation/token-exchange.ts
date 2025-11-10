@@ -304,13 +304,12 @@ export class TokenExchangeService {
 
     // Aggregate metrics
     return allMetrics.reduce((acc, metrics) => ({
-      cacheHits: acc.cacheHits + metrics.cacheHits,
-      cacheMisses: acc.cacheMisses + metrics.cacheMisses,
+      hits: acc.hits + metrics.hits,
+      misses: acc.misses + metrics.misses,
       decryptionFailures: acc.decryptionFailures + metrics.decryptionFailures,
-      requestorMismatch: acc.requestorMismatch + metrics.requestorMismatch,
       activeSessions: acc.activeSessions + metrics.activeSessions,
       totalEntries: acc.totalEntries + metrics.totalEntries,
-      memoryUsageEstimate: acc.memoryUsageEstimate + metrics.memoryUsageEstimate,
+      memoryUsageBytes: acc.memoryUsageBytes + metrics.memoryUsageBytes,
     }));
   }
 

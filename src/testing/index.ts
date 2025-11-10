@@ -35,7 +35,6 @@ export function createMockUserSession(overrides: Partial<UserSession> = {}): Use
     role: 'user',
     customRoles: [],
     scopes: [],
-    customClaims: {},
     claims: {
       iss: 'https://test-idp.example.com',
       sub: 'test-user-123',
@@ -50,10 +49,6 @@ export function createMockUserSession(overrides: Partial<UserSession> = {}): Use
     claims: {
       ...defaultSession.claims,
       ...(overrides.claims || {}),
-    },
-    customClaims: {
-      ...defaultSession.customClaims,
-      ...(overrides.customClaims || {}),
     },
   };
 }
@@ -156,13 +151,12 @@ export function createMockCoreContext(overrides: Partial<CoreContext> = {}): Cor
       });
     },
     getCacheMetrics: () => ({
-      cacheHits: 0,
-      cacheMisses: 0,
+      hits: 0,
+      misses: 0,
       decryptionFailures: 0,
-      requestorMismatch: 0,
       activeSessions: 0,
       totalEntries: 0,
-      memoryUsageEstimate: 0,
+      memoryUsageBytes: 0,
     }),
   };
 

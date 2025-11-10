@@ -1,4 +1,5 @@
 import { defineConfig } from 'tsup';
+import { globSync } from 'glob';
 
 export default defineConfig({
   entry: [
@@ -9,7 +10,9 @@ export default defineConfig({
   format: ['esm'],
   target: 'node18',
   clean: true,
-  dts: false, // Temporarily disabled due to FastMCP type conflicts
+  dts: {
+    entry: globSync('src/**/*.ts', { ignore: ['**/__tests__/**', '**/*.test.ts'] }), // Only generate types for src, exclude tests
+  },
   sourcemap: true,
   splitting: false,
   bundle: false, // Don't bundle - preserve module structure
