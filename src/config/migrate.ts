@@ -75,9 +75,27 @@ import { UnifiedConfigSchema, DEFAULT_MCP_CONFIG } from './schemas/index.js';
  */
 export function migrateConfig(oldConfig: LegacyConfig): UnifiedConfig {
   try {
+    // Migrate IDPs: Add required discoveryUrl and claimMappings if missing
+    const migratedIDPs = oldConfig.trustedIDPs.map((idp: any) => {
+      // Extract issuer base URL for discovery
+      const issuerBase = idp.issuer.replace(/\/+$/, ''); // Remove trailing slashes
+
+      return {
+        ...idp,
+        // Add discoveryUrl if not present
+        discoveryUrl: idp.discoveryUrl || `${issuerBase}/.well-known/openid-configuration`,
+        // Add default claimMappings if not present
+        claimMappings: idp.claimMappings || {
+          legacyUsername: 'legacy_name',
+          roles: 'roles',
+          scopes: 'scopes',
+        },
+      };
+    });
+
     // Build auth configuration from old top-level fields
     const authConfig: CoreAuthConfig = {
-      trustedIDPs: oldConfig.trustedIDPs,
+      trustedIDPs: migratedIDPs,
       rateLimiting: oldConfig.rateLimiting,
       audit: oldConfig.audit,
     };

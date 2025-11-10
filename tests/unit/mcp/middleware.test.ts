@@ -305,4 +305,174 @@ describe('MCP Middleware', () => {
 
     // Note: requirePermission tests removed - framework now uses pure role-based authorization
   });
+
+  describe('Edge Cases and Error Handling', () => {
+    describe('Token Extraction Edge Cases', () => {
+      it('should handle authorization header as array (take first)', async () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        const mockSession: UserSession = {
+          _version: 1,
+          userId: 'user123',
+          username: 'testuser',
+          role: 'user',
+          rejected: false,
+        };
+
+        vi.mocked(mockAuthService.authenticate).mockResolvedValue({
+          accepted: true,
+          rejected: false,
+          session: mockSession,
+        });
+
+        const request: FastMCPRequest = {
+          headers: {
+            authorization: ['Bearer token-123', 'Bearer token-456'] as any,
+          },
+        };
+
+        const result = await middleware.authenticate(request);
+
+        expect(result.authenticated).toBe(true);
+        expect(mockAuthService.authenticate).toHaveBeenCalledWith('token-123', { idpName: 'requestor-jwt' });
+      });
+
+      it('should handle empty authorization header array', async () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        const request: FastMCPRequest = {
+          headers: {
+            authorization: [] as any,
+          },
+        };
+
+        const result = await middleware.authenticate(request);
+
+        expect(result.authenticated).toBe(false);
+        expect(result.error).toContain('Missing Authorization header');
+      });
+
+      it('should handle Bearer with case variations', async () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        const mockSession: UserSession = {
+          _version: 1,
+          userId: 'user123',
+          username: 'testuser',
+          role: 'user',
+          rejected: false,
+        };
+
+        vi.mocked(mockAuthService.authenticate).mockResolvedValue({
+          accepted: true,
+          rejected: false,
+          session: mockSession,
+        });
+
+        const request: FastMCPRequest = {
+          headers: {
+            authorization: 'bearer lowercase-token',
+          },
+        };
+
+        const result = await middleware.authenticate(request);
+
+        expect(result.authenticated).toBe(true);
+        expect(mockAuthService.authenticate).toHaveBeenCalledWith('lowercase-token', { idpName: 'requestor-jwt' });
+      });
+
+      it('should reject empty Bearer token', async () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        const request: FastMCPRequest = {
+          headers: {
+            authorization: 'Bearer ',
+          },
+        };
+
+        const result = await middleware.authenticate(request);
+
+        expect(result.authenticated).toBe(false);
+        expect(result.error).toContain('Missing Authorization header');
+      });
+
+      it('should reject token without Bearer prefix', async () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        const request: FastMCPRequest = {
+          headers: {
+            authorization: 'just-a-token-no-bearer',
+          },
+        };
+
+        const result = await middleware.authenticate(request);
+
+        expect(result.authenticated).toBe(false);
+        expect(result.error).toContain('Missing Authorization header');
+      });
+    });
+
+    describe('Error Response Handling', () => {
+      it('should return 500 for generic Error', async () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        vi.mocked(mockAuthService.authenticate).mockRejectedValue(new Error('Unexpected error'));
+
+        const request: FastMCPRequest = {
+          headers: {
+            authorization: 'Bearer test-token',
+          },
+        };
+
+        const result = await middleware.authenticate(request);
+
+        expect(result.authenticated).toBe(false);
+        expect(result.statusCode).toBe(500);
+        expect(result.error).toBe('Unexpected error');
+      });
+
+      it('should return 500 for non-Error rejections', async () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        vi.mocked(mockAuthService.authenticate).mockRejectedValue('string error');
+
+        const request: FastMCPRequest = {
+          headers: {
+            authorization: 'Bearer test-token',
+          },
+        };
+
+        const result = await middleware.authenticate(request);
+
+        expect(result.authenticated).toBe(false);
+        expect(result.statusCode).toBe(500);
+        expect(result.error).toBe('Authentication failed');
+      });
+    });
+
+    describe('Context Creation Edge Cases', () => {
+      it('should throw with specific error message from auth result', () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        const authResult = {
+          authenticated: false,
+          error: 'Token signature verification failed',
+        };
+
+        expect(() => middleware.createContext(authResult)).toThrow(
+          'Token signature verification failed'
+        );
+      });
+
+      it('should throw generic message if error is undefined', () => {
+        const middleware = new MCPAuthMiddleware(mockAuthService);
+
+        const authResult = {
+          authenticated: false,
+        };
+
+        expect(() => middleware.createContext(authResult)).toThrow('Authentication required');
+      });
+    });
+  });
 });

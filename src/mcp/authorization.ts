@@ -1,8 +1,8 @@
 /**
  * MCP Authorization Helpers
  *
- * Provides role-based authorization checks (no static permissions).
- * Authorization is based on JWT roles, not server-side permission configuration.
+ * Provides role-based and scope-based authorization checks.
+ * Authorization is based on JWT roles and OAuth scopes.
  *
  * Usage Patterns:
  * 1. Hard checks (throw on failure) - Use in tool handlers:
@@ -10,12 +10,18 @@
  *    - requireRole() - Ensures user has specific role
  *    - requireAnyRole() - Ensures user has at least one of multiple roles
  *    - requireAllRoles() - Ensures user has all of multiple roles
+ *    - requireScope() - Ensures user has specific OAuth scope
+ *    - requireAnyScope() - Ensures user has at least one of multiple scopes
+ *    - requireAllScopes() - Ensures user has all of multiple scopes
  *
  * 2. Soft checks (return boolean) - Use in canAccess() implementations:
  *    - isAuthenticated() - Check if user is authenticated
  *    - hasRole() - Check if user has specific role
  *    - hasAnyRole() - Check if user has any of multiple roles
  *    - hasAllRoles() - Check if user has all of multiple roles
+ *    - hasScope() - Check if user has specific OAuth scope
+ *    - hasAnyScope() - Check if user has any of multiple scopes
+ *    - hasAllScopes() - Check if user has all of multiple scopes
  *
  * @example Hard checks (tool handlers)
  * ```typescript
@@ -32,6 +38,15 @@
  *
  * // Require all of multiple roles
  * auth.requireAllRoles(context, ['admin', 'auditor']);
+ *
+ * // Require specific scope
+ * auth.requireScope(context, 'sql:query');
+ *
+ * // Require any of multiple scopes
+ * auth.requireAnyScope(context, ['api:read', 'api:write']);
+ *
+ * // Require all of multiple scopes
+ * auth.requireAllScopes(context, ['api:read', 'api:write']);
  * ```
  *
  * @example Soft checks (canAccess implementations)
@@ -51,6 +66,16 @@
  *
  * // Check any of multiple roles
  * if (auth.hasAnyRole(context, ['user', 'guest'])) {
+ *   return true;
+ * }
+ *
+ * // Check scope
+ * if (auth.hasScope(context, 'sql:query')) {
+ *   return true;
+ * }
+ *
+ * // Check any of multiple scopes
+ * if (auth.hasAnyScope(context, ['api:read', 'api:write'])) {
  *   return true;
  * }
  *
@@ -158,6 +183,73 @@ export class Authorization {
     return roles.every((role) => allUserRoles.includes(role));
   }
 
+  /**
+   * Check if session has specific OAuth scope
+   *
+   * @param context - MCP context
+   * @param scope - Required scope (e.g., 'sql:query', 'api:read')
+   * @returns True if session has the scope
+   */
+  hasScope(context: MCPContext, scope: string): boolean {
+    if (!this.isAuthenticated(context)) {
+      return false;
+    }
+
+    return context.session.scopes?.includes(scope) ?? false;
+  }
+
+  /**
+   * Check if session has any of the specified scopes
+   *
+   * Useful for OR logic: "sql:query OR sql:execute"
+   *
+   * @param context - MCP context
+   * @param scopes - Array of acceptable scopes
+   * @returns True if session has at least one of the scopes
+   *
+   * @example
+   * ```typescript
+   * // Allow read or write access
+   * if (auth.hasAnyScope(context, ['api:read', 'api:write'])) {
+   *   return true;
+   * }
+   * ```
+   */
+  hasAnyScope(context: MCPContext, scopes: string[]): boolean {
+    if (!this.isAuthenticated(context)) {
+      return false;
+    }
+
+    const userScopes = context.session.scopes ?? [];
+    return scopes.some((scope) => userScopes.includes(scope));
+  }
+
+  /**
+   * Check if session has all of the specified scopes
+   *
+   * Useful for AND logic: "Must have read AND write"
+   *
+   * @param context - MCP context
+   * @param scopes - Array of required scopes
+   * @returns True if session has all of the scopes
+   *
+   * @example
+   * ```typescript
+   * // Require both read and write scopes
+   * if (auth.hasAllScopes(context, ['api:read', 'api:write'])) {
+   *   return true;
+   * }
+   * ```
+   */
+  hasAllScopes(context: MCPContext, scopes: string[]): boolean {
+    if (!this.isAuthenticated(context)) {
+      return false;
+    }
+
+    const userScopes = context.session.scopes ?? [];
+    return scopes.every((scope) => userScopes.includes(scope));
+  }
+
   // ==========================================================================
   // Hard Checks (Throw on Failure)
   // ==========================================================================
@@ -251,6 +343,84 @@ export class Authorization {
       throw createSecurityError(
         'INSUFFICIENT_PERMISSIONS',
         `This tool requires all of these roles: ${roles.join(', ')}. Your roles: ${userRoles.join(', ')}`,
+        403
+      );
+    }
+  }
+
+  /**
+   * Require specific OAuth scope for a tool handler
+   *
+   * Throws an error if the session does not have the required scope.
+   *
+   * @param context - MCP context
+   * @param requiredScope - Required scope ('sql:query', 'api:read', etc.)
+   * @throws {OAuthSecurityError} If session lacks required scope
+   */
+  requireScope(context: MCPContext, requiredScope: string): void {
+    this.requireAuth(context);
+
+    if (!this.hasScope(context, requiredScope)) {
+      const userScopes = context.session.scopes?.join(', ') || 'none';
+      throw createSecurityError(
+        'INSUFFICIENT_PERMISSIONS',
+        `This tool requires the '${requiredScope}' scope. Your scopes: ${userScopes}`,
+        403
+      );
+    }
+  }
+
+  /**
+   * Require any of the specified scopes for a tool handler
+   *
+   * Throws an error if the session does not have at least one of the scopes.
+   *
+   * @param context - MCP context
+   * @param scopes - Array of acceptable scopes
+   * @throws {OAuthSecurityError} If session lacks all required scopes
+   *
+   * @example
+   * ```typescript
+   * // Require read OR write scope
+   * auth.requireAnyScope(context, ['api:read', 'api:write']);
+   * ```
+   */
+  requireAnyScope(context: MCPContext, scopes: string[]): void {
+    this.requireAuth(context);
+
+    if (!this.hasAnyScope(context, scopes)) {
+      const userScopes = context.session.scopes?.join(', ') || 'none';
+      throw createSecurityError(
+        'INSUFFICIENT_PERMISSIONS',
+        `This tool requires one of these scopes: ${scopes.join(', ')}. Your scopes: ${userScopes}`,
+        403
+      );
+    }
+  }
+
+  /**
+   * Require all of the specified scopes for a tool handler
+   *
+   * Throws an error if the session does not have all of the scopes.
+   *
+   * @param context - MCP context
+   * @param scopes - Array of required scopes
+   * @throws {OAuthSecurityError} If session lacks any required scope
+   *
+   * @example
+   * ```typescript
+   * // Require both read AND write scopes
+   * auth.requireAllScopes(context, ['api:read', 'api:write']);
+   * ```
+   */
+  requireAllScopes(context: MCPContext, scopes: string[]): void {
+    this.requireAuth(context);
+
+    if (!this.hasAllScopes(context, scopes)) {
+      const userScopes = context.session.scopes?.join(', ') || 'none';
+      throw createSecurityError(
+        'INSUFFICIENT_PERMISSIONS',
+        `This tool requires all of these scopes: ${scopes.join(', ')}. Your scopes: ${userScopes}`,
         403
       );
     }
