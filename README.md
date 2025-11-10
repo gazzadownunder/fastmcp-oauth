@@ -235,6 +235,9 @@ async function main() {
 
   const coreContext = await orchestrator.buildCoreContext();
 
+  // ⚠️ CRITICAL: Initialize AuthenticationService before using middleware
+  await coreContext.authService.initialize();
+
   // 3. Create FastMCP with authentication
   const middleware = new MCPAuthMiddleware(coreContext.authService);
 
@@ -269,7 +272,367 @@ async function main() {
 main().catch(console.error);
 ```
 
+⚠️ **IMPORTANT:** When using manual wiring, you **MUST** call `await coreContext.authService.initialize()` after `buildCoreContext()` to download JWKS keys from your identity provider. Without this step, JWT validation will fail with "JWT validator not initialized" error.
+
+**Why?** The `initialize()` method:
+1. Downloads public keys (JWKS) from your IDP's `.well-known/jwks.json` endpoint
+2. Sets up the JWT validator for RS256/ES256 signature verification
+3. Prepares the authentication service for handling requests
+
+**When is this automatic?** The `MCPOAuthServer` wrapper calls `initialize()` automatically during `start()`. Manual wiring requires explicit initialization.
+
 See [examples/full-mcp-server.ts](examples/full-mcp-server.ts) for complete example.
+
+---
+
+## 🎯 Built-in Tools vs Custom Tools: Quick Decision Guide
+
+The framework provides **built-in SQL delegation tools** that work out-of-the-box with the `@mcp-oauth/sql-delegation` package. Before creating custom tools, consider using the built-in ones.
+
+### When to Use Built-in Tools (Recommended)
+
+**Use Case:** You want SQL delegation with minimal code.
+
+```typescript
+import { getAllToolFactories } from 'fastmcp-oauth-obo';
+
+// Get all built-in tools (3 lines!)
+const toolFactories = getAllToolFactories();
+for (const factory of toolFactories) {
+  const tool = factory(coreContext);
+  server.addTool({
+    name: tool.name,
+    description: tool.schema.description || tool.name,
+    parameters: tool.schema,
+    execute: tool.handler,
+    canAccess: tool.canAccess
+  });
+}
+```
+
+**Built-in Tools Included:**
+- ✅ `sql-delegate` - Execute SQL queries, procedures, functions with OAuth delegation
+- ✅ `health-check` - Monitor delegation service health
+- ✅ `user-info` - Get current user session information
+
+**Benefits:**
+- **Zero boilerplate:** No tool factories to write
+- **Standardized responses:** Consistent `LLMResponse` format
+- **Built-in security:** Role-based authorization with `Authorization` helpers
+- **Audit logging:** Automatic integration with `AuditService`
+- **Token exchange support:** Works seamlessly with Phase 1-2 features
+- **Battle-tested:** Used in production deployments
+
+**Code Comparison:**
+
+| Approach | Lines of Code | Maintenance |
+|----------|--------------|-------------|
+| **Built-in tools** | ~10 lines | Framework updates only |
+| **Custom tools** | ~300+ lines | Manual updates required |
+| **Factory-based tools** | ~50 lines | Moderate maintenance |
+
+### When to Use Custom Tools
+
+**Use Case:** You need specialized behavior not covered by built-in tools.
+
+**Examples:**
+- Custom SQL dialects (MongoDB, CouchDB, etc.)
+- Non-database delegation (REST APIs, GraphQL, gRPC)
+- Custom authorization logic beyond role-based access
+- Specialized parameter transformation
+- Custom response formatting for specific LLM requirements
+
+**Recommended Approach:** Use `createDelegationTool()` factory (see [Docs/EXTENDING.md](Docs/EXTENDING.md)):
+
+```typescript
+import { createDelegationTool } from 'fastmcp-oauth-obo';
+
+// Create custom tool in 5 lines
+const myTool = createDelegationTool('postgresql', {
+  name: 'custom-query',
+  description: 'Custom SQL query with special logic',
+  parameters: mySchema,
+  action: 'query',
+  requiredPermission: 'sql:read',
+  transformParams: (params) => ({ /* custom logic */ })
+}, coreContext);
+```
+
+**Benefits over manual tool creation:**
+- **90% less code:** Factory handles auth, validation, error handling, audit logging
+- **Type safety:** Full TypeScript inference from Zod schemas
+- **Consistent behavior:** Same security guarantees as built-in tools
+
+### Comparison Table
+
+| Feature | Built-in Tools | Factory (`createDelegationTool`) | Manual Tool Creation |
+|---------|---------------|----------------------------------|---------------------|
+| **Code to write** | ~10 lines | ~20 lines/tool | ~100+ lines/tool |
+| **OAuth authentication** | ✅ Automatic | ✅ Automatic | ⚠️ Manual |
+| **Role-based authorization** | ✅ Built-in | ✅ Built-in | ⚠️ Manual |
+| **Audit logging** | ✅ Automatic | ✅ Automatic | ⚠️ Manual |
+| **Token exchange support** | ✅ Automatic | ✅ Automatic | ⚠️ Manual |
+| **Error sanitization** | ✅ Automatic | ✅ Automatic | ⚠️ Manual |
+| **Parameter validation** | ✅ Zod schemas | ✅ Zod schemas | ⚠️ Manual |
+| **Customization** | ❌ Limited | ✅ High | ✅ Full control |
+| **Maintenance burden** | ✅ None | ⚠️ Moderate | ❌ High |
+| **Type safety** | ✅ Full | ✅ Full | ⚠️ Partial |
+
+### Decision Tree
+
+```
+┌─────────────────────────────────────┐
+│  Do you need SQL delegation?        │
+└──────────┬──────────────────────────┘
+           │
+           ├─ YES ─────────────────────────────────────────────┐
+           │                                                    │
+           │  ┌─────────────────────────────────────────────┐  │
+           │  │ Do you need custom query logic or          │  │
+           │  │ non-standard authorization?                 │  │
+           │  └──────────┬──────────────────────────────────┘  │
+           │             │                                      │
+           │             ├─ NO ──> ✅ Use built-in tools       │
+           │             │         (getAllToolFactories)       │
+           │             │                                      │
+           │             └─ YES ─> ⚠️ Use createDelegationTool│
+           │                       factory for customization   │
+           │                                                    │
+           └─ NO ──────────────────────────────────────────────┤
+                                                                │
+              ┌─────────────────────────────────────────────┐  │
+              │ Are you integrating with non-SQL systems?  │  │
+              │ (REST API, GraphQL, LDAP, Kerberos, etc.)  │  │
+              └──────────┬──────────────────────────────────┘  │
+                         │                                      │
+                         ├─ YES ─> ⚠️ Use createDelegationTool │
+                         │          factory (see EXTENDING.md) │
+                         │                                      │
+                         └─ NO ──> ❓ Consider if you need     │
+                                     this framework             │
+                                                                │
+                         ⛔ AVOID manual tool creation          │
+                            (only for edge cases)               │
+                                                                │
+                         📚 See Docs/TOOL-FACTORIES.md          │
+                            for detailed guidance               │
+                                                                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Example: Using Built-in Tools vs Factory Pattern
+
+**Scenario:** You want SQL delegation with PostgreSQL.
+
+**Option 1: Built-in Tools (Recommended - 10 lines)**
+```typescript
+import { getAllToolFactories } from 'fastmcp-oauth-obo';
+
+// Register all built-in tools
+const toolFactories = getAllToolFactories();
+for (const factory of toolFactories) {
+  const tool = factory(coreContext);
+  server.addTool({
+    name: tool.name,
+    description: tool.schema.description || tool.name,
+    parameters: tool.schema,
+    execute: tool.handler,
+    canAccess: tool.canAccess
+  });
+}
+```
+
+**Result:** Tools available: `sql-delegate`, `health-check`, `user-info`
+
+**Option 2: Factory Pattern (If you need custom tool names - 20 lines/tool)**
+```typescript
+import { createDelegationTool } from 'fastmcp-oauth-obo';
+
+const customTool = createDelegationTool('postgresql', {
+  name: 'custom_sql_query',  // Your custom name
+  description: 'Custom SQL query tool',
+  parameters: customSchema,
+  action: 'query',
+  requiredPermission: 'sql:read',
+  transformParams: (params) => ({ sql: params.query, params: params.params })
+}, coreContext);
+
+server.addTool({ /* register custom tool */ });
+```
+
+**Result:** Tool available: `custom_sql_query` (with your naming convention)
+
+**Recommendation:** Start with built-in tools (Option 1). Only use factory pattern if you need customization.
+
+See [Docs/TOOL-FACTORIES.md](Docs/TOOL-FACTORIES.md) for detailed comparison and examples.
+
+---
+
+## 🔧 Handling Multiple MCP Servers (Tool Name Collisions)
+
+### Problem: Tool Name Collisions
+
+If an LLM loads **multiple MCP servers** built with this framework, tool names will collide:
+
+```
+MCP Server 1 (HR Database) → tools: sql-delegate, health-check, user-info
+MCP Server 2 (Sales Database) → tools: sql-delegate, health-check, user-info  ⚠️ COLLISION!
+```
+
+**Impact:** Only one server's tools will be accessible, the other will fail to register.
+
+### Solution: Tool Prefixes
+
+The framework provides `createSQLToolsForModule()` to create tools with custom prefixes:
+
+```typescript
+import { createSQLToolsForModule } from 'fastmcp-oauth-obo';
+
+// For HR database server
+const hrTools = createSQLToolsForModule('hr', 'postgresql');
+// Creates: hr-delegate, hr-schema, hr-table-details
+
+// For Sales database server
+const salesTools = createSQLToolsForModule('sales', 'postgresql');
+// Creates: sales-delegate, sales-schema, sales-table-details
+
+// Register prefixed tools
+for (const factory of hrTools) {
+  const tool = factory(coreContext);
+  server.addTool({
+    name: tool.name,
+    description: tool.schema.description,
+    parameters: tool.schema,
+    execute: tool.handler,
+    canAccess: tool.canAccess
+  });
+}
+```
+
+**Result:**
+- ✅ **MCP Server 1 (HR):** `hr-delegate`, `hr-schema`, `hr-table-details`, `health-check`, `user-info`
+- ✅ **MCP Server 2 (Sales):** `sales-delegate`, `sales-schema`, `sales-table-details`, `health-check`, `user-info`
+- ✅ No collisions (except health-check/user-info which are server-specific, not database-specific)
+
+### Multi-Database Configuration
+
+Use this pattern when one MCP server connects to **multiple databases**:
+
+```typescript
+import {
+  createSQLToolsForModule,
+  createHealthCheckTool,
+  createUserInfoTool
+} from 'fastmcp-oauth-obo';
+
+// Register tools for database 1 (with 'db1' prefix)
+const db1Tools = createSQLToolsForModule('db1', 'postgresql1', '(HR Database)');
+for (const factory of db1Tools) {
+  const tool = factory(coreContext);
+  server.addTool({ ...tool });
+}
+
+// Register tools for database 2 (with 'db2' prefix)
+const db2Tools = createSQLToolsForModule('db2', 'postgresql2', '(Sales Database)');
+for (const factory of db2Tools) {
+  const tool = factory(coreContext);
+  server.addTool({ ...tool });
+}
+
+// Register shared tools (no prefix needed - only one instance)
+const sharedTools = [createHealthCheckTool, createUserInfoTool];
+for (const factory of sharedTools) {
+  const tool = factory(coreContext);
+  server.addTool({ ...tool });
+}
+```
+
+**Configuration:**
+```json
+{
+  "delegation": {
+    "modules": {
+      "postgresql1": {
+        "host": "hr-db.company.com",
+        "database": "hr_database",
+        "tokenExchange": { "audience": "urn:db:hr" }
+      },
+      "postgresql2": {
+        "host": "sales-db.company.com",
+        "database": "sales_database",
+        "tokenExchange": { "audience": "urn:db:sales" }
+      }
+    }
+  }
+}
+```
+
+**Result:**
+- Tools: `db1-delegate`, `db1-schema`, `db1-table-details`, `db2-delegate`, `db2-schema`, `db2-table-details`, `health-check`, `user-info`
+- LLM can query both databases: `db1-delegate` for HR, `db2-delegate` for Sales
+
+### Best Practices for Multi-Server Deployments
+
+| Scenario | Recommended Prefix Strategy |
+|----------|---------------------------|
+| **Single database per server** | Use descriptive prefix: `hr`, `sales`, `analytics` |
+| **Multiple databases per server** | Use short prefixes: `db1`, `db2`, `db3` |
+| **Different database types** | Use type prefix: `pg` (PostgreSQL), `ms` (MSSQL), `my` (MySQL) |
+| **Tenant isolation** | Use tenant prefix: `tenant1`, `tenant2`, `acme`, `widgets` |
+
+**Example: Multi-Tenant SaaS**
+```typescript
+// Tenant: Acme Corp
+const acmeTools = createSQLToolsForModule('acme', 'postgresql_acme', '(Acme Corp)');
+
+// Tenant: Widgets Inc
+const widgetsTools = createSQLToolsForModule('widgets', 'postgresql_widgets', '(Widgets Inc)');
+
+// Result:
+// - acme-delegate, acme-schema, acme-table-details
+// - widgets-delegate, widgets-schema, widgets-table-details
+```
+
+### Excluding Default SQL Tools
+
+If you're using prefixed tools, exclude the default `sql-delegate` tool:
+
+```typescript
+import { getAllToolFactories, createSQLToolsForModule } from 'fastmcp-oauth-obo';
+
+// Get non-SQL tools only (health-check, user-info, file-browse)
+const nonSqlTools = getAllToolFactories({ excludeSqlTools: true });
+
+// Add custom prefixed SQL tools
+const db1Tools = createSQLToolsForModule('db1', 'postgresql1');
+const db2Tools = createSQLToolsForModule('db2', 'postgresql2');
+
+// Register all
+for (const factory of [...nonSqlTools, ...db1Tools, ...db2Tools]) {
+  const tool = factory(coreContext);
+  server.addTool({ ...tool });
+}
+```
+
+**Result:** No default `sql-delegate` tool, only `db1-delegate` and `db2-delegate`.
+
+### Tool Naming Convention
+
+**Format:** `{prefix}-{tool-type}`
+
+| Tool Type | No Prefix | With Prefix (`hr`) |
+|-----------|-----------|-------------------|
+| Delegation | `sql-delegate` | `hr-delegate` |
+| Schema | `sql-schema` | `hr-schema` |
+| Table Details | `sql-table-details` | `hr-table-details` |
+| Health Check | `health-check` | `health-check` (shared) |
+| User Info | `user-info` | `user-info` (shared) |
+
+**Important:** `health-check` and `user-info` are **server-scoped**, not database-scoped. They should not have prefixes.
+
+See [Docs/MULTI-SERVER.md](Docs/MULTI-SERVER.md) for complete multi-server deployment guide.
+
+---
 
 ## How It Extends Standard OAuth
 
@@ -513,6 +876,7 @@ Create `config/unified-config.json`:
 {
   "auth": {
     "trustedIDPs": [{
+      "name": "requestor-jwt",
       "issuer": "https://auth.example.com",
       "discoveryUrl": "https://auth.example.com/.well-known/oauth-authorization-server",
       "jwksUri": "https://auth.example.com/.well-known/jwks.json",
@@ -545,6 +909,10 @@ Create `config/unified-config.json`:
 }
 ```
 
+⚠️ **CRITICAL REQUIREMENT:** The IDP used to validate incoming bearer tokens **MUST** have `"name": "requestor-jwt"`. This is a framework requirement and cannot be changed. The middleware is hardcoded to use this IDP name for authenticating incoming requests.
+
+**Why?** When token exchange is enabled, multiple IDPs may be trusted (requestor IDP + delegation IDPs). The framework uses the `"requestor-jwt"` name to explicitly identify which IDP should validate the initial bearer token from the client.
+
 **IDP-Specific Examples:**
 
 <details>
@@ -552,6 +920,7 @@ Create `config/unified-config.json`:
 
 ```json
 {
+  "name": "requestor-jwt",
   "issuer": "https://keycloak.example.com/realms/myrealm",
   "discoveryUrl": "https://keycloak.example.com/realms/myrealm/.well-known/openid-configuration",
   "jwksUri": "https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs",
@@ -569,6 +938,7 @@ Create `config/unified-config.json`:
 
 ```json
 {
+  "name": "requestor-jwt",
   "issuer": "https://your-tenant.auth0.com/",
   "discoveryUrl": "https://your-tenant.auth0.com/.well-known/openid-configuration",
   "jwksUri": "https://your-tenant.auth0.com/.well-known/jwks.json",
@@ -586,6 +956,7 @@ Create `config/unified-config.json`:
 
 ```json
 {
+  "name": "requestor-jwt",
   "issuer": "https://login.microsoftonline.com/{tenant-id}/v2.0",
   "discoveryUrl": "https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration",
   "jwksUri": "https://login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys",
@@ -732,6 +1103,7 @@ await server.start({ /* ... */ });
 {
   "auth": {
     "trustedIDPs": [{
+      "name": "requestor-jwt",
       "issuer": "https://auth.example.com",
       "discoveryUrl": "https://auth.example.com/.well-known/oauth-authorization-server",
       "jwksUri": "https://auth.example.com/.well-known/jwks.json",
@@ -1395,6 +1767,9 @@ Our goal: **30 minutes from zero to working custom module**
 
 ### For Developers
 - **[Docs/EXTENDING.md](Docs/EXTENDING.md)** - **START HERE!** Complete guide to extending the framework
+- **[Docs/CONFIGURATION.md](Docs/CONFIGURATION.md)** - **Complete configuration reference** - All config.json options explained
+- **[Docs/MULTI-SERVER.md](Docs/MULTI-SERVER.md)** - Multi-server deployment patterns with tool prefixing
+- **[Docs/TOOL-FACTORIES.md](Docs/TOOL-FACTORIES.md)** - Tool creation approaches and best practices
 - **[Docs/API-REFERENCE.md](Docs/API-REFERENCE.md)** - Complete API documentation with TypeScript signatures
 - **[Docs/TROUBLESHOOTING.md](Docs/TROUBLESHOOTING.md)** - Common issues and debugging tips
 - **[examples/rest-api-delegation.ts](examples/rest-api-delegation.ts)** - REST API integration example

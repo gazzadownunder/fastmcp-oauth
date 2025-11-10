@@ -2,6 +2,55 @@
 
 This guide shows developers how to extend the MCP OAuth Framework with custom delegation modules and tools.
 
+## ⚠️ Before You Extend: Consider Built-in Tools
+
+**IMPORTANT:** The framework includes production-ready SQL delegation tools that work out-of-the-box. Before creating custom tools, check if the built-in tools meet your needs.
+
+### Quick Check: Do You Need Custom Tools?
+
+**Use built-in tools if:**
+- ✅ You need PostgreSQL or MSSQL delegation
+- ✅ Standard SQL queries, procedures, and functions are sufficient
+- ✅ Role-based authorization is adequate
+- ✅ You want zero maintenance burden
+
+**Use custom tools if:**
+- ⚠️ You need custom tool names or parameter schemas
+- ⚠️ You're integrating with non-SQL systems (REST API, GraphQL, LDAP)
+- ⚠️ You need parameter/result transformation
+- ⚠️ You require custom authorization logic beyond roles
+
+**See [TOOL-FACTORIES.md](TOOL-FACTORIES.md) for detailed comparison and decision guide.**
+
+### Built-in Tools Example (10 lines)
+
+```typescript
+import { getAllToolFactories } from 'fastmcp-oauth-obo';
+
+// Register all built-in tools (sql-delegate, health-check, user-info)
+const toolFactories = getAllToolFactories();
+for (const factory of toolFactories) {
+  const tool = factory(coreContext);
+  server.addTool({
+    name: tool.name,
+    description: tool.schema.description || tool.name,
+    parameters: tool.schema,
+    execute: tool.handler,
+    canAccess: tool.canAccess
+  });
+}
+```
+
+**Benefits:**
+- ✅ 97% less code (10 lines vs 300+ lines for custom tools)
+- ✅ Production-tested security and error handling
+- ✅ Token exchange and audit logging included
+- ✅ Framework updates without code changes
+
+**If built-in tools don't fit your needs, continue with this guide to create custom tools using the factory pattern or custom delegation modules.**
+
+---
+
 ## Table of Contents
 
 - [Quick Start: Custom Delegation Module](#quick-start-custom-delegation-module)
@@ -130,18 +179,26 @@ const server = new MCPOAuthServer({
   configPath: './config.json',
 });
 
-// Register custom module
+// Register custom module BEFORE starting server
 const myApiModule = new MyAPIDelegationModule();
-await server.start();
-
-// Get CoreContext and register module
-const coreContext = server.getCoreContext();
-coreContext.delegationRegistry.register(myApiModule);
 await myApiModule.initialize({
   baseUrl: 'https://api.myservice.com',
   apiKey: process.env.MY_API_KEY!,
 });
+
+// Start server (this automatically initializes AuthenticationService)
+await server.start();
+
+// Get CoreContext and register module AFTER starting
+const coreContext = server.getCoreContext();
+coreContext.delegationRegistry.register(myApiModule);
 ```
+
+⚠️ **IMPORTANT:** If you're using manual wiring instead of `MCPOAuthServer`, you MUST call:
+```typescript
+await coreContext.authService.initialize();
+```
+after `buildCoreContext()` to download JWKS keys. See [Manual Initialization](#manual-initialization) section below.
 
 ### Step 3: Create Tool Using Factory
 
@@ -762,6 +819,120 @@ const tool = createDelegationTool<typeof paramsSchema>('my-api', {
   // ...
 }, coreContext);
 ```
+
+---
+
+## Manual Initialization
+
+If you're using **manual wiring** instead of the `MCPOAuthServer` wrapper, you must explicitly initialize the `AuthenticationService` after building the `CoreContext`.
+
+### Problem: "JWT validator not initialized" Error
+
+When you see this error:
+```
+[MCPAuthMiddleware] ❌ Authentication error (statusCode: 500):
+JWT validator not initialized. Call initialize() first.
+```
+
+It means the `AuthenticationService` hasn't downloaded JWKS keys from your identity provider.
+
+### Solution: Call initialize()
+
+```typescript
+import {
+  ConfigManager,
+  ConfigOrchestrator,
+  MCPAuthMiddleware
+} from 'fastmcp-oauth-obo';
+import { FastMCP } from 'fastmcp';
+
+async function main() {
+  // 1. Load configuration
+  const configManager = new ConfigManager();
+  await configManager.loadConfig('./config/unified-config.json');
+
+  // 2. Build CoreContext
+  const orchestrator = new ConfigOrchestrator({
+    configManager,
+    enableAudit: true
+  });
+
+  const coreContext = await orchestrator.buildCoreContext();
+
+  // ⚠️ CRITICAL: Initialize AuthenticationService
+  await coreContext.authService.initialize();
+
+  // 3. Create middleware (now ready to validate JWTs)
+  const middleware = new MCPAuthMiddleware(coreContext.authService);
+
+  const server = new FastMCP({
+    name: 'My MCP Server',
+    version: '1.0.0',
+    authenticate: middleware.authenticate.bind(middleware)
+  });
+
+  // 4. Register tools and start server
+  await server.start({ /* ... */ });
+}
+```
+
+### What Does initialize() Do?
+
+The `initialize()` method:
+
+1. **Downloads JWKS keys** from your IDP's `.well-known/jwks.json` endpoint
+2. **Caches public keys** for RS256/ES256 JWT signature verification
+3. **Validates IDP configuration** (HTTPS endpoints, trusted issuers)
+4. **Prepares rate limiting** for JWKS refresh operations
+
+Without initialization, the JWT validator cannot verify token signatures, causing all authentication attempts to fail.
+
+### When is Initialization Automatic?
+
+**Automatic initialization occurs when:**
+- Using `MCPOAuthServer` wrapper → Calls `initialize()` during `start()`
+- Using `examples/simple-server.ts` → Handled by wrapper
+
+**Manual initialization required when:**
+- Using `ConfigOrchestrator.buildCoreContext()` directly
+- Using `examples/full-mcp-server.ts` pattern
+- Creating custom server architectures
+- Testing delegation modules in isolation
+
+### Debugging Initialization Issues
+
+If initialization fails, check:
+
+1. **IDP JWKS endpoint is reachable:**
+   ```bash
+   curl https://auth.example.com/.well-known/jwks.json
+   ```
+
+2. **Configuration has valid JWKS URI:**
+   ```json
+   {
+     "auth": {
+       "trustedIDPs": [{
+         "issuer": "https://auth.example.com",
+         "jwksUri": "https://auth.example.com/.well-known/jwks.json"
+       }]
+     }
+   }
+   ```
+
+3. **HTTPS is used (not HTTP):**
+   ```typescript
+   // ✅ Good: HTTPS endpoint
+   jwksUri: "https://auth.example.com/.well-known/jwks.json"
+
+   // ❌ Bad: HTTP endpoint (insecure, rejected by framework)
+   jwksUri: "http://auth.example.com/.well-known/jwks.json"
+   ```
+
+4. **Network connectivity:**
+   - Check firewall rules
+   - Verify DNS resolution
+   - Test from server's network context (not your workstation)
 
 ---
 

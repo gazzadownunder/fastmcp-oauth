@@ -57,6 +57,12 @@ async function main() {
 
   console.log('✓ CoreContext initialized and validated');
 
+  // 3.5. ⚠️ CRITICAL: Initialize AuthenticationService to download JWKS keys
+  // This step is REQUIRED for JWT validation. Without it, all authentication will fail.
+  await coreContext.authService.initialize();
+
+  console.log('✓ AuthenticationService initialized (JWKS keys downloaded)');
+
   // 4. Create FastMCP server with authentication middleware
   const mcpMiddleware = new MCPAuthMiddleware(coreContext.authService);
 

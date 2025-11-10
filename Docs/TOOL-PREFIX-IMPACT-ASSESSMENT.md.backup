@@ -1,0 +1,665 @@
+# Tool Prefix Configuration Option - Impact Assessment
+
+## Executive Summary
+
+**Proposal:** Add `toolPrefix` as a configuration file option under delegation modules to simplify multi-database deployments.
+
+**Current Approach:** Tool prefixes are specified in code via `createSQLToolsForModule({ toolPrefix, moduleName })`.
+
+**Proposed Approach:** Tool prefixes are specified in `config.json` per delegation module.
+
+**Recommendation:** ✅ **Implement with Option B (Per-Module Configuration)**
+
+**Impact:** Medium complexity, high developer experience benefit, maintains backward compatibility.
+
+---
+
+## Current Implementation Analysis
+
+### How Tool Prefixes Work Today
+
+**Code-Based Configuration** ([examples/multi-database-example.ts:83-91](examples/multi-database-example.ts#L83-L91)):
+
+```typescript
+// Developer must calculate tool prefix in code
+const toolPrefix = moduleName === 'postgresql' ? 'sql' : moduleName.replace('postgresql', 'sql');
+
+const sqlTools = createSQLToolsForModule({
+  toolPrefix,           // ← Specified in code
+  moduleName,
+  descriptionSuffix,
+});
+
+server.registerTools(sqlTools.map(factory => factory(coreContext)));
+```
+
+**Problems with Current Approach:**
+
+1. **Boilerplate code required** - Every multi-database deployment must write tool registration logic
+2. **Prefix logic duplicated** - String transformation (`moduleName.replace('postgresql', 'sql')`) repeated in every project
+3. **Code changes for prefix updates** - Changing tool names requires code modification and rebuild
+4. **Inconsistent naming** - No enforced naming convention across projects
+
+---
+
+## Proposed Configuration Schema
+
+### Option A: Global Delegation Prefix (NOT RECOMMENDED)
+
+```json
+{
+  "delegation": {
+    "toolPrefix": "myprefix",  // ← Global prefix affects ALL modules
+    "modules": {
+      "postgresql1": { ... },
+      "postgresql2": { ... }
+    }
+  }
+}
+```
+
+**Result:** `myprefix-delegate`, `myprefix-schema`, `myprefix-table-details` (only one set of tools)
+
+**Problems:**
+- ❌ Defeats the purpose of multi-database support
+- ❌ All modules share same tool names (collisions!)
+- ❌ Cannot distinguish between databases
+
+---
+
+### Option B: Per-Module Tool Prefix (RECOMMENDED)
+
+```json
+{
+  "delegation": {
+    "modules": {
+      "postgresql1": {
+        "toolPrefix": "sql1",  // ← Per-module prefix
+        "host": "db1.company.com",
+        "database": "hr_database",
+        // ... other PostgreSQL config
+      },
+      "postgresql2": {
+        "toolPrefix": "sql2",  // ← Different prefix for second database
+        "host": "db2.company.com",
+        "database": "sales_database",
+        // ... other PostgreSQL config
+      },
+      "mssql1": {
+        "toolPrefix": "legacy",  // ← Custom prefix for legacy database
+        "server": "legacy.company.com",
+        "database": "old_system"
+      }
+    }
+  }
+}
+```
+
+**Result:**
+- Database 1: `sql1-delegate`, `sql1-schema`, `sql1-table-details`
+- Database 2: `sql2-delegate`, `sql2-schema`, `sql2-table-details`
+- Legacy DB: `legacy-delegate`, `legacy-schema`, `legacy-table-details`
+
+**Benefits:**
+- ✅ Each module has unique, configurable tool names
+- ✅ Clear separation between databases
+- ✅ Flexible naming (can use business terms like "hr", "sales", "legacy")
+- ✅ Configuration-only changes (no code rebuild needed)
+
+---
+
+### Option C: Global Default + Per-Module Override (MOST FLEXIBLE)
+
+```json
+{
+  "delegation": {
+    "defaultToolPrefix": "sql",  // ← Global default
+    "modules": {
+      "postgresql1": {
+        // No toolPrefix → uses "sql" (default)
+        "host": "db1.company.com",
+        "database": "main_database"
+      },
+      "postgresql2": {
+        "toolPrefix": "hr",  // ← Override default
+        "host": "db2.company.com",
+        "database": "hr_database"
+      },
+      "postgresql3": {
+        "toolPrefix": "sales",  // ← Override default
+        "host": "db3.company.com",
+        "database": "sales_database"
+      }
+    }
+  }
+}
+```
+
+**Result:**
+- Database 1: `sql-delegate`, `sql-schema`, `sql-table-details` (default)
+- Database 2: `hr-delegate`, `hr-schema`, `hr-table-details` (override)
+- Database 3: `sales-delegate`, `sales-schema`, `sales-table-details` (override)
+
+**Benefits:**
+- ✅ Backward compatible (default "sql" matches current behavior)
+- ✅ Single database case doesn't require toolPrefix config
+- ✅ Multi-database deployments can override per module
+- ✅ Clearest intent (explicit is better than implicit)
+
+---
+
+## Schema Changes Required
+
+### 1. Update PostgreSQLConfigSchema
+
+**File:** [src/config/schemas/delegation.ts:153-190](src/config/schemas/delegation.ts#L153-L190)
+
+**Current Schema:**
+```typescript
+export const PostgreSQLConfigSchema = z.object({
+  host: z.string().min(1).describe('PostgreSQL hostname or IP'),
+  port: z.number().int().min(1).max(65535).optional().default(5432),
+  database: z.string().min(1).describe('Database name'),
+  user: z.string().min(1).describe('Service account username'),
+  password: z.string().min(1).describe('Service account password'),
+  options: z.object({ ... }).optional(),
+  pool: z.object({ ... }).optional(),
+  tokenExchange: TokenExchangeConfigSchema.optional(),
+});
+```
+
+**Proposed Schema (Option B - Per-Module):**
+```typescript
+export const PostgreSQLConfigSchema = z.object({
+  toolPrefix: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(/^[a-z][a-z0-9-]*$/, 'Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens')
+    .optional()
+    .describe('Tool name prefix (e.g., "sql1", "hr", "sales"). If not specified, uses module name.'),
+
+  host: z.string().min(1).describe('PostgreSQL hostname or IP'),
+  port: z.number().int().min(1).max(65535).optional().default(5432),
+  database: z.string().min(1).describe('Database name'),
+  user: z.string().min(1).describe('Service account username'),
+  password: z.string().min(1).describe('Service account password'),
+  options: z.object({ ... }).optional(),
+  pool: z.object({ ... }).optional(),
+  tokenExchange: TokenExchangeConfigSchema.optional(),
+});
+```
+
+**Proposed Schema (Option C - Global Default + Per-Module Override):**
+```typescript
+export const DelegationConfigSchema = z.object({
+  defaultToolPrefix: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(/^[a-z][a-z0-9-]*$/)
+    .optional()
+    .default('sql')
+    .describe('Default tool prefix for all modules (default: "sql"). Modules can override this.'),
+
+  modules: z
+    .record(z.any())
+    .optional()
+    .describe('Delegation module configurations keyed by module name'),
+  // ... rest of schema
+});
+
+export const PostgreSQLConfigSchema = z.object({
+  toolPrefix: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(/^[a-z][a-z0-9-]*$/)
+    .optional()
+    .describe('Tool name prefix (e.g., "sql1", "hr", "sales"). Overrides delegation.defaultToolPrefix.'),
+
+  // ... rest of schema unchanged
+});
+```
+
+### 2. Add toolPrefix to Other Module Schemas
+
+Same change needed for:
+- `SQLConfigSchema` (MSSQL delegation) - [delegation.ts:99-119](src/config/schemas/delegation.ts#L99-L119)
+- Any future delegation module schemas (REST API, LDAP, etc.)
+
+---
+
+## Code Impact Analysis
+
+### 1. MCPOAuthServer.start() Method
+
+**File:** [src/mcp/server.ts:376-567](src/mcp/server.ts#L376-L567)
+
+**Current Logic (lines 424-440):**
+```typescript
+// 8. Register enabled tools
+const enabledTools = mcpConfig?.enabledTools || {};
+const enabledToolNames = Object.keys(enabledTools);
+const hasCustomSqlTools = enabledToolNames.some(
+  (name) => /^sql\d+-/.test(name) // Matches sql1-, sql2-, etc.
+);
+
+const toolFactories = getAllToolFactories({ excludeSqlTools: hasCustomSqlTools });
+```
+
+**Proposed Logic (Option B - Per-Module):**
+```typescript
+// 8. Register enabled tools
+const enabledTools = mcpConfig?.enabledTools || {};
+
+// 8a. Check if user is registering custom SQL tools after start()
+// If so, exclude default SQL tools from automatic registration
+const enabledToolNames = Object.keys(enabledTools);
+const hasCustomSqlTools = enabledToolNames.some(
+  (name) => /^sql\d+-/.test(name) // Matches sql1-, sql2-, etc.
+);
+
+// 8b. Auto-register SQL tools from delegation.modules if toolPrefix is configured
+const delegationConfig = this.configManager.getDelegationConfig();
+const autoRegisterSqlTools: ToolRegistration[] = [];
+
+if (delegationConfig?.modules) {
+  for (const [moduleName, moduleConfig] of Object.entries(delegationConfig.modules)) {
+    // Check if module is a SQL module (postgresql, mssql, etc.)
+    const isSqlModule = moduleName.startsWith('postgresql') || moduleName.startsWith('mssql');
+
+    if (isSqlModule && moduleConfig.toolPrefix) {
+      console.log(`[MCP OAuth Server] Auto-registering SQL tools for ${moduleName} with prefix '${moduleConfig.toolPrefix}'`);
+
+      const sqlTools = createSQLToolsForModule({
+        toolPrefix: moduleConfig.toolPrefix,
+        moduleName,
+        descriptionSuffix: moduleConfig._comment || `(${moduleConfig.database})`,
+      });
+
+      autoRegisterSqlTools.push(...sqlTools.map(factory => factory(this.coreContext!)));
+    }
+  }
+}
+
+// 8c. Get default tool factories (exclude SQL if custom tools will be registered)
+const toolFactories = getAllToolFactories({
+  excludeSqlTools: hasCustomSqlTools || autoRegisterSqlTools.length > 0
+});
+
+// 8d. Register auto-generated SQL tools first
+for (const tool of autoRegisterSqlTools) {
+  this.registerTool(tool);
+}
+```
+
+**Backward Compatibility:**
+- If `toolPrefix` is NOT configured → behavior unchanged (existing code continues to work)
+- If `toolPrefix` IS configured → automatic tool registration happens
+- Existing manual registration still works (for advanced use cases)
+
+### 2. Example Code Simplification
+
+**Before (58 lines with boilerplate):**
+```typescript
+// examples/multi-database-example.ts
+async function main() {
+  const server = new MCPOAuthServer(CONFIG_PATH);
+  await server.start({ transport: 'httpStream', port: SERVER_PORT });
+
+  const coreContext = server.getCoreContext();
+  const delegationConfig = coreContext.configManager.getDelegationConfig();
+
+  // Find all PostgreSQL modules
+  const postgresModules = Object.keys(delegationConfig?.modules || {}).filter(
+    key => key.startsWith('postgresql')
+  );
+
+  // Register each module manually
+  for (const moduleName of postgresModules) {
+    const moduleConfig = delegationConfig.modules[moduleName];
+
+    // Create and initialize PostgreSQL module
+    const pgModule = new PostgreSQLDelegationModule(moduleName);
+    await pgModule.initialize(moduleConfig);
+    await server.registerDelegationModule(moduleName, pgModule);
+
+    // Calculate tool prefix (boilerplate!)
+    const toolPrefix = moduleName === 'postgresql' ? 'sql' : moduleName.replace('postgresql', 'sql');
+
+    // Create SQL tools for this module
+    const sqlTools = createSQLToolsForModule({
+      toolPrefix,
+      moduleName,
+      descriptionSuffix: moduleConfig._comment || '',
+    });
+
+    // Register tools with MCP server
+    server.registerTools(sqlTools.map(factory => factory(coreContext)));
+  }
+
+  await new Promise(() => {});
+}
+```
+
+**After (15 lines, 73% reduction):**
+```typescript
+// examples/multi-database-example.ts
+async function main() {
+  // Tool prefixes configured in config.json!
+  // No manual tool registration needed!
+  const server = new MCPOAuthServer(CONFIG_PATH);
+  await server.start({
+    transport: 'httpStream',
+    port: SERVER_PORT
+  });
+
+  console.log('Server ready with auto-registered SQL tools!');
+
+  await new Promise(() => {});
+}
+```
+
+**Configuration File ([test-harness/config/dual-postgresql-config.json](test-harness/config/dual-postgresql-config.json)):**
+```json
+{
+  "delegation": {
+    "modules": {
+      "postgresql1": {
+        "toolPrefix": "sql1",
+        "host": "db1.company.com",
+        "database": "hr_database",
+        "_comment": "HR Database"
+      },
+      "postgresql2": {
+        "toolPrefix": "sql2",
+        "host": "db2.company.com",
+        "database": "sales_database",
+        "_comment": "Sales Database"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Backward Compatibility Strategy
+
+### Phase 1: Add Configuration Support (Non-Breaking)
+
+**Release:** v2.2.0
+
+**Changes:**
+1. Add `toolPrefix` field to `PostgreSQLConfigSchema` (optional)
+2. Add `defaultToolPrefix` field to `DelegationConfigSchema` (optional, default: "sql")
+3. Add auto-registration logic to `MCPOAuthServer.start()`
+4. Update documentation with new configuration examples
+
+**Backward Compatibility:**
+- ✅ Existing configurations without `toolPrefix` continue to work (manual registration required)
+- ✅ Existing code using `createSQLToolsForModule()` works unchanged
+- ✅ No breaking changes to public APIs
+
+**Migration Path:**
+- Optional: Users can migrate to config-based approach when convenient
+- No forced migration required
+
+### Phase 2: Deprecate Code-Based Prefixes (Future)
+
+**Release:** v3.0.0 (breaking change)
+
+**Changes:**
+1. Mark manual `createSQLToolsForModule()` calls as deprecated
+2. Add deprecation warnings to documentation
+3. Remove from examples (show config-based approach only)
+
+**Migration Guide:**
+```typescript
+// ❌ Deprecated (still works, but discouraged)
+const sqlTools = createSQLToolsForModule({ toolPrefix: 'sql1', moduleName: 'postgresql1' });
+server.registerTools(sqlTools.map(factory => factory(coreContext)));
+
+// ✅ Recommended (config-based)
+// Add to config.json:
+// "delegation": { "modules": { "postgresql1": { "toolPrefix": "sql1", ... } } }
+// Framework auto-registers tools on server.start()
+```
+
+---
+
+## Benefits Analysis
+
+### Developer Experience Benefits
+
+| Metric | Current Approach | Config-Based Approach | Improvement |
+|--------|------------------|----------------------|-------------|
+| Lines of code (multi-DB setup) | 58 lines | 15 lines | **73% reduction** |
+| Configuration changes | Code change + rebuild | Config file edit only | **Zero code changes** |
+| Deployment complexity | High (code + config) | Low (config only) | **Simpler deployments** |
+| Learning curve | Must understand factories + registry | Declarative configuration | **Lower barrier to entry** |
+| Error prone | String manipulation bugs | Schema validated | **Fewer runtime errors** |
+| Consistency | No enforcement | Regex validation | **Enforced naming convention** |
+
+### Production Operations Benefits
+
+**Configuration-Only Updates:**
+- Change tool prefix without rebuilding application
+- Hot-reload configuration (if framework supports it)
+- A/B testing with different tool naming schemes
+
+**Audit Trail:**
+- Tool naming strategy visible in config file (version controlled)
+- No need to inspect code to understand tool names
+- Clear mapping between module names and tool names
+
+**Multi-Environment Support:**
+```json
+// config/dev.json
+{ "delegation": { "modules": { "postgresql1": { "toolPrefix": "dev-sql" } } } }
+
+// config/staging.json
+{ "delegation": { "modules": { "postgresql1": { "toolPrefix": "staging-sql" } } } }
+
+// config/prod.json
+{ "delegation": { "modules": { "postgresql1": { "toolPrefix": "sql" } } } }
+```
+
+---
+
+## Drawbacks and Risks
+
+### Drawbacks
+
+1. **Configuration complexity increases** - More fields in config schema
+2. **Dual configuration locations** - Tool naming split between code and config (during migration period)
+3. **Magic behavior** - Auto-registration may surprise developers used to explicit registration
+
+### Mitigation Strategies
+
+**For Configuration Complexity:**
+- Provide clear documentation with examples
+- Use schema validation to catch errors early
+- Provide default values (`defaultToolPrefix: "sql"`)
+
+**For Dual Configuration:**
+- Clear migration guide
+- Deprecation warnings for code-based approach
+- Examples show config-based approach only (after v2.2.0)
+
+**For Magic Behavior:**
+- Detailed logging showing auto-registered tools
+- Explicit opt-out mechanism (don't configure `toolPrefix` → manual registration required)
+- Documentation explains both approaches
+
+---
+
+## Implementation Plan
+
+### Phase 1: Schema Changes (1-2 days)
+
+**Tasks:**
+1. Update `PostgreSQLConfigSchema` to add `toolPrefix` field (optional)
+2. Update `DelegationConfigSchema` to add `defaultToolPrefix` field (optional, default: "sql")
+3. Update `SQLConfigSchema` (MSSQL) with same changes
+4. Add regex validation for tool prefix format (`^[a-z][a-z0-9-]*$`)
+5. Write unit tests for schema validation
+
+**Files to modify:**
+- [src/config/schemas/delegation.ts](src/config/schemas/delegation.ts)
+- Add tests: `tests/unit/config/schemas/delegation.test.ts`
+
+### Phase 2: Auto-Registration Logic (2-3 days)
+
+**Tasks:**
+1. Update `MCPOAuthServer.start()` to detect configured `toolPrefix` fields
+2. Add auto-registration logic for SQL tools with configured prefixes
+3. Add logging to show auto-registered tools
+4. Handle edge cases:
+   - Module with `toolPrefix` but no delegation module registered
+   - Duplicate tool names (should error with clear message)
+   - Mix of auto-registered and manually registered tools
+
+**Files to modify:**
+- [src/mcp/server.ts](src/mcp/server.ts) (lines 424-520)
+- Add tests: `tests/unit/mcp/server-auto-registration.test.ts`
+
+### Phase 3: Documentation Updates (1 day)
+
+**Tasks:**
+1. Update [Docs/CONFIGURATION.md](Docs/CONFIGURATION.md) with new fields
+2. Update [Docs/MULTI-DATABASE-SETUP.md](Docs/MULTI-DATABASE-SETUP.md) with config-based examples
+3. Update [Docs/TOOL-FACTORIES.md](Docs/TOOL-FACTORIES.md) to show both approaches
+4. Update [README.md](README.md) quick start guide
+5. Add migration guide for existing deployments
+6. Update [examples/multi-database-example.ts](examples/multi-database-example.ts) to show simplified version
+
+**New sections needed:**
+- "Tool Prefix Configuration" in CONFIGURATION.md
+- "Simplified Multi-Database Setup (Config-Based)" in MULTI-DATABASE-SETUP.md
+- "Migration from Code-Based to Config-Based Prefixes" in EXTENDING.md
+
+### Phase 4: Testing (1-2 days)
+
+**Test Cases:**
+1. Single PostgreSQL module with `toolPrefix` → 3 tools registered
+2. Multiple PostgreSQL modules with different `toolPrefix` values → unique tool names
+3. Module with `toolPrefix` + manual registration → error or warning
+4. Module without `toolPrefix` → no auto-registration (backward compat)
+5. Invalid `toolPrefix` format → schema validation error
+6. Duplicate `toolPrefix` across modules → runtime error with clear message
+7. Mix of auto-registered and manually registered tools → both work
+8. Hot-reload configuration with changed `toolPrefix` → tools updated
+
+**Test Files:**
+- Unit tests: `tests/unit/mcp/server-auto-registration.test.ts`
+- Integration tests: `tests/integration/multi-database-config-based.test.ts`
+
+### Phase 5: Release (1 day)
+
+**Release Checklist:**
+1. Update CHANGELOG.md with new feature
+2. Bump version to v2.2.0
+3. Create release notes with migration guide
+4. Update npm package documentation
+5. Announce in GitHub discussions/Discord
+
+---
+
+## Recommendation
+
+✅ **Implement Option C: Global Default + Per-Module Override**
+
+**Reasoning:**
+
+1. **Best backward compatibility** - Default `sql` prefix matches current behavior
+2. **Maximum flexibility** - Single database doesn't need config, multi-database can customize
+3. **Clearest intent** - Explicit is better than implicit
+4. **Future-proof** - Supports both simple and complex deployment scenarios
+
+**Priority:** **HIGH** - This change significantly improves developer experience and reduces boilerplate code for a common use case (multi-database deployments).
+
+**Estimated Effort:** 7-10 days (including testing and documentation)
+
+**Risk Level:** **LOW** - Non-breaking change, optional configuration, clear migration path
+
+---
+
+## Example Configuration Files
+
+### Single Database (No Change Required)
+
+```json
+{
+  "delegation": {
+    "modules": {
+      "postgresql": {
+        "host": "db.company.com",
+        "database": "main",
+        "user": "service_account",
+        "password": "secret"
+      }
+    }
+  }
+}
+```
+
+**Result:** Default `sql-delegate`, `sql-schema`, `sql-table-details` tools (backward compatible)
+
+### Multi-Database (Simplified)
+
+```json
+{
+  "delegation": {
+    "defaultToolPrefix": "sql",
+    "modules": {
+      "postgresql1": {
+        "toolPrefix": "hr",
+        "host": "hr-db.company.com",
+        "database": "hr_system",
+        "_comment": "HR Database"
+      },
+      "postgresql2": {
+        "toolPrefix": "sales",
+        "host": "sales-db.company.com",
+        "database": "sales_system",
+        "_comment": "Sales Database"
+      },
+      "postgresql3": {
+        "toolPrefix": "finance",
+        "host": "finance-db.company.com",
+        "database": "finance_system",
+        "_comment": "Finance Database"
+      }
+    }
+  }
+}
+```
+
+**Result:**
+- `hr-delegate`, `hr-schema`, `hr-table-details`
+- `sales-delegate`, `sales-schema`, `sales-table-details`
+- `finance-delegate`, `finance-schema`, `finance-table-details`
+
+**Code Required:** Just `await server.start()` - 58 lines of boilerplate eliminated!
+
+---
+
+## Conclusion
+
+Adding `toolPrefix` as a configuration option provides:
+
+✅ **73% code reduction** for multi-database deployments
+✅ **Zero code changes** for tool name updates
+✅ **Backward compatible** (optional configuration)
+✅ **Better developer experience** (declarative over imperative)
+✅ **Production-friendly** (config-only updates)
+✅ **Clear migration path** (gradual adoption)
+
+**Recommended Implementation:** Option C (Global Default + Per-Module Override)
+
+**Next Steps:**
+1. Approve this impact assessment
+2. Create implementation tasks
+3. Begin Phase 1 (Schema Changes)

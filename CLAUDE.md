@@ -68,8 +68,11 @@ The framework follows a **layered modular architecture** with strict one-way dep
 - ❌ **NEVER** add SQL or Kerberos dependencies to core `package.json`
 - ✅ **ALWAYS** define CoreContext in `src/core/types.ts`
 - ✅ **ALWAYS** use `ConfigOrchestrator.buildCoreContext()` to create CoreContext
+- ✅ **ALWAYS** call `await coreContext.authService.initialize()` after `buildCoreContext()` (when using manual wiring)
 - ✅ **ALWAYS** validate CoreContext with `CoreContextValidator.validate()`
 - ✅ **ALWAYS** import delegation modules from packages: `@mcp-oauth/sql-delegation`, `@mcp-oauth/kerberos-delegation`
+
+**Critical Initialization Note:** When using manual wiring (not `MCPOAuthServer`), you MUST call `await coreContext.authService.initialize()` after building the CoreContext. This downloads JWKS keys from your IDP. Without this step, JWT validation will fail with "JWT validator not initialized" error. The `MCPOAuthServer` wrapper handles this automatically during `start()`.
 
 ## Dependencies
 
