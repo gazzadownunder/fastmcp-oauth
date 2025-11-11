@@ -154,8 +154,8 @@ export class KerberosDelegationModule implements DelegationModule {
       userId: session.userId,
       legacyUsername: session.legacyUsername,
       sessionId: session.sessionId,
-      hasDelegationToken: !!session.delegationToken,
-      hasCustomClaims: !!session.customClaims,
+      hasDelegationToken: !!(session as any).delegationToken,
+      hasCustomClaims: !!(session as any).customClaims,
     });
     console.log(`[KERBEROS-MODULE:${this.name}] Params:`, params);
 

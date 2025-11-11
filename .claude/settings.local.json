@@ -100,7 +100,9 @@
       "Bash(npm run test:phase3:performance:*)",
       "Bash(iconv:*)",
       "Bash(npm run test:phase3:integration:*)",
-      "Bash(npm run test:coverage:*)"
+      "Bash(npm run test:coverage:*)",
+      "Bash(cp:*)",
+      "Read(//c/Users/gazza/Local Documents/GitHub/**)"
     ],
     "deny": [],
     "ask": []

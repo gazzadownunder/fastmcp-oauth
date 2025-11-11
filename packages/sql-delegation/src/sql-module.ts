@@ -312,7 +312,7 @@ export class SQLDelegationModule implements DelegationModule {
 
         // Perform token exchange to get TE-JWT
         const exchangeResult = await tokenExchangeService.performExchange({
-          requestorJWT,
+          subjectToken: requestorJWT,
           subjectTokenType: 'urn:ietf:params:oauth:token-type:jwt',
           audience: this.tokenExchangeConfig.audience || 'sql-delegation',
           tokenEndpoint: this.tokenExchangeConfig.tokenEndpoint,

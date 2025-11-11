@@ -57,6 +57,7 @@ describe('ConfigManager', () => {
       },
     },
     delegation: {
+      defaultToolPrefix: 'sql', // Added for v2.2.0 compatibility
       sql: {
         server: 'localhost',
         database: 'testdb',

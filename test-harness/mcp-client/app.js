@@ -363,17 +363,37 @@ function loginWithSSO() {
 }
 
 /**
- * Login with MCP OAuth Discovery
- * Discovers OAuth endpoints from MCP server and redirects
- * Force login prompt to bypass SSO cookies (prevents auto-login after logout)
+ * Login with MCP OAuth Discovery (MCP Specification-Compliant)
+ *
+ * Implements the official MCP OAuth 2.1 discovery flow:
+ * 1. Attempt unauthenticated MCP initialize request
+ * 2. Receive 401 with WWW-Authenticate header containing authorization server URL
+ * 3. Fetch protected resource metadata (.well-known/oauth-protected-resource)
+ * 4. Fetch authorization server metadata (.well-known/oauth-authorization-server)
+ * 5. Perform OAuth authorization code flow with PKCE
+ * 6. Retry MCP request with obtained access token
  */
 async function loginWithMCPOAuth() {
     try {
-        // Always force login prompt to prevent auto-login with cached SSO session
-        await authManager.redirectToMCPOAuth(true);
+        log('info', '🔍 Starting MCP OAuth Discovery (MCP Specification-Compliant)...');
+
+        const mcpUrl = `${CONFIG.mcp.baseUrl}${CONFIG.mcp.endpoint}`;
+
+        // Perform discovery
+        const discoveredConfig = await mcpOAuthDiscovery.performDiscovery(mcpUrl);
+
+        if (!discoveredConfig) {
+            log('warning', 'Server does not require authentication');
+            alert('The MCP server does not require OAuth authentication.');
+            return;
+        }
+
+        // Redirect to authorization endpoint
+        await mcpOAuthDiscovery.authorize();
+
     } catch (error) {
         log('error', `MCP OAuth discovery failed: ${error.message}`);
-        alert(`MCP OAuth discovery failed: ${error.message}\n\nMake sure the MCP server is running on ${CONFIG.mcp.baseUrl}`);
+        alert(`MCP OAuth discovery failed: ${error.message}\n\nMake sure the MCP server is running on ${CONFIG.mcp.baseUrl}\n\nError details: ${error.stack || error.message}`);
     }
 }
 
@@ -623,18 +643,45 @@ window.addEventListener('DOMContentLoaded', () => {
 
         console.log('[APP] Logout complete - ready for fresh authentication');
     } else if (code) {
-        // Check for SSO callback (authorization code in URL)
-        log('info', 'SSO callback detected, processing authorization code...');
-        authManager.handleSSOCallback(code)
-            .then(() => {
-                updateAuthUI();
-                updateMCPUI();
-                log('success', 'SSO authentication successful');
-            })
-            .catch(error => {
-                log('error', `SSO callback failed: ${error.message}`);
-                alert(`SSO authentication failed: ${error.message}`);
-            });
+        // Check if this is MCP OAuth Discovery callback or standard SSO callback
+        const isMCPOAuthCallback = sessionStorage.getItem('mcp_oauth_code_verifier');
+
+        if (isMCPOAuthCallback) {
+            // MCP OAuth Discovery callback
+            log('info', 'MCP OAuth Discovery callback detected, exchanging authorization code...');
+            mcpOAuthDiscovery.handleCallback(code)
+                .then((tokenResult) => {
+                    // Store token in authManager for compatibility with existing UI
+                    authManager.setAccessToken(tokenResult.accessToken, tokenResult.claims);
+                    updateAuthUI();
+                    updateMCPUI();
+                    log('success', '✓ MCP OAuth Discovery authentication successful!');
+                    log('info', 'You can now initialize MCP session with the discovered token');
+
+                    // Clear URL parameter
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                })
+                .catch(error => {
+                    log('error', `MCP OAuth callback failed: ${error.message}`);
+                    alert(`MCP OAuth authentication failed: ${error.message}`);
+
+                    // Clear URL parameter even on error
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                });
+        } else {
+            // Standard SSO callback
+            log('info', 'SSO callback detected, processing authorization code...');
+            authManager.handleSSOCallback(code)
+                .then(() => {
+                    updateAuthUI();
+                    updateMCPUI();
+                    log('success', 'SSO authentication successful');
+                })
+                .catch(error => {
+                    log('error', `SSO callback failed: ${error.message}`);
+                    alert(`SSO authentication failed: ${error.message}`);
+                });
+        }
     }
 
     // Initialize UI state

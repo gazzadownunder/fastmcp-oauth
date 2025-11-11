@@ -76,11 +76,11 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "fastmcp": "^3.20.2",
+    "fastmcp": "^3.22.0",
     "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
-    "mcp-proxy": "^5.9.0",
+    "mcp-proxy": "^5.10.0",
     "undici": "^7.13.0",
     "zod": "^3.25.76"
   },
@@ -96,6 +96,7 @@
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitest/coverage-v8": "^2.0.0",
+    "dotenv": "^17.2.3",
     "eslint": "^9.0.0",
     "http-server": "^14.1.1",
     "prettier": "^3.0.0",

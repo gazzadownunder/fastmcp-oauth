@@ -178,17 +178,71 @@ export class MCPAuthMiddleware {
         }
       }
 
-      // Convert to FastMCP auth result with statusCode and WWW-Authenticate header
+      // WORKAROUND: FastMCP doesn't pass oauth config to mcp-proxy, and mcp-proxy doesn't read wwwAuthenticate
+      // from auth results. Solution: Throw a Response object with headers for 401 errors.
+      // mcp-proxy's handleResponseError() reads headers from thrown Response objects.
+      if (error instanceof OAuthSecurityError && error.statusCode === 401) {
+        console.log(
+          '[MCPAuthMiddleware] ❌ Authentication error (401 Unauthorized):',
+          error.message
+        );
+
+        // CRITICAL: Log WWW-Authenticate header generation for OAuth discovery debugging
+        if (wwwAuthenticate) {
+          console.log('[MCPAuthMiddleware] ✓ WWW-Authenticate header generated:', wwwAuthenticate);
+        } else {
+          console.warn(
+            '[MCPAuthMiddleware] ⚠️ WARNING: No WWW-Authenticate header generated for 401 response!'
+          );
+          console.warn(
+            '[MCPAuthMiddleware] This will break MCP OAuth discovery flow. Check coreContext availability.'
+          );
+        }
+
+        // Throw Response object with WWW-Authenticate header
+        // mcp-proxy's handleResponseError() (startHTTPServer.ts:72-96) handles this
+        const headers = new Headers();
+        headers.set('Content-Type', 'application/json');
+
+        // CRITICAL: Add CORS headers for browser-based clients
+        // Without these, browsers will block JavaScript from reading WWW-Authenticate
+        headers.set('Access-Control-Allow-Origin', '*');
+        headers.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Mcp-Session-Id');
+        headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id');
+
+        if (wwwAuthenticate) {
+          headers.set('WWW-Authenticate', wwwAuthenticate);
+          console.log('[MCPAuthMiddleware] ✓ WWW-Authenticate header added to Response error');
+        }
+
+        const responseBody = JSON.stringify({
+          error: {
+            code: -32000,
+            message: error.message,
+          },
+          id: null,
+          jsonrpc: '2.0',
+        });
+
+        throw new Response(responseBody, {
+          status: 401,
+          statusText: 'Unauthorized',
+          headers,
+        });
+      }
+
+      // For non-401 errors, return as auth result
       if (error instanceof OAuthSecurityError) {
         console.log(
           '[MCPAuthMiddleware] ❌ Authentication error (statusCode: ' + error.statusCode + '):',
           error.message
         );
+
         return {
           authenticated: false,
           error: error.message,
           statusCode: error.statusCode,
-          wwwAuthenticate: wwwAuthenticate,
         };
       }
 

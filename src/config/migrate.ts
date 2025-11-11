@@ -104,6 +104,7 @@ export function migrateConfig(oldConfig: LegacyConfig): UnifiedConfig {
     let delegationConfig: DelegationConfig | undefined;
     if (oldConfig.sql || oldConfig.kerberos) {
       delegationConfig = {
+        defaultToolPrefix: 'sql', // Default value for backward compatibility
         modules: {
           ...(oldConfig.sql && { sql: oldConfig.sql }),
           ...(oldConfig.kerberos && { kerberos: oldConfig.kerberos }),

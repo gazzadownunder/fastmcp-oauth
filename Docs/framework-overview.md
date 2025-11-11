@@ -188,6 +188,7 @@ npm install @mcp-oauth/rest-api-delegation  # REST API integration
 - **Dangerous Operation Blocking** - Prevent DROP/CREATE/ALTER/TRUNCATE operations
 - **Audit Logging** - Comprehensive trail of authentication and delegation events
 - **Clock Tolerance** - Configurable tolerance for distributed system time drift
+- **Secure Secrets Management** - Dynamic configuration resolution with provider chain (file mounts, environment variables, cloud vaults)
 
 ---
 
@@ -675,13 +676,13 @@ canAccess: (context) => {
 
 ### Phase Test Results
 
-- **Phase 1** - Core Extension APIs: 11/12 passing (91.7%)
-- **Phase 2** - Token Exchange Context: 8/8 passing (100%)
-- **Phase 3** - Documentation & Examples: Manual validation (100%)
-- **Phase 4** - SQL Delegation Extraction: 11/11 passing (100%)
-- **Phase 4.5** - Kerberos Delegation Extraction: 15/15 passing (100%)
-- **Phase 5** - Additional Delegation Examples: Manual validation (100%)
-- **Phase 6** - Developer Tooling: Tooling complete (100%)
+- Core Extension APIs: 11/12 passing (91.7%)
+- Token Exchange Context: 8/8 passing (100%)
+- Documentation & Examples: Manual validation (100%)
+- SQL Delegation Extraction: 11/11 passing (100%)
+- Kerberos Delegation Extraction: 15/15 passing (100%)
+- Additional Delegation Examples: Manual validation (100%)
+- Developer Tooling: Tooling complete (100%)
 
 ### Security Testing
 
@@ -711,6 +712,8 @@ canAccess: (context) => {
 | **[TESTING.md](../Docs/TESTING.md)** | Testing guide for custom modules | 700+ lines | Complete |
 | **[MULTI-DATABASE-SETUP.md](../Docs/MULTI-DATABASE-SETUP.md)** | Multi-instance PostgreSQL setup guide | 460+ lines | Complete |
 | **[MULTI-REST-API-SETUP.md](../Docs/MULTI-REST-API-SETUP.md)** | Multi-instance REST API setup guide | 500+ lines | Complete |
+| **[SECRETS-MANAGEMENT.md](SECRETS-MANAGEMENT.md)** | Secure secrets management reference design | 1290 lines | Complete |
+| **[CONFIGURATION.md](CONFIGURATION.md)** | Configuration guide with secret management | 1500+ lines | Complete |
 | **[CLAUDE.md](../CLAUDE.md)** | Internal architecture & patterns | 1200+ lines | Complete |
 | **[README.md](../README.md)** | Public-facing documentation | 800+ lines | Complete |
 | **[examples/README.md](../examples/README.md)** | Example usage guidance | 326 lines | Complete |
@@ -796,6 +799,223 @@ canAccess: (context) => {
 - **Fast Rollback** - <5 minutes to disable cache via config
 - **Zero Downtime** - Hot-reload configuration changes
 - **Staging Validation** - Multi-week staging deployment before production
+
+---
+
+## Secure Secrets Management (v3.2+)
+
+### The Problem: Hardcoded Credentials
+
+Traditional configuration management stores sensitive credentials (database passwords, OAuth client secrets, service account passwords) as plaintext in configuration files:
+
+```json
+{
+  "password": "ServicePass123!",           // ❌ Hardcoded secret in Git
+  "clientSecret": "abc123xyz"             // ❌ Committed to version control
+}
+```
+
+**Security Vulnerabilities:**
+- ❌ **Secret Exposure** - Credentials committed to version control (Git history)
+- ❌ **No Auditing** - No tracking of secret access or resolution
+- ❌ **Difficult Rotation** - Requires configuration edits and redeployments
+- ❌ **Configuration Drift** - Different configuration files for dev/test/prod environments
+
+---
+
+### The Solution: Dynamic Secret Resolution
+
+**Provider Chain Architecture** - Configuration files contain logical names only, resolved at runtime from secure sources:
+
+```json
+{
+  "password": { "$secret": "DB_PASSWORD" },           // ✅ Logical name
+  "clientSecret": { "$secret": "OAUTH_CLIENT_SECRET" } // ✅ Resolved at runtime
+}
+```
+
+**Benefits:**
+- ✅ **No Secrets in Git** - Config files contain logical names only
+- ✅ **Production-Ready** - Kubernetes/Docker secret mounts supported
+- ✅ **Fail-Fast Security** - Server won't start with missing secrets
+- ✅ **Audit Logging** - Track which provider resolved each secret
+- ✅ **Zero Code Changes** - Works with existing MCPOAuthServer
+- ✅ **Backward Compatible** - Plain strings still supported
+
+---
+
+### Provider Chain System
+
+**Resolution Priority (highest to lowest):**
+
+1. **FileSecretProvider** - `/run/secrets/` (Kubernetes/Docker mounts)
+   - Most secure (strict file permissions: 0400)
+   - Never exposed in process environment
+   - Recommended for production
+
+2. **EnvProvider** - `process.env` (Environment variables)
+   - Fallback for development (.env files)
+   - Less secure (visible to child processes)
+
+3. **Custom Providers** (optional) - AWS Secrets Manager, Azure Key Vault, HashiCorp Vault
+   - Direct integration with cloud secret vaults
+   - Pluggable architecture (<50 lines of code)
+
+**Resolution Flow:**
+
+```
+Configuration File ({"$secret": "NAME"})
+         ↓
+   SecretResolver
+         ↓
+FileSecretProvider → Check /run/secrets/NAME (Kubernetes/Docker)
+         ↓
+   EnvProvider → Check process.env.NAME (development)
+         ↓
+ Fail-Fast → Server exits if secret not found
+```
+
+---
+
+### Configuration Examples
+
+**Development (.env file):**
+
+```bash
+# .env (never commit!)
+DB_PASSWORD=DevPassword123!
+OAUTH_CLIENT_SECRET=DevClientSecret456
+```
+
+**Production (Kubernetes):**
+
+```bash
+kubectl create secret generic mcp-oauth-secrets \
+  --from-literal=DB_PASSWORD='ProductionPass123!' \
+  --from-literal=OAUTH_CLIENT_SECRET='prod-secret-xyz' \
+  --namespace=default
+```
+
+**Deployment YAML:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-oauth-server
+spec:
+  template:
+    spec:
+      containers:
+      - name: mcp-oauth
+        image: mcp-oauth:latest
+        volumeMounts:
+        - name: secrets
+          mountPath: /run/secrets
+          readOnly: true
+      volumes:
+      - name: secrets
+        secret:
+          secretName: mcp-oauth-secrets
+          items:
+          - key: DB_PASSWORD
+            path: DB_PASSWORD
+            mode: 0400  # Read-only by owner
+```
+
+---
+
+### Custom Secret Providers
+
+**Implement ISecretProvider interface** for AWS, Azure, GCP, HashiCorp Vault:
+
+```typescript
+import { ISecretProvider } from '@mcp-oauth/core/config/secrets';
+
+export class AWSSecretsManagerProvider implements ISecretProvider {
+  async resolve(logicalName: string): Promise<string | undefined> {
+    try {
+      const response = await this.client.send(
+        new GetSecretValueCommand({ SecretId: logicalName })
+      );
+      return response.SecretString;
+    } catch (error) {
+      if (error.name === 'ResourceNotFoundException') {
+        return undefined;  // Try next provider
+      }
+      throw error;  // Fatal error
+    }
+  }
+}
+```
+
+**Register custom provider:**
+
+```typescript
+import { SecretResolver, FileSecretProvider, EnvProvider } from '@mcp-oauth/core/config/secrets';
+
+const secretResolver = new SecretResolver();
+secretResolver.addProvider(new FileSecretProvider('/run/secrets'));
+secretResolver.addProvider(new AWSSecretsManagerProvider('us-east-1'));
+secretResolver.addProvider(new EnvProvider());
+```
+
+---
+
+### Key Features
+
+- **Configuration-Driven** - No hardcoded secret names in framework code
+- **Provider Chain Pattern** - Multiple resolution strategies with priority ordering
+- **Fail-Fast Security** - Missing secrets cause immediate startup failure
+- **Zero-Code Integration** - Works transparently with existing `MCPOAuthServer`
+- **Audit by Default** - All secret resolutions logged to audit trail
+- **Path Traversal Prevention** - FileSecretProvider blocks `../` and absolute paths
+- **Backward Compatible** - Existing plaintext strings continue to work
+
+---
+
+### Security Best Practices
+
+1. **Never Commit Secrets**
+   - ❌ `"password": "ServicePass123!"`
+   - ✅ `"password": { "$secret": "DB_PASSWORD" }`
+
+2. **Use File-Based Secrets in Production**
+   - Priority: File mounts > Cloud providers > Environment variables > Never hardcoded
+
+3. **Restrict File Permissions**
+   ```bash
+   chmod 0400 /run/secrets/*  # Owner read-only
+   ```
+
+4. **Enable Audit Logging**
+   ```json
+   {
+     "auth": {
+       "audit": {
+         "enabled": true,
+         "logAllAttempts": true
+       }
+     }
+   }
+   ```
+
+5. **Rotate Secrets Regularly**
+   ```bash
+   kubectl create secret generic mcp-oauth-secrets \
+     --from-literal=DB_PASSWORD='NewPassword456!' \
+     --dry-run=client -o yaml | kubectl apply -f -
+
+   kubectl rollout restart deployment/mcp-oauth-server
+   ```
+
+---
+
+### Documentation
+
+- **[SECRETS-MANAGEMENT.md](SECRETS-MANAGEMENT.md)** - Complete reference design and implementation guide
+- **[CONFIGURATION.md](CONFIGURATION.md#secret-management-v32)** - User-facing configuration documentation
+- **Test Coverage** - 72/72 tests passing (100%), >95% code coverage
 
 ---
 
@@ -1101,9 +1321,7 @@ The framework includes two comprehensive web-based testing tools for validating 
 
 ## Production Status: Ready & Actively Maintained
 
-**Current Status:** Production-Ready (v3.2) | **Actively Maintained** | **Battle-Tested**
-
-**Development Timeline:** January 21, 2025 → October 21, 2025 (9 months)
+**Current Status:** Production-Ready | **Actively Maintained** | **Battle-Tested**
 
 **Achievement Summary:**
 - ✅ All 6 development phases completed (100%)

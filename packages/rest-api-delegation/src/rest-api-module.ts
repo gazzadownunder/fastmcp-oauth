@@ -305,6 +305,20 @@ export class RestAPIDelegationModule implements DelegationModule {
   }
 
   /**
+   * Validate that a session has access to this module
+   */
+  async validateAccess(session: UserSession): Promise<boolean> {
+    // Basic validation: session must exist and have userId
+    if (!session || !session.userId) {
+      return false;
+    }
+
+    // Allow access for all authenticated users by default
+    // Subclasses can override for more specific access control
+    return true;
+  }
+
+  /**
    * Health check - verify API is accessible
    */
   async healthCheck(): Promise<boolean> {

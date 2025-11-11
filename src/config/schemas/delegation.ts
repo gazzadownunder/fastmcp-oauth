@@ -10,6 +10,48 @@
 import { z } from 'zod';
 
 // ============================================================================
+// Secret Descriptor (Dynamic Configuration Resolution)
+// ============================================================================
+
+/**
+ * Secret descriptor for secure configuration management
+ *
+ * Instead of storing plaintext secrets in config files, use this descriptor
+ * to reference a logical secret name. The SecretResolver will resolve the
+ * actual value at runtime from files, environment variables, or cloud vaults.
+ *
+ * @example
+ * ```json
+ * {
+ *   "password": {
+ *     "$secret": "DB_PASSWORD"
+ *   }
+ * }
+ * ```
+ *
+ * @see Docs/SECRETS-MANAGEMENT.md
+ */
+export const SecretDescriptorSchema = z.object({
+  $secret: z
+    .string()
+    .min(1)
+    .describe('Logical secret name for runtime resolution (e.g., "DB_PASSWORD", "OAUTH_CLIENT_SECRET")'),
+});
+
+/**
+ * Helper to create a union type for string or secret descriptor
+ *
+ * Use this for any configuration field that may contain sensitive data.
+ *
+ * @example
+ * ```typescript
+ * password: SecretOrString
+ * // Allows: "plaintext" OR {"$secret": "DB_PASSWORD"}
+ * ```
+ */
+export const SecretOrString = z.union([z.string().min(1), SecretDescriptorSchema]);
+
+// ============================================================================
 // Token Exchange Configuration (RFC 8693)
 // ============================================================================
 
@@ -44,7 +86,9 @@ export const TokenExchangeConfigSchema = z.object({
     )
     .describe('IDP token endpoint URL (HTTPS required in production)'),
   clientId: z.string().min(1).describe('Client ID for token exchange'),
-  clientSecret: z.string().min(1).describe('Client secret for token exchange'),
+  clientSecret: SecretOrString.describe(
+    'Client secret for token exchange (supports secret descriptor for secure resolution)'
+  ),
   audience: z.string().optional().describe('Expected audience for delegation tokens'),
   resource: z.string().optional().describe('Resource identifier'),
   scope: z
@@ -97,6 +141,16 @@ export const TokenExchangeConfigSchema = z.object({
  * Used by SQLDelegationModule for EXECUTE AS USER delegation.
  */
 export const SQLConfigSchema = z.object({
+  toolPrefix: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(
+      /^[a-z][a-z0-9-]*$/,
+      'Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens'
+    )
+    .optional()
+    .describe('Tool name prefix (e.g., "sql1", "hr", "legacy"). Overrides delegation.defaultToolPrefix.'),
   server: z.string().min(1).describe('SQL Server hostname or IP'),
   database: z.string().min(1).describe('Database name'),
   options: z
@@ -116,6 +170,9 @@ export const SQLConfigSchema = z.object({
     })
     .passthrough()
     .describe('SQL Server connection options'),
+  tokenExchange: TokenExchangeConfigSchema.optional().describe(
+    'Per-module token exchange configuration (performs exchange during delegation)'
+  ),
 });
 
 // ============================================================================
@@ -128,6 +185,16 @@ export const SQLConfigSchema = z.object({
  * Used by KerberosDelegationModule for S4U2Self/S4U2Proxy delegation.
  */
 export const KerberosConfigSchema = z.object({
+  toolPrefix: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(
+      /^[a-z][a-z0-9-]*$/,
+      'Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens'
+    )
+    .optional()
+    .describe('Tool name prefix (e.g., "file-browse", "kerberos"). Overrides delegation.defaultToolPrefix.'),
   serviceAccount: z
     .string()
     .min(1)
@@ -139,6 +206,9 @@ export const KerberosConfigSchema = z.object({
     .array(z.string())
     .optional()
     .describe('Allowed Service Principal Names for delegation'),
+  tokenExchange: TokenExchangeConfigSchema.optional().describe(
+    'Per-module token exchange configuration (performs exchange during delegation)'
+  ),
 });
 
 // ============================================================================
@@ -151,11 +221,23 @@ export const KerberosConfigSchema = z.object({
  * Used by PostgreSQLDelegationModule for SET ROLE delegation.
  */
 export const PostgreSQLConfigSchema = z.object({
+  toolPrefix: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(
+      /^[a-z][a-z0-9-]*$/,
+      'Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens'
+    )
+    .optional()
+    .describe('Tool name prefix (e.g., "sql1", "hr-sql", "sales"). Overrides delegation.defaultToolPrefix.'),
   host: z.string().min(1).describe('PostgreSQL hostname or IP'),
   port: z.number().int().min(1).max(65535).optional().default(5432).describe('PostgreSQL port'),
   database: z.string().min(1).describe('Database name'),
   user: z.string().min(1).describe('Service account username'),
-  password: z.string().min(1).describe('Service account password'),
+  password: SecretOrString.describe(
+    'Service account password (supports secret descriptor for secure resolution)'
+  ),
   options: z
     .object({
       ssl: z.boolean().optional().default(false).describe('Enable SSL/TLS connection'),
@@ -200,6 +282,17 @@ export const PostgreSQLConfigSchema = z.object({
  * Used by DelegationRegistry to configure delegation modules.
  */
 export const DelegationConfigSchema = z.object({
+  defaultToolPrefix: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(
+      /^[a-z][a-z0-9-]*$/,
+      'Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens'
+    )
+    .optional()
+    .default('sql')
+    .describe('Default tool prefix for all modules (default: "sql"). Modules can override this with their own toolPrefix.'),
   modules: z
     .record(z.any())
     .optional()
@@ -215,6 +308,7 @@ export const DelegationConfigSchema = z.object({
 // TypeScript Types
 // ============================================================================
 
+export type SecretDescriptor = z.infer<typeof SecretDescriptorSchema>;
 export type TokenExchangeConfig = z.infer<typeof TokenExchangeConfigSchema>;
 export type SQLConfig = z.infer<typeof SQLConfigSchema>;
 export type PostgreSQLConfig = z.infer<typeof PostgreSQLConfigSchema>;

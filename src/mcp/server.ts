@@ -21,10 +21,17 @@ import { FastMCP } from 'fastmcp';
 import { ConfigManager } from '../config/manager.js';
 import { ConfigOrchestrator } from './orchestrator.js';
 import { MCPAuthMiddleware } from './middleware.js';
-import { getAllToolFactories } from './tools/index.js';
+import {
+  getAllToolFactories,
+  createSQLToolsForModule,
+  createRESTAPIToolsForModule,
+  type SQLToolsConfig,
+  type RESTAPIToolsConfig,
+} from './tools/index.js';
 import type { CoreContext } from '../core/index.js';
 import type { MCPStartOptions, MCPContext, ToolRegistration } from './types.js';
 import type { DelegationModule } from '../delegation/base.js';
+import type { ToolFactory } from './types.js';
 
 /**
  * MCP OAuth Server
@@ -399,8 +406,8 @@ export class MCPOAuthServer {
     ConfigOrchestrator.validateCoreContext(this.coreContext);
     console.log('[MCP OAuth Server] ✓ CoreContext validated');
 
-    // 5. Create authentication middleware
-    const authMiddleware = new MCPAuthMiddleware(this.coreContext.authService);
+    // 5. Create authentication middleware with CoreContext (required for WWW-Authenticate header generation)
+    const authMiddleware = new MCPAuthMiddleware(this.coreContext.authService, this.coreContext);
 
     // 6. Determine transport and port (needed for OAuth config)
     const transport = options.transport || mcpConfig?.transport || 'httpStream';
@@ -411,14 +418,115 @@ export class MCPOAuthServer {
     const serverVersion = (mcpConfig?.version || '2.0.0') as `${number}.${number}.${number}`;
 
     console.log(`[MCP OAuth Server] Creating FastMCP server: ${serverName} v${serverVersion}`);
+
+    // Wrap authenticate callback to add CORS headers to all responses (including errors)
+    // CRITICAL: mcp-proxy doesn't add CORS headers to error responses, so we must do it here
+    const authenticateWithCORS = async (request: any) => {
+      try {
+        return await authMiddleware.authenticate(request);
+      } catch (error) {
+        // If middleware throws a Response object, add CORS headers
+        if (error instanceof Response) {
+          const headers = new Headers(error.headers);
+          headers.set('Access-Control-Allow-Origin', '*');
+          headers.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Mcp-Session-Id');
+          headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+          headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id');
+
+          console.log('[MCP OAuth Server] ✓ Added CORS headers to error response');
+
+          // Re-throw with updated headers
+          throw new Response(error.body, {
+            status: error.status,
+            statusText: error.statusText,
+            headers,
+          });
+        }
+        // Re-throw other errors as-is
+        throw error;
+      }
+    };
+
     this.mcpServer = new FastMCP({
       name: serverName,
       version: serverVersion,
-      authenticate: authMiddleware.authenticate.bind(authMiddleware) as any,
+      authenticate: authenticateWithCORS as any,
       oauth: this.buildOAuthConfig(port),
     });
 
-    // 8. Register enabled tools
+    // 8. Auto-register tools from delegation.modules if toolPrefix is configured
+    const delegationConfig = this.configManager.getDelegationConfig();
+    const autoRegisterTools: ToolFactory[] = [];
+
+    if (delegationConfig?.modules) {
+      console.log('[MCP OAuth Server] Checking for modules with toolPrefix configuration...');
+
+      for (const [moduleName, moduleConfig] of Object.entries(delegationConfig.modules)) {
+        // Get toolPrefix from module config or use defaultToolPrefix
+        const toolPrefix = (moduleConfig as any).toolPrefix || delegationConfig.defaultToolPrefix;
+
+        if (!toolPrefix) {
+          console.log(
+            `[MCP OAuth Server]   Module "${moduleName}" has no toolPrefix - skipping auto-registration`
+          );
+          continue; // Skip modules without toolPrefix (manual registration required)
+        }
+
+        // Detect module type and create appropriate tools
+        let tools: ToolFactory[] = [];
+
+        if (moduleName.startsWith('postgresql') || moduleName.startsWith('mssql')) {
+          // SQL module (PostgreSQL or MSSQL)
+          console.log(
+            `[MCP OAuth Server]   Auto-registering SQL tools for "${moduleName}" with prefix "${toolPrefix}"`
+          );
+          const descriptionSuffix = (moduleConfig as any)._comment || `(${(moduleConfig as any).database})`;
+          tools = createSQLToolsForModule({
+            toolPrefix,
+            moduleName,
+            descriptionSuffix,
+          });
+        } else if (moduleName.startsWith('rest-api')) {
+          // REST API module
+          console.log(
+            `[MCP OAuth Server]   Auto-registering REST API tools for "${moduleName}" with prefix "${toolPrefix}"`
+          );
+          const descriptionSuffix = (moduleConfig as any)._comment || `(${(moduleConfig as any).baseUrl})`;
+          tools = createRESTAPIToolsForModule({
+            toolPrefix,
+            moduleName,
+            descriptionSuffix,
+          });
+        } else if (moduleName.startsWith('kerberos')) {
+          // Kerberos module (file browsing)
+          console.log(
+            `[MCP OAuth Server]   Kerberos module "${moduleName}" detected with prefix "${toolPrefix}"`
+          );
+          console.warn(
+            `[MCP OAuth Server]   ⚠ Kerberos tool auto-registration not yet implemented - use manual registration`
+          );
+          // Note: Kerberos file browsing tools use prefix for list/read/info tools
+          // Implementation depends on kerberos-file-browse.ts refactoring
+        } else {
+          console.warn(
+            `[MCP OAuth Server]   Unknown module type: "${moduleName}" - skipping auto-registration`
+          );
+        }
+
+        if (tools.length > 0) {
+          console.log(
+            `[MCP OAuth Server]   ✓ Created ${tools.length} tool(s) for "${moduleName}"`
+          );
+          autoRegisterTools.push(...tools);
+        }
+      }
+    }
+
+    console.log(
+      `[MCP OAuth Server] Auto-registration created ${autoRegisterTools.length} tool factories`
+    );
+
+    // 9. Register enabled tools
     // Check if custom SQL tools (sql1-, sql2-, etc.) will be registered later
     // If so, exclude default SQL tools to prevent duplicates
     const enabledTools = mcpConfig?.enabledTools || {};
@@ -427,19 +535,88 @@ export class MCPOAuthServer {
       (name) => /^sql\d+-/.test(name) // Matches sql1-, sql2-, etc.
     );
 
+    // Also check if auto-registered tools include SQL tools
+    const hasAutoRegisteredSqlTools = autoRegisterTools.some((factory) => {
+      const tool = factory(this.coreContext!);
+      return (
+        tool.name.endsWith('-delegate') ||
+        tool.name.endsWith('-schema') ||
+        tool.name.endsWith('-table-details')
+      );
+    });
+
     console.log(`[MCP OAuth Server] Checking for custom SQL tools...`);
     console.log(`[MCP OAuth Server]   Enabled tool names:`, enabledToolNames);
     console.log(`[MCP OAuth Server]   Has custom SQL tools:`, hasCustomSqlTools);
+    console.log(`[MCP OAuth Server]   Has auto-registered SQL tools:`, hasAutoRegisteredSqlTools);
 
-    const toolFactories = getAllToolFactories({ excludeSqlTools: hasCustomSqlTools });
+    const toolFactories = getAllToolFactories({
+      excludeSqlTools: hasCustomSqlTools || hasAutoRegisteredSqlTools,
+    });
 
     console.log(`[MCP OAuth Server] Found ${toolFactories.length} available tools`);
     if (hasCustomSqlTools) {
       console.log(`[MCP OAuth Server] ✓ Custom SQL tools detected - excluding default SQL tools`);
     }
+    if (hasAutoRegisteredSqlTools) {
+      console.log(
+        `[MCP OAuth Server] ✓ Auto-registered SQL tools detected - excluding default SQL tools`
+      );
+    }
     console.log(`[MCP OAuth Server] Enabled tools config:`, enabledTools);
 
+    // 10. Register auto-generated tools first
     let registeredCount = 0;
+    for (const factory of autoRegisterTools) {
+      const toolReg = factory(this.coreContext!);
+      console.log(`[MCP OAuth Server] Registering auto-generated tool: ${toolReg.name}`);
+      registeredCount++;
+
+      this.mcpServer.addTool({
+        name: toolReg.name,
+        description: toolReg.description,
+        parameters: toolReg.schema,
+        canAccess: toolReg.canAccess as any,
+        execute: async (args, context) => {
+          const fastmcpSession = (context as any).session;
+          const mcpContext: MCPContext = {
+            session: fastmcpSession?.session || fastmcpSession,
+          };
+
+          const result = await toolReg.handler(args, mcpContext);
+
+          if ('data' in result) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result.data, null, 2),
+                },
+              ],
+            };
+          } else {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(
+                    {
+                      error: result.code,
+                      message: result.message,
+                    },
+                    null,
+                    2
+                  ),
+                },
+              ],
+              isError: true,
+            };
+          }
+        },
+      });
+    }
+
+    // 11. Register standard tool factories
     for (const factory of toolFactories) {
       const toolReg = factory(this.coreContext);
 
@@ -519,11 +696,15 @@ export class MCPOAuthServer {
       });
     }
 
+    const totalAvailableTools = toolFactories.length + autoRegisterTools.length;
     console.log(
-      `[MCP OAuth Server] Successfully registered ${registeredCount} of ${toolFactories.length} available tools`
+      `[MCP OAuth Server] Successfully registered ${registeredCount} of ${totalAvailableTools} available tools`
+    );
+    console.log(
+      `[MCP OAuth Server]   Auto-registered: ${autoRegisterTools.length}, Standard: ${registeredCount - autoRegisterTools.length}`
     );
 
-    // 9. Start server
+    // 12. Start server
     console.log('[MCP OAuth Server] Starting FastMCP server...');
     await this.mcpServer.start({
       transportType: transport as any,
@@ -540,7 +721,7 @@ export class MCPOAuthServer {
 
     this.isRunning = true;
 
-    // 10. Log startup summary
+    // 13. Log startup summary
     console.log('\n' + '='.repeat(60));
     console.log('[MCP OAuth Server] ✓ Server started successfully');
     console.log('='.repeat(60));
@@ -561,7 +742,9 @@ export class MCPOAuthServer {
       );
     }
     console.log(`  Authentication:   OAuth 2.1 with JWT`);
-    console.log(`  Tools Registered: ${toolFactories.length}`);
+    console.log(`  Tools Registered: ${registeredCount}`);
+    console.log(`  - Auto-registered: ${autoRegisterTools.length}`);
+    console.log(`  - Standard tools: ${registeredCount - autoRegisterTools.length}`);
     console.log(`  Audit Logging:    ${this.coreContext.auditService ? 'Enabled' : 'Disabled'}`);
     console.log('='.repeat(60) + '\n');
   }

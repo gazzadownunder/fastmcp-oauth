@@ -1,0 +1,145 @@
+{
+  "_comment": "Example configuration with secure secret management",
+  "_description": "This configuration demonstrates the use of secret descriptors to eliminate hardcoded credentials",
+  "auth": {
+    "trustedIDPs": [
+      {
+        "name": "requestor-jwt",
+        "issuer": "https://auth.company.com",
+        "discoveryUrl": "https://auth.company.com/.well-known/openid-configuration",
+        "jwksUri": "https://auth.company.com/.well-known/jwks.json",
+        "audience": "mcp-oauth",
+        "algorithms": ["RS256"],
+        "claimMappings": {
+          "legacyUsername": "legacy_name",
+          "roles": "roles",
+          "scopes": "scope",
+          "userId": "sub",
+          "username": "preferred_username"
+        },
+        "roleMappings": {
+          "admin": ["admin", "administrator"],
+          "user": ["user", "authenticated"],
+          "guest": ["guest"],
+          "defaultRole": "guest",
+          "rejectUnmappedRoles": false
+        },
+        "security": {
+          "clockTolerance": 60,
+          "maxTokenAge": 3600,
+          "requireNbf": false
+        }
+      }
+    ],
+    "rateLimiting": {
+      "enabled": true,
+      "maxRequests": 1000,
+      "windowMs": 900000
+    },
+    "audit": {
+      "enabled": true,
+      "logAllAttempts": true,
+      "retentionDays": 90
+    }
+  },
+  "delegation": {
+    "defaultToolPrefix": "sql",
+    "modules": {
+      "hr-database": {
+        "toolPrefix": "hr-sql",
+        "host": "hr-db.company.com",
+        "port": 5432,
+        "database": "hr_database",
+        "user": "mcp_service",
+        "password": {
+          "$secret": "HR_DB_PASSWORD",
+          "_comment": "Secret resolved from /run/secrets/HR_DB_PASSWORD or process.env.HR_DB_PASSWORD"
+        },
+        "options": {
+          "ssl": true
+        },
+        "pool": {
+          "max": 10,
+          "min": 0,
+          "idleTimeoutMillis": 30000
+        },
+        "tokenExchange": {
+          "idpName": "requestor-jwt",
+          "tokenEndpoint": "https://auth.company.com/token",
+          "clientId": "hr-mcp-server",
+          "clientSecret": {
+            "$secret": "HR_OAUTH_CLIENT_SECRET",
+            "_comment": "Secret resolved from /run/secrets/HR_OAUTH_CLIENT_SECRET"
+          },
+          "audience": "urn:db:hr",
+          "scope": "openid profile",
+          "cache": {
+            "enabled": true,
+            "ttlSeconds": 60
+          }
+        }
+      },
+      "sales-database": {
+        "toolPrefix": "sales-sql",
+        "host": "sales-db.company.com",
+        "port": 5432,
+        "database": "sales_database",
+        "user": "mcp_service",
+        "password": {
+          "$secret": "SALES_DB_PASSWORD"
+        },
+        "options": {
+          "ssl": true
+        },
+        "tokenExchange": {
+          "idpName": "requestor-jwt",
+          "tokenEndpoint": "https://auth.company.com/token",
+          "clientId": "sales-mcp-server",
+          "clientSecret": {
+            "$secret": "SALES_OAUTH_CLIENT_SECRET"
+          },
+          "audience": "urn:db:sales",
+          "scope": "openid profile",
+          "cache": {
+            "enabled": true,
+            "ttlSeconds": 60
+          }
+        }
+      },
+      "analytics-database": {
+        "toolPrefix": "analytics-sql",
+        "host": "analytics-db.company.com",
+        "port": 5432,
+        "database": "analytics_db",
+        "user": "mcp_service_readonly",
+        "password": {
+          "$secret": "ANALYTICS_DB_PASSWORD"
+        },
+        "options": {
+          "ssl": true
+        }
+      }
+    }
+  },
+  "mcp": {
+    "serverName": "Secure Multi-Database MCP Server",
+    "version": "2.0.0",
+    "transport": "http-stream",
+    "port": 3000,
+    "oauth": {
+      "scopes": ["openid", "profile"]
+    }
+  },
+  "_deployment_notes": {
+    "kubernetes": "Mount secrets as files in /run/secrets/",
+    "docker": "Use Docker secrets with docker-compose.yml",
+    "development": "Create .env file with all secrets (never commit!)",
+    "required_secrets": [
+      "HR_DB_PASSWORD",
+      "HR_OAUTH_CLIENT_SECRET",
+      "SALES_DB_PASSWORD",
+      "SALES_OAUTH_CLIENT_SECRET",
+      "ANALYTICS_DB_PASSWORD"
+    ]
+  }
+}

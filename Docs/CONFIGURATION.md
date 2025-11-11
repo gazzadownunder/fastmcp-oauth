@@ -6,6 +6,7 @@ Complete reference for `config.json` configuration options in the MCP OAuth fram
 
 - [Overview](#overview)
 - [Critical Requirements](#critical-requirements)
+- [Secret Management (v3.2+)](#secret-management-v32)
 - [Configuration Structure](#configuration-structure)
 - [Auth Section](#auth-section)
 - [Delegation Section](#delegation-section)
@@ -58,6 +59,325 @@ const authResult = await this.authService.authenticate(token, {
 ```
 
 **Solution:** Always name your requestor IDP `"requestor-jwt"` in the configuration.
+
+---
+
+## Secret Management (v3.2+)
+
+**NEW:** The framework now supports **Dynamic Secret Resolution** to eliminate hardcoded credentials from configuration files.
+
+### Overview
+
+Instead of storing sensitive values as plaintext in configuration files:
+
+```json
+{
+  "password": "MyPassword123!",           // ❌ Hardcoded secret
+  "clientSecret": "abc123xyz"             // ❌ Committed to Git
+}
+```
+
+Use **secret descriptors** that reference logical names:
+
+```json
+{
+  "password": { "$secret": "DB_PASSWORD" },           // ✅ Logical name
+  "clientSecret": { "$secret": "OAUTH_CLIENT_SECRET" } // ✅ Resolved at runtime
+}
+```
+
+### Benefits
+
+✅ **No secrets in Git** - Config files contain logical names only
+✅ **Production-ready** - Kubernetes/Docker secret mounts supported
+✅ **Fail-fast security** - Server won't start with missing secrets
+✅ **Audit logging** - Track which provider resolved each secret
+✅ **Zero code changes** - Works with existing MCPOAuthServer
+✅ **Backward compatible** - Plain strings still supported
+
+### Secret Descriptor Format
+
+A secret descriptor is a JSON object with a single `$secret` property:
+
+```json
+{
+  "$secret": "LOGICAL_SECRET_NAME"
+}
+```
+
+**Rules:**
+- Secret name must be non-empty string
+- Secret names are **user-defined** (no predefined names required)
+- Can be used anywhere a sensitive string is expected
+
+### Resolution Flow
+
+```
+Configuration File ({"$secret": "NAME"})
+         ↓
+   SecretResolver
+         ↓
+FileSecretProvider → Check /run/secrets/NAME (Kubernetes/Docker)
+         ↓
+   EnvProvider → Check process.env.NAME (development)
+         ↓
+ Fail-Fast → Server exits if secret not found
+```
+
+### Provider Priority
+
+Secrets are resolved in this order:
+
+1. **FileSecretProvider** (highest priority)
+   - Location: `/run/secrets/{SECRET_NAME}`
+   - Use case: Production (Kubernetes, Docker)
+   - Security: ✅ Best (file permissions, no process leakage)
+
+2. **EnvProvider** (fallback)
+   - Location: `process.env[SECRET_NAME]`
+   - Use case: Development, testing
+   - Security: ⚠️ Lower (visible in process list)
+
+3. **Fail-Fast** (if not found)
+   - Server exits with error message
+   - Forces explicit secret configuration
+
+### Configuration Examples
+
+#### PostgreSQL Password
+
+```json
+{
+  "delegation": {
+    "modules": {
+      "postgresql": {
+        "host": "db.company.com",
+        "database": "app_db",
+        "user": "mcp_service",
+        "password": { "$secret": "POSTGRESQL_PASSWORD" }
+      }
+    }
+  }
+}
+```
+
+#### OAuth Client Secrets
+
+```json
+{
+  "delegation": {
+    "modules": {
+      "postgresql": {
+        "tokenExchange": {
+          "clientId": "mcp-server",
+          "clientSecret": { "$secret": "OAUTH_CLIENT_SECRET" }
+        }
+      }
+    }
+  }
+}
+```
+
+#### Kerberos Service Account
+
+```json
+{
+  "delegation": {
+    "modules": {
+      "kerberos": {
+        "serviceAccount": {
+          "username": "svc-mcp-server",
+          "password": { "$secret": "KERBEROS_SERVICE_PASSWORD" }
+        }
+      }
+    }
+  }
+}
+```
+
+### Development Setup
+
+**Option 1: Environment Variables**
+
+```bash
+# Linux/macOS
+export POSTGRESQL_PASSWORD="MyPassword123!"
+export OAUTH_CLIENT_SECRET="abc123xyz"
+
+# Windows PowerShell
+$env:POSTGRESQL_PASSWORD="MyPassword123!"
+$env:OAUTH_CLIENT_SECRET="abc123xyz"
+
+# Windows CMD
+set POSTGRESQL_PASSWORD=MyPassword123!
+set OAUTH_CLIENT_SECRET=abc123xyz
+```
+
+**Option 2: .env File (recommended)**
+
+Create `.env` file:
+```bash
+POSTGRESQL_PASSWORD=MyPassword123!
+OAUTH_CLIENT_SECRET=abc123xyz
+```
+
+⚠️ **IMPORTANT:** Add `.env` to `.gitignore`!
+
+### Production Setup (Kubernetes)
+
+**Step 1: Create Secrets**
+
+```bash
+kubectl create secret generic mcp-postgresql \
+  --from-literal=password='MyPassword123!' \
+  --from-literal=oauth-client-secret='abc123xyz'
+```
+
+**Step 2: Mount in Deployment**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-oauth-server
+spec:
+  template:
+    spec:
+      containers:
+      - name: mcp-server
+        image: mcp-oauth:3.2
+        volumeMounts:
+        - name: postgresql-secrets
+          mountPath: /run/secrets
+          readOnly: true
+      volumes:
+      - name: postgresql-secrets
+        secret:
+          secretName: mcp-postgresql
+          items:
+          - key: password
+            path: POSTGRESQL_PASSWORD
+          - key: oauth-client-secret
+            path: OAUTH_CLIENT_SECRET
+```
+
+**How It Works:**
+1. Kubernetes mounts secrets as files in `/run/secrets/`
+2. FileSecretProvider reads `/run/secrets/POSTGRESQL_PASSWORD`
+3. No environment variables needed (more secure)
+
+### Finding Required Secrets
+
+Your required secrets depend entirely on your configuration. To find them:
+
+**Method 1: Search Config File**
+
+```bash
+# Linux/macOS
+grep -o '"$secret":\s*"[^"]*"' config.json
+
+# Windows PowerShell
+Select-String -Path config.json -Pattern '\$secret'
+```
+
+**Method 2: Check Error Messages**
+
+If a secret is missing, the server will exit with:
+```
+❌ [SecretResolver] Secret "DB_PASSWORD" at path "config.delegation.modules.postgresql.password" could not be resolved by any provider.
+```
+
+The error tells you:
+- Secret name: `DB_PASSWORD`
+- Config location: `delegation.modules.postgresql.password`
+
+### Troubleshooting
+
+**Error: Secret could not be resolved**
+
+```
+[SecretResolver] Secret "DB_PASSWORD" could not be resolved
+```
+
+**Solution:**
+1. Check which secret is missing from error message
+2. Search config for `{"$secret": "DB_PASSWORD"}`
+3. Set the secret:
+   ```bash
+   export DB_PASSWORD="actual_password"
+   # or
+   echo "actual_password" > /run/secrets/DB_PASSWORD
+   ```
+
+**Error: Config file valid but database connection fails**
+
+**Cause:** Secret contains wrong value or extra whitespace
+
+**Solution:**
+- Secrets are automatically trimmed
+- Verify secret value matches actual credential
+- Check database logs for authentication errors
+
+### Security Best Practices
+
+**✅ DO:**
+- Use Kubernetes secrets for production
+- Use `/run/secrets/` file mounts (most secure)
+- Add `.env` to `.gitignore`
+- Rotate secrets regularly
+- Use different secrets for dev/test/prod
+- Monitor audit logs for secret access
+
+**❌ DON'T:**
+- Commit `.env` to version control
+- Use hardcoded secrets in config files
+- Share secrets in Slack/email
+- Use production secrets in development
+- Log secret values (automatically sanitized)
+
+### Migration from Hardcoded Secrets
+
+**Before (v3.1 and earlier):**
+```json
+{
+  "password": "MyPassword123!",
+  "clientSecret": "${OAUTH_SECRET}"
+}
+```
+
+**After (v3.2+):**
+```json
+{
+  "password": { "$secret": "DB_PASSWORD" },
+  "clientSecret": { "$secret": "OAUTH_CLIENT_SECRET" }
+}
+```
+
+**Migration Steps:**
+1. Identify all sensitive fields in config
+2. Replace values with secret descriptors
+3. Set secrets as environment variables or files
+4. Test that server starts successfully
+5. Remove old plaintext secrets from Git history
+
+### Supported Fields
+
+Secret descriptors work with **any string field** in the configuration. Common fields:
+
+| Configuration Path | Field | Example Secret Name |
+|-------------------|-------|---------------------|
+| `delegation.modules.*.password` | Database password | `POSTGRESQL_PASSWORD` |
+| `delegation.modules.*.tokenExchange.clientSecret` | OAuth client secret | `OAUTH_CLIENT_SECRET` |
+| `delegation.modules.kerberos.serviceAccount.password` | Kerberos password | `KERBEROS_PASSWORD` |
+| Custom module fields | Any sensitive field | User-defined |
+
+**Note:** Secret names are **configuration-dependent**. There are no "required" secrets at the framework level - only those defined in your specific configuration.
+
+### Additional Resources
+
+- [SECRETS-MANAGEMENT.md](SECRETS-MANAGEMENT.md) - Full implementation guide
+- [test-harness/SECRETS-SETUP.md](../test-harness/SECRETS-SETUP.md) - Test server setup guide
+- [examples/server-with-secrets.ts](../examples/server-with-secrets.ts) - Example code
 
 ---
 
@@ -663,9 +983,11 @@ Different tokens need different validation configs:
         "audience": "string",                  // Required: Expected audience claim
         "algorithms": ["RS256", "ES256"],      // Optional: Allowed algorithms
         "claimMappings": {
-          "legacyUsername": "string",          // Optional: JWT claim for legacy username
-          "roles": "string",                   // Optional: JWT claim for roles
-          "scopes": "string"                   // Optional: JWT claim for scopes
+          "legacyUsername": "string",          // Required: JWT claim for legacy username
+          "roles": "string",                   // Required: JWT claim for roles
+          "scopes": "string",                  // Optional: JWT claim for scopes
+          "userId": "string",                  // Optional: JWT claim for user ID (default: "sub")
+          "username": "string"                 // Optional: JWT claim for username (default: "preferred_username")
         },
         "roleMappings": {                      // Optional: PER-IDP role mappings
           "admin": ["admin", "administrator"], // JWT role values → admin role
@@ -682,10 +1004,10 @@ Different tokens need different validation configs:
       }
     ],
     "audit": {
-      "enabled": true,                         // Optional: Enable audit logging
+      "enabled": true,                         // Optional: Enable audit logging (default: true)
       "logAllAttempts": true,                  // Optional: Log all auth attempts
-      "retentionDays": 90,                     // Optional: Log retention period
-      "maxEntries": 10000                      // Optional: Max entries before overflow
+      "logFailedAttempts": true,               // Optional: Log failed attempts (default: true)
+      "retentionDays": 90                      // Optional: Log retention period
     }
   }
 }
@@ -697,10 +1019,11 @@ Different tokens need different validation configs:
 
 Array of identity providers trusted by the framework.
 
-**Field: name** (string, required for requestor IDP)
-- **Purpose:** Identifier for this IDP configuration
-- **Requestor IDP:** MUST be `"requestor-jwt"` (framework requirement)
+**Field: name** (string, optional but recommended)
+- **Purpose:** Identifier for this IDP configuration for explicit IDP selection
+- **Requestor IDP:** Convention is `"requestor-jwt"` (used by MCPAuthMiddleware)
 - **Delegation IDPs:** Can be any name (e.g., `"sql-db-idp"`, `"analytics-idp"`)
+- **Fallback Behavior:** If omitted, IDP matching falls back to issuer + audience matching only
 - **Example:** `"name": "requestor-jwt"`
 
 **Field: issuer** (string, required)
@@ -729,18 +1052,22 @@ Array of identity providers trusted by the framework.
 - **Default:** `["RS256", "ES256"]`
 - **Example:** `"algorithms": ["RS256"]`
 
-**Field: claimMappings** (object, optional)
+**Field: claimMappings** (object, required)
 - **Purpose:** Map JWT claims to session properties
 - **Subfields:**
-  - `legacyUsername` (string): JWT claim containing legacy username (e.g., "DOMAIN\\user")
-  - `roles` (string): JWT claim containing user roles (supports nested paths like "realm_access.roles")
-  - `scopes` (string): JWT claim containing OAuth scopes
+  - `legacyUsername` (string, **required**): JWT claim containing legacy username (e.g., "DOMAIN\\user")
+  - `roles` (string, **required**): JWT claim containing user roles (supports nested paths like "realm_access.roles")
+  - `scopes` (string, optional): JWT claim containing OAuth scopes
+  - `userId` (string, optional): JWT claim for unique user ID (defaults to "sub" if omitted)
+  - `username` (string, optional): JWT claim for username (defaults to "preferred_username" if omitted)
 - **Example:**
   ```json
   "claimMappings": {
     "legacyUsername": "legacy_sam_account",
     "roles": "user_roles",
-    "scopes": "scopes"
+    "scopes": "scopes",
+    "userId": "sub",
+    "username": "preferred_username"
   }
   ```
 
@@ -760,21 +1087,25 @@ Array of identity providers trusted by the framework.
   ```
 
 **Field: roleMappings** (object, optional - PER-IDP)
-- **Purpose:** Maps JWT role values to framework roles (admin/user/guest) **for this specific IDP**
+- **Purpose:** Maps JWT role values to framework roles **for this specific IDP**
 - **Location:** Inside each `trustedIDPs[]` object (NOT at global auth level)
 - **Why per-IDP:** Different IDPs may use different role naming conventions or require different access levels
-- **Subfields:**
+- **Flexible Role Support:** The schema uses `.passthrough()` allowing **custom role names beyond admin/user/guest**
+- **Standard Subfields:**
   - `admin` (string[]): JWT role values that map to admin role (default: `["admin", "administrator"]`)
   - `user` (string[]): JWT role values that map to user role (default: `["user"]`)
   - `guest` (string[]): JWT role values that map to guest role (default: `[]`)
   - `defaultRole` (string): Fallback role for unmapped values - "admin", "user", or "guest" (default: `"guest"`)
   - `rejectUnmappedRoles` (boolean): Reject authentication if JWT roles don't match any mapping (default: `false`)
-- **Example:**
+- **Custom Roles:** You can add arbitrary role mappings (e.g., `"auditor"`, `"writer"`, `"manager"`) by adding additional fields
+- **Example with Custom Roles:**
   ```json
   "roleMappings": {
     "admin": ["admin", "employee_admin"],
     "user": ["user", "employee"],
     "guest": [],
+    "auditor": ["compliance_auditor", "security_auditor"],
+    "writer": ["content_writer", "editor"],
     "defaultRole": "user",
     "rejectUnmappedRoles": false
   }
@@ -800,15 +1131,15 @@ Audit logging configuration.
 - **Default:** `true`
 - **Example:** `"logAllAttempts": true`
 
+**Field: logFailedAttempts** (boolean, optional)
+- **Purpose:** Log failed authentication attempts
+- **Default:** `true`
+- **Example:** `"logFailedAttempts": true`
+
 **Field: retentionDays** (number, optional)
 - **Purpose:** Log retention period in days
 - **Default:** `90`
 - **Example:** `"retentionDays": 30`
-
-**Field: maxEntries** (number, optional)
-- **Purpose:** Maximum audit log entries before overflow
-- **Default:** `10000`
-- **Example:** `"maxEntries": 5000`
 
 ---
 
@@ -819,10 +1150,13 @@ Audit logging configuration.
 ```json
 {
   "delegation": {
+    "defaultToolPrefix": "sql",              // Optional: Default tool prefix (v2.2.0+)
     "modules": {
       "postgresql": {                        // Module name (used for createSQLToolsForModule)
+        "toolPrefix": "hr-sql",              // Optional: Tool prefix override (v2.2.0+)
         "type": "postgresql",                // Optional: Database type
-        "host": "string",                    // Required: Database host
+        "host": "string",                    // Required: Database host (PostgreSQL/MySQL)
+        "server": "string",                  // Required: Database server (MSSQL only)
         "port": 5432,                        // Optional: Database port
         "database": "string",                // Required: Database name
         "user": "string",                    // Optional: Database username
@@ -830,13 +1164,14 @@ Audit logging configuration.
         "options": {
           "trustedConnection": false,        // Optional: Use Windows auth (MSSQL only)
           "encrypt": true,                   // Optional: Require TLS
+          "enableArithAbort": true,          // Optional: Enable ARITHABORT (MSSQL)
           "trustServerCertificate": false    // Optional: Trust self-signed certs
         },
         "tokenExchange": {                   // Optional: Per-database token exchange
           "idpName": "string",               // Required: IDP name from trustedIDPs
           "tokenEndpoint": "string",         // Required: Token endpoint URL
           "clientId": "string",              // Required: Client ID
-          "clientSecret": "string",          // Required: Client secret
+          "clientSecret": "string | SecretDescriptor",  // Required: Client secret (use {"$secret": "NAME"})
           "audience": "string",              // Optional: Target audience
           "scope": "string"                  // Optional: Requested scopes
         }
@@ -848,6 +1183,41 @@ Audit logging configuration.
 
 ### Delegation Field Descriptions
 
+#### defaultToolPrefix (v2.2.0+)
+
+Automatic tool registration with configurable prefixes!
+
+**Purpose:** Sets the default tool name prefix for all delegation modules that don't specify their own `toolPrefix`.
+
+**Type:** string (optional)
+
+**Default:** `"sql"`
+
+**Validation:**
+- Must start with a lowercase letter
+- Can contain lowercase letters, numbers, and hyphens only
+- Maximum 20 characters
+- Regex: `^[a-z][a-z0-9-]*$`
+
+**Example:**
+```json
+{
+  "delegation": {
+    "defaultToolPrefix": "db"  // All modules use "db-*" unless overridden
+  }
+}
+```
+
+**When to Use:**
+- Multi-module deployments where most modules share a common prefix
+- Single-module deployments (optional, defaults to "sql")
+
+**Backward Compatibility:**
+- If not specified, defaults to `"sql"` (maintains backward compatibility)
+- Existing configurations without this field continue to work unchanged
+
+---
+
 #### modules
 
 Object containing delegation module configurations. Keys are module names used by `DelegationRegistry.delegate(moduleName, ...)`.
@@ -857,16 +1227,79 @@ Object containing delegation module configurations. Keys are module names used b
 - Multiple databases: `"postgresql1"`, `"postgresql2"` or `"hr-db"`, `"sales-db"`
 - Use descriptive names for tool prefix generation
 
+**NEW (v2.2.0+): Automatic Tool Registration:**
+
+Each module can now include a `toolPrefix` field to enable automatic tool registration:
+
+```json
+{
+  "delegation": {
+    "defaultToolPrefix": "sql",
+    "modules": {
+      "postgresql1": {
+        "toolPrefix": "hr-sql",  // ← Auto-registers hr-sql-delegate, hr-sql-schema, hr-sql-table-details
+        "host": "localhost",
+        "database": "hr_database"
+      },
+      "rest-api1": {
+        "toolPrefix": "internal-api",  // ← Auto-registers internal-api-delegate, internal-api-health
+        "baseUrl": "https://api.internal.com"
+      }
+    }
+  }
+}
+```
+
+**Benefits:**
+- **85% code reduction** - No manual tool registration needed
+- **Configuration-only updates** - Change tool names without code changes
+- **Consistent naming** - Schema validation enforces naming conventions
+- **All module types supported** - SQL, REST API, Kerberos, and future modules
+
+**Before (Manual Registration - 100+ lines):**
+```typescript
+const coreContext = server.getCoreContext();
+const sqlTools = createSQLToolsForModule({
+  toolPrefix: 'hr-sql',
+  moduleName: 'postgresql1',
+});
+server.registerTools(sqlTools.map(factory => factory(coreContext)));
+// ... repeat for each module
+```
+
+**After (Auto-Registration - 15 lines):**
+```typescript
+const server = new MCPOAuthServer(CONFIG_PATH);
+await server.start({ transport: 'httpStream', port: 3000 });
+// Tools auto-registered from config!
+```
+
+See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-registration.ts) for a complete example
+
 **SQL Module Fields:**
+
+**Field: toolPrefix** (string, optional) 
+- **Purpose:** Tool name prefix for this module (enables automatic tool registration)
+- **Overrides:** `delegation.defaultToolPrefix` if specified
+- **Validation:** Same as `defaultToolPrefix` (lowercase letters, numbers, hyphens; max 20 chars)
+- **Example:** `"toolPrefix": "hr-sql"`
+- **Result:** Generates tools: `hr-sql-delegate`, `hr-sql-schema`, `hr-sql-table-details`
+- **When omitted:** No automatic registration (use manual `createSQLToolsForModule()`)
 
 **Field: type** (string, optional)
 - **Purpose:** Database type identifier
 - **Allowed Values:** `"postgresql"`, `"mssql"`, `"mysql"`
 - **Example:** `"type": "postgresql"`
 
-**Field: host** (string, required)
-- **Purpose:** Database server hostname or IP
+**Field: host** (string, required for PostgreSQL/MySQL)
+- **Purpose:** Database server hostname or IP (PostgreSQL/MySQL use `host`)
 - **Example:** `"host": "db.company.com"`
+- **Note:** MSSQL uses `server` field instead (see below)
+
+**Field: server** (string, required for MSSQL)
+- **Purpose:** SQL Server hostname or IP (MSSQL-specific field name)
+- **Example:** `"server": "sql.company.com"`
+- **Note:** PostgreSQL/MySQL use `host` field instead (see above)
 
 **Field: port** (number, optional)
 - **Purpose:** Database server port
@@ -882,16 +1315,22 @@ Object containing delegation module configurations. Keys are module names used b
 - **When to use:** When not using trusted connection
 - **Example:** `"user": "mcp_service_account"`
 
-**Field: password** (string, optional)
+**Field: password** (string | SecretDescriptor, optional)
 - **Purpose:** Database password for authentication
-- **Security:** Store in environment variables or secret manager
-- **Example:** `"password": "${DB_PASSWORD}"` (use env var)
+- **Security:** Use secret descriptors for production deployments (v3.2+)
+- **Formats:**
+  - Plain string (deprecated): `"password": "mypassword"` ❌ Not recommended
+  - Environment variable (legacy): `"password": "${DB_PASSWORD}"` ⚠️ Deprecated syntax
+  - **Secret descriptor (recommended):** `"password": { "$secret": "DB_PASSWORD" }` ✅ Secure
+- **Example:** `"password": { "$secret": "POSTGRESQL_PASSWORD" }`
+- **See:** [Secret Management](#secret-management-v32) above
 
 **Field: options** (object, optional)
 - **Purpose:** Database-specific connection options
 - **Subfields:**
-  - `trustedConnection` (boolean): Use Windows authentication (MSSQL only)
+  - `trustedConnection` (boolean): Use Windows authentication (MSSQL only, default: true)
   - `encrypt` (boolean): Require TLS encryption (default: true)
+  - `enableArithAbort` (boolean): Enable ARITHABORT setting (MSSQL only, default: true)
   - `trustServerCertificate` (boolean): Trust self-signed certificates (default: false)
   - `connectionTimeout` (number): Connection timeout in milliseconds
 - **Example:**
@@ -899,6 +1338,7 @@ Object containing delegation module configurations. Keys are module names used b
   "options": {
     "trustedConnection": true,
     "encrypt": true,
+    "enableArithAbort": true,
     "trustServerCertificate": false
   }
   ```
@@ -934,12 +1374,14 @@ Object containing delegation module configurations. Keys are module names used b
 
 ### MCP Field Descriptions
 
-**Field: serverName** (string, required)
+**Field: serverName** (string, optional)
 - **Purpose:** Server display name shown to MCP clients
+- **Default:** `"MCP OAuth Server"` (hardcoded in MCPOAuthServer)
 - **Example:** `"serverName": "HR Database MCP Server"`
 
-**Field: version** (string, required)
+**Field: version** (string, optional)
 - **Purpose:** Server version (semantic versioning)
+- **Default:** `"2.0.0"` (hardcoded in MCPOAuthServer)
 - **Example:** `"version": "1.0.0"`
 
 **Field: transport** (string, optional)
@@ -980,7 +1422,7 @@ Object containing delegation module configurations. Keys are module names used b
 
 ## Complete Examples
 
-### Example 1: Single Database with Basic Auth
+### Example 1: Single Database with Basic Auth (v3.2+ with Secret Management)
 
 ```json
 {
@@ -1003,7 +1445,7 @@ Object containing delegation module configurations. Keys are module names used b
         "host": "db.company.com",
         "database": "app_db",
         "user": "mcp_service",
-        "password": "${DB_PASSWORD}",
+        "password": { "$secret": "POSTGRESQL_PASSWORD" },
         "options": {
           "encrypt": true
         }
@@ -1018,7 +1460,10 @@ Object containing delegation module configurations. Keys are module names used b
 }
 ```
 
-### Example 2: Multi-Database with Token Exchange
+**Required Environment Variables / Files:**
+- `POSTGRESQL_PASSWORD` - Database password for `mcp_service` user
+
+### Example 2: Multi-Database with Token Exchange (v3.2+ with Secret Management)
 
 ```json
 {
@@ -1051,7 +1496,7 @@ Object containing delegation module configurations. Keys are module names used b
           "idpName": "primary-db-idp",
           "tokenEndpoint": "https://auth.company.com/token",
           "clientId": "mcp-server-client",
-          "clientSecret": "${PRIMARY_DB_SECRET}",
+          "clientSecret": { "$secret": "PRIMARY_DB_OAUTH_SECRET" },
           "audience": "primary-db",
           "scope": "openid profile sql:read sql:write sql:admin"
         }
@@ -1063,7 +1508,7 @@ Object containing delegation module configurations. Keys are module names used b
           "idpName": "analytics-db-idp",
           "tokenEndpoint": "https://analytics-auth.company.com/token",
           "clientId": "analytics-client",
-          "clientSecret": "${ANALYTICS_DB_SECRET}",
+          "clientSecret": { "$secret": "ANALYTICS_DB_OAUTH_SECRET" },
           "audience": "analytics-db",
           "scope": "openid profile analytics:read"
         }
@@ -1088,8 +1533,12 @@ Object containing delegation module configurations. Keys are module names used b
 **Key Features:**
 - ✅ Three IDPs: requestor + two delegation IDPs
 - ✅ Per-database token exchange with different scopes
-- ✅ Environment variables for secrets
+- ✅ **Secure secret management** with secret descriptors
 - ✅ Prefixed SQL tools (`sql1-delegate`, `sql2-delegate`)
+
+**Required Environment Variables / Files:**
+- `PRIMARY_DB_OAUTH_SECRET` - OAuth client secret for primary database IDP
+- `ANALYTICS_DB_OAUTH_SECRET` - OAuth client secret for analytics database IDP
 
 ---
 

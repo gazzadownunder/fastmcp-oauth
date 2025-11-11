@@ -9,6 +9,8 @@ import {
   type MCPConfig,
 } from './schemas/index.js';
 import { migrateConfigData } from './migrate.js';
+import { SecretResolver, FileSecretProvider, EnvProvider } from './secrets/index.js';
+import { AuditService } from '../core/audit-service.js';
 
 // Legacy schema import for backward compatibility
 import { OAuthOBOConfigSchema, type OAuthOBOConfig } from './schema.js';
@@ -16,10 +18,34 @@ import { OAuthOBOConfigSchema, type OAuthOBOConfig } from './schema.js';
 export class ConfigManager {
   private config: UnifiedConfig | null = null;
   private env: NodeJS.ProcessEnv;
+  private secretResolver: SecretResolver;
+  private auditService?: AuditService;
 
-  constructor() {
+  /**
+   * Creates a new ConfigManager
+   *
+   * @param options - Optional configuration
+   * @param options.auditService - AuditService instance for logging secret access (optional)
+   * @param options.secretsDir - Directory for file-based secrets (default: '/run/secrets')
+   */
+  constructor(options?: { auditService?: AuditService; secretsDir?: string }) {
     // Store environment variables
     this.env = process.env;
+    this.auditService = options?.auditService;
+
+    // Initialize SecretResolver with provider chain
+    this.secretResolver = new SecretResolver({
+      auditService: this.auditService,
+      failFast: true, // Fail fast if secrets cannot be resolved
+    });
+
+    // Add providers in priority order
+    // 1. FileSecretProvider (highest priority - production)
+    const secretsDir = options?.secretsDir || '/run/secrets';
+    this.secretResolver.addProvider(new FileSecretProvider(secretsDir));
+
+    // 2. EnvProvider (fallback - development/test)
+    this.secretResolver.addProvider(new EnvProvider());
   }
 
   async loadConfig(configPath?: string): Promise<UnifiedConfig> {
@@ -31,21 +57,29 @@ export class ConfigManager {
 
     try {
       const configFile = await readFile(path, 'utf-8');
-      const rawConfig = JSON.parse(configFile);
+      let rawConfig = JSON.parse(configFile);
 
-      // Check if legacy format and migrate if needed
+      // STEP 1: Resolve secrets BEFORE validation
+      // This allows {"$secret": "NAME"} descriptors in the config
+      console.log('[ConfigManager] Resolving secrets...');
+      await this.secretResolver.resolveSecrets(rawConfig);
+      console.log('[ConfigManager] Secrets resolved successfully');
+
+      // STEP 2: Check if legacy format and migrate if needed
       if (isLegacyConfig(rawConfig)) {
-        console.warn('Detected legacy configuration format. Migrating to unified format...');
+        console.warn('[ConfigManager] Detected legacy configuration format. Migrating to unified format...');
         this.config = migrateConfigData(rawConfig);
-        console.info('Configuration migrated successfully.');
+        console.info('[ConfigManager] Configuration migrated successfully.');
       } else {
-        // Validate unified configuration
+        // STEP 3: Validate unified configuration
+        // At this point, all {"$secret": "NAME"} descriptors have been replaced with actual values
         this.config = UnifiedConfigSchema.parse(rawConfig);
       }
 
-      // Additional security validations
+      // STEP 4: Additional security validations
       this.validateSecurityRequirements(this.config);
 
+      console.log('[ConfigManager] Configuration loaded and validated successfully');
       return this.config;
     } catch (error) {
       if (error instanceof Error) {
@@ -169,7 +203,19 @@ export class ConfigManager {
   // Hot reload configuration (for development)
   async reloadConfig(configPath?: string): Promise<UnifiedConfig> {
     this.config = null;
+    console.log('[ConfigManager] Reloading configuration...');
     return this.loadConfig(configPath);
+  }
+
+  /**
+   * Get the SecretResolver instance
+   *
+   * Useful for testing and advanced use cases.
+   *
+   * @returns The SecretResolver instance
+   */
+  getSecretResolver(): SecretResolver {
+    return this.secretResolver;
   }
 
   /**

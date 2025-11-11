@@ -3,7 +3,7 @@
  * @module delegation/kerberos/types
  */
 
-import type { DelegationModuleConfig } from '../base.js';
+import type { DelegationModuleConfig } from 'mcp-oauth-framework/delegation';
 
 /**
  * Service account configuration for Kerberos authentication

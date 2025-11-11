@@ -335,7 +335,7 @@ export class PostgreSQLDelegationModule implements DelegationModule {
 
         // Perform token exchange to get TE-JWT
         const exchangeResult = await tokenExchangeService.performExchange({
-          requestorJWT,
+          subjectToken: requestorJWT,
           subjectTokenType: 'urn:ietf:params:oauth:token-type:access_token',
           audience: this.tokenExchangeConfig.audience || 'postgresql-delegation',
           tokenEndpoint: this.tokenExchangeConfig.tokenEndpoint,

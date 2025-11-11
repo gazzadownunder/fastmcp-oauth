@@ -33,6 +33,38 @@
           "requireNbf": false
         }
       },
+            {
+        "name": "requestor-jwt",
+        "issuer": "http://localhost:8080/realms/mcp_security",
+        "discoveryUrl": "http://localhost:8080/realms/mcp_security/.well-known/openid-configuration",
+        "jwksUri": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "clientId": "mcp-oauth",
+        "audience": "mcp-oauth",
+        "scope": "openid profile",
+        "_note": "This is the IDP for USER AUTHENTICATION (Step 2) - use mcp-oauth public client",
+        "algorithms": ["RS256"],
+        "claimMappings": {
+          "legacyUsername": "legacy_name",
+          "roles": "roles",
+          "scopes": "scope",
+          "userId": "sub",
+          "username": "preferred_username"
+        },
+        "roleMappings": {
+          "admin": ["admin", "administrator", "realm-admin", "mcp-oauth-admin"],
+          "user": ["user", "authenticated"],
+          "write": ["mcp-oauth-write"],
+          "read": ["mcp-oauth-read"],
+          "guest": ["guest", "anonymous"],
+          "defaultRole": "guest",
+          "rejectUnmappedRoles": true
+        },
+        "security": {
+          "clockTolerance": 60,
+          "maxTokenAge": 3600,
+          "requireNbf": false
+        }
+      },
       {
         "name": "sql-delegation-te-jwt",
         "_comment": "Token Exchange JWT for PostgreSQL1 (primary database)",
@@ -116,7 +148,7 @@
         "port": 5432,
         "database": "postgres",
         "user": "mcp_service",
-        "password": "ServicePass123!",
+        "password": { "$secret": "POSTGRESQL1_PASSWORD" },
         "options": {
           "ssl": false
         },
@@ -131,7 +163,7 @@
           "idpName": "sql-delegation-te-jwt",
           "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
           "clientId": "mcp-server-client",
-          "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
+          "clientSecret": { "$secret": "POSTGRESQL1_OAUTH_CLIENT_SECRET" },
           "audience": "mcp-server-client",
           "scope": "openid profile",
           "requiredClaim": "legacy_name",
@@ -151,7 +183,7 @@
         "port": 5432,
         "database": "contextflow_ai",
         "user": "postgres",
-        "password": "Letmein",
+        "password": { "$secret": "POSTGRESQL2_PASSWORD" },
         "options": {
           "ssl": false
         },
@@ -166,7 +198,7 @@
           "idpName": "sql2-delegation-te-jwt",
           "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
           "clientId": "second_sql",
-          "clientSecret": "tErtusngY6ukdctJL7Ouy8oImZK9wHe4",
+          "clientSecret": { "$secret": "POSTGRESQL2_OAUTH_CLIENT_SECRET" },
           "audience": "second_sql",
           "scope": "openid profile",
           "requiredClaim": "legacy_name",
@@ -197,7 +229,7 @@
         "_comment_targets": "File server SPNs for Windows file share access via SMB/CIFS",
         "serviceAccount": {
           "username": "svc-mcp-server",
-          "password": "YourSecurePassword123!",
+          "password": { "$secret": "KERBEROS_SERVICE_ACCOUNT_PASSWORD" },
           "_comment_keytabPath": "For Linux: use /etc/keytabs/mcp-server.keytab instead of password"
         },
         "ticketCache": {
@@ -212,7 +244,7 @@
           "idpName": "sql-delegation-te-jwt",
           "tokenEndpoint": "http://192.168.1.137:8080/realms/mcp_security/protocol/openid-connect/token",
           "clientId": "mcp-server-client",
-          "clientSecret": "sVJvwv0AllnSw64MUggSk9NS2ifteLQK",
+          "clientSecret": { "$secret": "KERBEROS_OAUTH_CLIENT_SECRET" },
           "audience": "mcp-server-client",
           "requiredClaim": "legacy_name",
           "cache": {

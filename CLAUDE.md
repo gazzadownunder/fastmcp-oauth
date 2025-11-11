@@ -6,9 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FastMCP OAuth On-Behalf-Of (OBO) Framework - A production-ready, modular OAuth 2.1 authentication and delegation framework for FastMCP. Provides on-behalf-of (OBO) authentication with pluggable delegation modules for SQL Server, Kerberos, and custom integrations.
 
-**Current Status:** Phases 1-6 completed - Modular architecture with Core, Delegation, and MCP layers fully implemented, tested, and documented.
+**Current Status:** Phases 1-6 completed - Modular architecture with Core, Delegation, and MCP layers fully implemented, tested, and documented. Secret management (v3.2) production-ready with 72/72 tests passing.
 
-**Architecture Highlight:** Core framework has **zero delegation dependencies**. SQL and Kerberos are optional npm packages (`@mcp-oauth/sql-delegation`, `@mcp-oauth/kerberos-delegation`) that developers install only if needed.
+**Architecture Highlights:**
+- **Zero delegation dependencies** - Core framework has no SQL/Kerberos dependencies. Optional packages (`@mcp-oauth/sql-delegation`, `@mcp-oauth/kerberos-delegation`) installed only if needed.
+- **Secure by default** - Dynamic secret resolution eliminates hardcoded credentials from configuration files. Kubernetes/Docker secret mounts supported out of the box.
 
 ## Modular Architecture (v2.x)
 
@@ -169,9 +171,17 @@ External IDP (OAuth/JWKS) → JWT Middleware (jose lib) → FastMCP Core
   - Target SPN validation
   - **Location:** Optional package `@mcp-oauth/kerberos-delegation`
 
-**[src/config/manager.ts](src/config/manager.ts)** - Configuration manager with hot-reload capability and Zod validation
+**[src/config/manager.ts](src/config/manager.ts)** - Configuration manager with hot-reload capability, Zod validation, and automatic secret resolution
 
 **[src/config/schema.ts](src/config/schema.ts)** - Zod schemas for configuration validation. All config must pass validation before use.
+
+**[src/config/secrets/ISecretProvider.ts](src/config/secrets/ISecretProvider.ts)** - Interface for secret providers (File, Env, AWS, Azure, Vault)
+
+**[src/config/secrets/FileSecretProvider.ts](src/config/secrets/FileSecretProvider.ts)** - Reads secrets from `/run/secrets/` (Kubernetes/Docker mounts) with path traversal prevention
+
+**[src/config/secrets/EnvProvider.ts](src/config/secrets/EnvProvider.ts)** - Reads secrets from environment variables (development fallback). **IMPORTANT:** Application entry points must load .env files via `import 'dotenv/config'` BEFORE importing framework components. EnvProvider reads from pre-populated `process.env`, it does NOT load .env files automatically.
+
+**[src/config/secrets/SecretResolver.ts](src/config/secrets/SecretResolver.ts)** - Orchestrates provider chain for secret resolution with fail-fast security
 
 **[src/types/index.ts](src/types/index.ts)** - Core TypeScript interfaces and type definitions
 
@@ -469,6 +479,543 @@ Cache is **disabled by default** to prioritize security over performance. Enable
 - Cache can be enabled/disabled via configuration hot-reload
 - Existing sessions unaffected by config changes
 - New sessions respect new configuration
+
+---
+
+### Secure Secrets Management Architecture (v3.2+)
+
+**Status:** Implementation Complete | **Version:** v3.2 | **Completion Date:** 2025-01-11
+
+The framework implements **Dynamic Configuration Resolution** to eliminate hardcoded credentials from configuration files. This system resolves secrets at runtime from secure sources (Kubernetes/Docker mounts, environment variables, cloud vaults) using a provider chain pattern.
+
+#### The Problem: Hardcoded Credentials
+
+Traditional configuration stores sensitive credentials as plaintext:
+
+```json
+{
+  "password": "ServicePass123!",           // ❌ Hardcoded in Git
+  "clientSecret": "abc123xyz"             // ❌ Committed to version control
+}
+```
+
+**Security Vulnerabilities:**
+- ❌ Credentials committed to Git history
+- ❌ No audit trail for secret access
+- ❌ Difficult credential rotation
+- ❌ Configuration drift across environments
+
+#### The Solution: Secret Descriptors
+
+Configuration files contain **logical names only**, resolved at runtime:
+
+```json
+{
+  "password": { "$secret": "DB_PASSWORD" },           // ✅ Logical name
+  "clientSecret": { "$secret": "OAUTH_CLIENT_SECRET" } // ✅ Resolved at runtime
+}
+```
+
+**Benefits:**
+- ✅ No secrets in Git (config contains logical names only)
+- ✅ Production-ready (Kubernetes/Docker secret mounts)
+- ✅ Fail-fast security (server exits if secrets missing)
+- ✅ Audit logging (track which provider resolved each secret)
+- ✅ Zero code changes (works with existing MCPOAuthServer)
+- ✅ Backward compatible (plain strings still supported)
+
+#### Provider Chain Architecture
+
+**Resolution Priority (highest to lowest):**
+
+1. **FileSecretProvider** - `/run/secrets/` (Kubernetes/Docker mounts)
+   - Most secure (strict file permissions: 0400)
+   - Never exposed in process environment
+   - Recommended for production
+
+2. **EnvProvider** - `process.env` (Environment variables)
+   - Fallback for development (.env files)
+   - Less secure (visible to child processes)
+
+3. **Custom Providers** (optional) - AWS Secrets Manager, Azure Key Vault, HashiCorp Vault
+   - Direct integration with cloud secret vaults
+   - Pluggable architecture (<50 lines of code)
+
+**Resolution Flow:**
+
+```
+Configuration File ({"$secret": "NAME"})
+         ↓
+   SecretResolver (orchestrates provider chain)
+         ↓
+FileSecretProvider → Check /run/secrets/NAME (Kubernetes/Docker)
+         ↓
+   EnvProvider → Check process.env.NAME (development)
+         ↓
+ Custom Providers → Check AWS/Azure/Vault (optional)
+         ↓
+   Fail-Fast → Server exits if secret not found
+```
+
+#### Core Components
+
+**1. ISecretProvider Interface**
+
+**Location:** [src/config/secrets/ISecretProvider.ts](src/config/secrets/ISecretProvider.ts)
+
+All secret providers implement this uniform interface:
+
+```typescript
+export interface ISecretProvider {
+  /**
+   * Attempts to resolve a logical secret name to its actual value.
+   *
+   * @param logicalName - The logical name from config (e.g., "DB_PASSWORD")
+   * @returns The secret string if found, undefined if not found
+   * @throws Error only for fatal errors (not for "secret not found")
+   */
+  resolve(logicalName: string): Promise<string | undefined>;
+}
+```
+
+**Contract:**
+- Return `string` if secret found
+- Return `undefined` if secret not found (try next provider)
+- Throw `Error` only for fatal errors (permission denied, network failure)
+- Must be stateless (no caching between calls)
+
+**2. FileSecretProvider**
+
+**Location:** [src/config/secrets/FileSecretProvider.ts](src/config/secrets/FileSecretProvider.ts)
+
+Reads secrets from filesystem (Kubernetes/Docker secret mounts):
+
+```typescript
+export class FileSecretProvider implements ISecretProvider {
+  private baseDir: string; // Default: /run/secrets/
+
+  async resolve(logicalName: string): Promise<string | undefined> {
+    // Security: Prevent path traversal
+    if (logicalName.includes('/') || logicalName.includes('\\')) {
+      return undefined;
+    }
+
+    const filePath = path.join(this.baseDir, logicalName);
+
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return content.trim(); // Remove trailing newlines
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return undefined; // File not found - try next provider
+      }
+      throw error; // Fatal error (permission denied, etc.)
+    }
+  }
+}
+```
+
+**Security Features:**
+- Path traversal prevention (blocks `../`, `..\\`)
+- Strict file permissions (0400 recommended)
+- Automatic newline trimming
+- Fatal error propagation (permission denied)
+
+**3. EnvProvider**
+
+**Location:** [src/config/secrets/EnvProvider.ts](src/config/secrets/EnvProvider.ts)
+
+Reads secrets from environment variables:
+
+```typescript
+export class EnvProvider implements ISecretProvider {
+  async resolve(logicalName: string): Promise<string | undefined> {
+    const value = process.env[logicalName];
+    return value ?? undefined;
+  }
+}
+```
+
+**Use Cases:**
+- Development with `.env` files
+- CI/CD pipelines
+- Legacy systems without secret mount support
+
+**CRITICAL: Application Entry Point Must Load .env Files**
+
+EnvProvider reads from `process.env` but does NOT load .env files automatically. This is by design to maintain separation of concerns and avoid framework side effects on the environment.
+
+**Required Pattern:**
+
+```typescript
+#!/usr/bin/env node
+
+// IMPORTANT: Load .env FIRST before any other imports
+// This populates process.env for EnvProvider to read
+import 'dotenv/config';
+
+// Now import framework components
+import { MCPOAuthServer } from 'mcp-oauth-framework/mcp';
+
+// ConfigManager will now resolve secrets from process.env
+const server = new MCPOAuthServer({ configPath: './config/dev.json' });
+await server.start();
+```
+
+**Why This Design?**
+
+1. **Separation of Concerns** - Environment setup is an application concern, not a framework concern
+2. **Flexibility** - Applications can use dotenv, dotenv-expand, or other loaders
+3. **No Side Effects** - Framework doesn't modify `process.env` unexpectedly
+4. **Standard Pattern** - Follows Node.js best practices
+
+**Specifying .env Path:**
+
+Set `DOTENV_CONFIG_PATH` environment variable before running your application:
+
+```bash
+# Windows
+set DOTENV_CONFIG_PATH=./test-harness/.env
+node dist/server.js
+
+# Unix
+DOTENV_CONFIG_PATH=./config/.env node dist/server.js
+```
+
+**4. SecretResolver**
+
+**Location:** [src/config/secrets/SecretResolver.ts](src/config/secrets/SecretResolver.ts)
+
+Orchestrates secret resolution across provider chain:
+
+```typescript
+export class SecretResolver {
+  private providers: ISecretProvider[];
+
+  constructor(providers: ISecretProvider[]) {
+    this.providers = providers; // Priority order: File → Env → Custom
+  }
+
+  async resolve(logicalName: string): Promise<string> {
+    for (const provider of this.providers) {
+      try {
+        const secret = await provider.resolve(logicalName);
+        if (secret !== undefined) {
+          // Audit log: Track which provider resolved secret
+          console.log(`[SecretResolver] Resolved '${logicalName}' from ${provider.constructor.name}`);
+          return secret;
+        }
+      } catch (error) {
+        // Fatal error from provider - fail fast
+        throw new Error(`Fatal error resolving secret '${logicalName}': ${error.message}`);
+      }
+    }
+
+    // No provider found secret - fail fast
+    throw new Error(`Secret not found: '${logicalName}'`);
+  }
+
+  async resolveObject(obj: any): Promise<any> {
+    // Recursively resolve secrets in nested objects/arrays
+    if (obj && typeof obj === 'object' && obj.$secret) {
+      return await this.resolve(obj.$secret);
+    }
+    // ... handle arrays and nested objects
+  }
+}
+```
+
+**Key Features:**
+- Provider chain traversal (first match wins)
+- Fail-fast on missing secrets
+- Audit logging (which provider resolved each secret)
+- Recursive resolution (nested objects and arrays)
+
+**5. ConfigManager Integration**
+
+**Location:** [src/config/manager.ts](src/config/manager.ts)
+
+ConfigManager automatically resolves secrets during configuration load:
+
+```typescript
+export class ConfigManager {
+  private secretResolver: SecretResolver;
+
+  constructor() {
+    this.secretResolver = new SecretResolver([
+      new FileSecretProvider('/run/secrets'),
+      new EnvProvider(),
+      // Custom providers registered here
+    ]);
+  }
+
+  async loadConfig(configPath: string): Promise<Config> {
+    // 1. Load raw configuration from file
+    const rawConfig = JSON.parse(await fs.readFile(configPath, 'utf-8'));
+
+    // 2. Resolve all secret descriptors
+    const resolvedConfig = await this.secretResolver.resolveObject(rawConfig);
+
+    // 3. Validate with Zod schema
+    const validatedConfig = ConfigSchema.parse(resolvedConfig);
+
+    return validatedConfig;
+  }
+}
+```
+
+**Automatic Resolution:**
+- No code changes required in application logic
+- Secrets resolved before Zod validation
+- Fail-fast if any secret missing
+- Works with hot-reload (secrets re-resolved on config change)
+
+**6. Zod Schema Integration**
+
+**Location:** [src/config/schema.ts](src/config/schema.ts)
+
+Zod schemas accept both plain strings and secret descriptors:
+
+```typescript
+import { z } from 'zod';
+
+// Union type: plain string OR secret descriptor
+const SecretOrString = z.union([
+  z.string(),                           // Plain string (backward compatible)
+  z.object({ $secret: z.string() })     // Secret descriptor
+]);
+
+const ConfigSchema = z.object({
+  trustedIDPs: z.array(z.object({
+    issuer: z.string().url(),
+    tokenExchange: z.object({
+      clientSecret: SecretOrString,     // Accepts both formats
+      // ...
+    }).optional(),
+  })),
+  sql: z.object({
+    password: SecretOrString.optional(), // Accepts both formats
+    // ...
+  }).optional(),
+  // ...
+});
+```
+
+**Backward Compatibility:**
+- Plain strings still work (e.g., `"password": "mypass"`)
+- Secret descriptors optional (e.g., `"password": { "$secret": "DB_PASSWORD" }`)
+- No breaking changes to existing configurations
+
+#### Custom Secret Provider Implementation
+
+**Example: AWS Secrets Manager Provider**
+
+```typescript
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { ISecretProvider } from '@mcp-oauth/core/config/secrets';
+
+export class AWSSecretsManagerProvider implements ISecretProvider {
+  private client: SecretsManagerClient;
+
+  constructor(region: string = 'us-east-1') {
+    this.client = new SecretsManagerClient({ region });
+  }
+
+  async resolve(logicalName: string): Promise<string | undefined> {
+    try {
+      const command = new GetSecretValueCommand({
+        SecretId: logicalName
+      });
+
+      const response = await this.client.send(command);
+      return response.SecretString || Buffer.from(response.SecretBinary!).toString();
+
+    } catch (error: any) {
+      if (error.name === 'ResourceNotFoundException') {
+        return undefined; // Secret not found - try next provider
+      }
+
+      // Fatal error (permission denied, network failure)
+      throw new Error(`AWS Secrets Manager error: ${error.message}`);
+    }
+  }
+}
+```
+
+**Registration:**
+
+```typescript
+import { ConfigManager } from './config/manager.js';
+import { AWSSecretsManagerProvider } from './custom/aws-provider.js';
+
+const configManager = new ConfigManager();
+
+// Add custom provider to chain (before FileSecretProvider)
+configManager.addSecretProvider(new AWSSecretsManagerProvider('us-east-1'));
+
+await configManager.loadConfig('./config.json');
+```
+
+#### Deployment Examples
+
+**Development (.env file):**
+
+```bash
+# .env file (local development only)
+DB_PASSWORD=DevPassword123!
+OAUTH_CLIENT_SECRET=DevClientSecret456
+KERBEROS_SERVICE_PASSWORD=DevKerberosPass789!
+```
+
+**Production (Kubernetes):**
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mcp-oauth-secrets
+  namespace: default
+type: Opaque
+data:
+  DB_PASSWORD: UHJvZFBhc3MxMjMh        # base64 encoded
+  OAUTH_CLIENT_SECRET: cHJvZC1zZWNyZXQteHl6
+  KERBEROS_SERVICE_PASSWORD: UHJvZEtlcmJQYXNzNzg5IQ==
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-oauth-server
+spec:
+  template:
+    spec:
+      containers:
+      - name: mcp-oauth
+        image: mcp-oauth:latest
+        volumeMounts:
+        - name: secrets
+          mountPath: /run/secrets
+          readOnly: true
+      volumes:
+      - name: secrets
+        secret:
+          secretName: mcp-oauth-secrets
+          items:
+          - key: DB_PASSWORD
+            path: DB_PASSWORD
+            mode: 0400  # Read-only by owner
+          - key: OAUTH_CLIENT_SECRET
+            path: OAUTH_CLIENT_SECRET
+            mode: 0400
+          - key: KERBEROS_SERVICE_PASSWORD
+            path: KERBEROS_SERVICE_PASSWORD
+            mode: 0400
+```
+
+#### Security Best Practices
+
+1. **Production Deployment:**
+   - Use FileSecretProvider with Kubernetes/Docker secret mounts
+   - Set file permissions to 0400 (read-only by owner)
+   - Never use EnvProvider in production (secrets visible to child processes)
+
+2. **Secret Naming:**
+   - Use SCREAMING_SNAKE_CASE for logical names (e.g., `DB_PASSWORD`)
+   - Avoid special characters (only `A-Z`, `0-9`, `_`)
+   - Prefix by service if needed (e.g., `SQL_DB_PASSWORD`, `OAUTH_CLIENT_SECRET`)
+
+3. **Secret Rotation:**
+   - Update secrets in Kubernetes/Docker without changing configuration
+   - Restart pods to pick up new secrets (or implement hot-reload)
+   - No code deployment required
+
+4. **Audit Logging:**
+   - Monitor which provider resolved each secret
+   - Alert on resolution failures
+   - Track secret access patterns
+
+5. **Development vs Production:**
+   - Development: Use `.env` files (never commit to Git)
+   - Production: Use secret mounts (FileSecretProvider)
+   - CI/CD: Use environment variables (injected by CI system)
+
+#### Testing
+
+**Test Suite:** [tests/unit/config/secrets/](tests/unit/config/secrets/)
+- **FileSecretProvider:** 21 tests (100% coverage)
+- **EnvProvider:** 23 tests (100% coverage)
+- **SecretResolver:** 28 tests (98% coverage)
+
+**Test Coverage:** 72/72 tests passing (100%), >95% code coverage
+
+**Security Test Scenarios:**
+- Path traversal prevention (blocks `../`, `..\\`)
+- Permission denied handling (fatal error propagation)
+- Missing secret handling (fail-fast)
+- Provider chain priority (first match wins)
+- Recursive resolution (nested objects and arrays)
+- Backward compatibility (plain strings still work)
+
+#### Configuration-Driven Design
+
+**Critical Principle:** Framework does NOT impose secret names!
+
+- ❌ **Framework does NOT require** specific secret names (e.g., "DB_PASSWORD")
+- ✅ **User defines** logical names in configuration
+- ✅ **User controls** which secrets are needed
+- ✅ **User chooses** secret naming convention
+
+**Example:**
+
+```json
+{
+  "sql": {
+    "password": { "$secret": "MY_CUSTOM_DB_SECRET" }  // User's choice
+  },
+  "trustedIDPs": [{
+    "tokenExchange": {
+      "clientSecret": { "$secret": "MY_OAUTH_SECRET" }  // User's choice
+    }
+  }]
+}
+```
+
+**Finding Required Secrets:**
+
+```bash
+# Search configuration for secret descriptors
+grep -o '"$secret":\s*"[^"]*"' config.json
+
+# Example output:
+# "$secret": "MY_CUSTOM_DB_SECRET"
+# "$secret": "MY_OAUTH_SECRET"
+```
+
+#### Documentation
+
+**Reference Design:** [Docs/SECRETS-MANAGEMENT.md](Docs/SECRETS-MANAGEMENT.md) (1290 lines)
+- Architecture overview and design principles
+- Provider implementation guide (custom providers)
+- Security best practices and deployment scenarios
+
+**User Guide:** [Docs/CONFIGURATION.md](Docs/CONFIGURATION.md#secret-management-v32)
+- Configuration examples (development and production)
+- Secret descriptor syntax
+- Deployment instructions (Kubernetes, Docker, .env)
+
+**Framework Overview:** [Docs/framework-overview.md](Docs/framework-overview.md#secure-secrets-management-v32)
+- Feature summary and benefits
+- Provider chain architecture
+- Quick reference
+
+#### Key Architectural Decisions
+
+1. **Opt-In by Design:** Plain strings still work (backward compatibility)
+2. **Fail-Fast Security:** Server exits if secrets missing (no degraded mode)
+3. **Provider Chain:** Highest priority provider wins (File → Env → Custom)
+4. **No Caching:** Secrets resolved fresh on each config load (supports hot-reload)
+5. **Audit Logging:** Track which provider resolved each secret (security trail)
+6. **Configuration-Driven:** No framework-imposed secret names (user controls naming)
+7. **Zero Code Changes:** Works with existing MCPOAuthServer (transparent integration)
 
 ---
 

@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+
+// IMPORTANT: Load .env file FIRST before any other imports
+// This populates process.env for the secrets management system
+import 'dotenv/config';
+
 /**
  * v2 Test Server - New Modular Framework with Multi-Delegation Support
  *
@@ -26,6 +31,7 @@
  *   NODE_ENV=development
  *   CONFIG_PATH=./test-harness/config/phase3-test-config.json
  *   SERVER_PORT=3000
+ *   DOTENV_CONFIG_PATH=./test-harness/.env (optional - dotenv will find .env automatically)
  */
 
 import { MCPOAuthServer } from '../src/mcp/server.js';
@@ -276,6 +282,25 @@ async function main() {
     if (error instanceof Error) {
       console.error(`   Error: ${error.message}`);
 
+      // Check if this is a secret resolution error
+      if (error.message.includes('Secret') && error.message.includes('could not be resolved')) {
+        console.error('\n⚠️  SECRET RESOLUTION FAILURE\n');
+        console.error('   One or more secrets could not be resolved.');
+        console.error('   The error message above shows which secret is missing.\n');
+        console.error('   How to fix:');
+        console.error('     1. Check the error message for the secret name (e.g., "MY_SECRET")');
+        console.error('     2. Search your config file for {"$secret": "MY_SECRET"}');
+        console.error('     3. Set the secret as an environment variable or file:\n');
+        console.error('   Environment variable (development):');
+        console.error('     export MY_SECRET="actual_value"        # Linux/macOS');
+        console.error('     set MY_SECRET=actual_value             # Windows CMD');
+        console.error('     $env:MY_SECRET="actual_value"          # Windows PowerShell\n');
+        console.error('   File mount (production):');
+        console.error('     echo "actual_value" > /run/secrets/MY_SECRET\n');
+        console.error('   Tip: Search your config for all secrets:');
+        console.error('     grep -o \'"\$secret":\s*"[^"]*"\' ' + CONFIG_PATH + '\n');
+      }
+
       if (error.stack && NODE_ENV === 'development') {
         console.error('\n   Stack trace:');
         console.error(error.stack.split('\n').map(line => `   ${line}`).join('\n'));
@@ -285,6 +310,7 @@ async function main() {
     }
 
     console.error('\nCommon Issues:');
+    console.error('  • Secret resolution failed - check environment variables');
     console.error('  • Config file not found - check CONFIG_PATH');
     console.error('  • Invalid config format - verify JSON schema');
     console.error('  • Port in use - check SERVER_PORT');

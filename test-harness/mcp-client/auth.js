@@ -521,10 +521,11 @@ class AuthenticationManager {
     /**
      * Set access token and decode claims
      * @param {string} token - JWT token
+     * @param {object} claims - Optional pre-decoded claims (for external discovery flows)
      */
-    setAccessToken(token) {
+    setAccessToken(token, claims = null) {
         this.accessToken = token;
-        this.claims = this.decodeJWT(token);
+        this.claims = claims || this.decodeJWT(token);
         log('success', `Access token set. Subject: ${this.claims.sub || 'unknown'}`);
     }
 
