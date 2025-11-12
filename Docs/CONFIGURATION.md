@@ -6,6 +6,7 @@ Complete reference for `config.json` configuration options in the MCP OAuth fram
 
 - [Overview](#overview)
 - [Critical Requirements](#critical-requirements)
+- [Authorization Methods](#authorization-methods)
 - [Secret Management (v3.2+)](#secret-management-v32)
 - [Configuration Structure](#configuration-structure)
 - [Auth Section](#auth-section)
@@ -59,6 +60,133 @@ const authResult = await this.authService.authenticate(token, {
 ```
 
 **Solution:** Always name your requestor IDP `"requestor-jwt"` in the configuration.
+
+---
+
+## Authorization Methods
+
+The framework supports **two complementary authorization methods** for controlling access to MCP tools:
+
+### 1. Role-Based Access Control (RBAC)
+
+**Purpose:** Coarse-grained access control using role assignments
+
+**How it works:**
+1. JWT contains role claims (e.g., `"user_roles": ["admin", "developer"]`)
+2. `claimMappings.roles` extracts roles from JWT → `session.customRoles`
+3. `roleMappings` translates JWT roles to framework roles (admin/user/guest) → `session.role`
+4. Tools check `session.role` for access (e.g., `requireRole(context, 'admin')`)
+
+**Configuration Example:**
+```json
+{
+  "auth": {
+    "trustedIDPs": [{
+      "name": "requestor-jwt",
+      "claimMappings": {
+        "roles": "user_roles"                    // Extract from JWT claim
+      },
+      "roleMappings": {                          // Translate to framework roles
+        "admin": ["admin", "administrator"],
+        "user": ["developer", "member"],
+        "guest": [],
+        "defaultRole": "guest"
+      }
+    }]
+  }
+}
+```
+
+**Use Cases:**
+- ✅ Admin-only tools (delete operations, system configuration)
+- ✅ User-tier features (read/write operations)
+- ✅ Guest access (read-only operations)
+
+### 2. Scope-Based Access Control (OAuth 2.1 Scopes)
+
+**Purpose:** Fine-grained access control using OAuth scopes
+
+**How it works:**
+1. JWT contains scope claims (e.g., `"scopes": "sql:read sql:write api:invoke"`)
+2. `claimMappings.scopes` extracts scopes from JWT → `session.scopes`
+3. Tools check specific scopes (e.g., `requireScope(context, 'sql:write')`)
+
+**Configuration Example:**
+```json
+{
+  "auth": {
+    "trustedIDPs": [{
+      "name": "requestor-jwt",
+      "claimMappings": {
+        "scopes": "authorized_scopes"            // Extract from JWT claim
+      }
+    }]
+  }
+}
+```
+
+**JWT Example:**
+```json
+{
+  "sub": "user123",
+  "authorized_scopes": "mcp:read mcp:write sql:read sql:execute api:invoke"
+}
+```
+
+**Result:** `session.scopes = ["mcp:read", "mcp:write", "sql:read", "sql:execute", "api:invoke"]`
+
+**Use Cases:**
+- ✅ Fine-grained SQL access (`sql:read` vs `sql:write` vs `sql:admin`)
+- ✅ API-specific permissions (`api:invoke`, `api:configure`)
+- ✅ Resource-specific access (`resource:database1:read`, `resource:database2:write`)
+
+### Combining Both Methods
+
+**Best Practice:** Use both methods together for defense-in-depth:
+
+```json
+{
+  "auth": {
+    "trustedIDPs": [{
+      "name": "requestor-jwt",
+      "claimMappings": {
+        "roles": "user_roles",                   // RBAC
+        "scopes": "authorized_scopes"            // Permissions
+      },
+      "roleMappings": {
+        "admin": ["admin"],
+        "user": ["user", "developer"],
+        "guest": []
+      }
+    }]
+  }
+}
+```
+
+**Tool Authorization Example:**
+```typescript
+// Requires BOTH admin role AND sql:admin scope
+auth.requireRole(context, 'admin');
+auth.requireScope(context, 'sql:admin');
+```
+
+**Comparison:**
+
+| Aspect | Role-Based (RBAC) | Scope-Based (OAuth 2.1) |
+|--------|------------------|---------------------------|
+| **Granularity** | Coarse (3-5 roles) | Fine (unlimited scopes) |
+| **Configuration** | `roleMappings` required | No additional config |
+| **JWT Claim** | `roles` array | `scopes` string or array |
+| **Session Property** | `session.role`, `session.customRoles` | `session.scopes` |
+| **Check Method** | `requireRole()`, `hasRole()` | `requireScope()`, `hasScope()` |
+| **Use Case** | User tier separation | Feature-specific access |
+| **Example** | `admin`, `user`, `guest` | `sql:read`, `sql:write`, `api:invoke` |
+
+**When to Use Each:**
+
+- **RBAC only:** Simple applications with clear user tiers (admin/user/guest)
+- **Scopes only:** Microservices with fine-grained OAuth scopes
+- **Both (recommended):** Enterprise applications requiring defense-in-depth
 
 ---
 
@@ -563,7 +691,7 @@ const adminTool = {
 const queryTool = {
   name: 'sql-query',
   canAccess: (context) => {
-    return context.session?.permissions?.includes('sql:read');
+    return context.session?.scopes?.includes('sql:read');
   }
 };
 
@@ -594,7 +722,9 @@ const partnerReportTool = {
 
 ### 2. Claims to Session Mapping (JWT claims → UserSession)
 
-The framework extracts JWT claims and maps them to a `UserSession` object using `claimMappings`:
+The framework extracts JWT claims and maps them to a `UserSession` object using `claimMappings`.
+
+> **📖 See Also:** [Authorization Methods](#authorization-methods) section explains the two complementary authorization approaches (RBAC and Permissions)
 
 ```
 JWT Token Claims
@@ -632,8 +762,8 @@ Tool Authorization
 | `{ "sub": "user123" }` | `userId: "sub"` | `session.userId = "user123"` | User identification |
 | `{ "preferred_username": "alice" }` | `username: "preferred_username"` | `session.username = "alice"` | Display name |
 | `{ "legacy_sam_account": "DOMAIN\\alice" }` | `legacyUsername: "legacy_sam_account"` | `session.legacyUsername = "DOMAIN\\alice"` | SQL delegation |
-| `{ "user_roles": ["admin", "user"] }` | `roles: "user_roles"` | `session.customRoles = ["admin", "user"]` | Authorization |
-| `{ "authorized_scopes": "sql:read sql:write" }` | `scopes: "authorized_scopes"` | `session.permissions = ["sql:read", "sql:write"]` | Permission checks |
+| `{ "user_roles": ["admin", "user"] }` | `roles: "user_roles"` | `session.customRoles = ["admin", "user"]` | **RBAC Authorization** |
+| `{ "authorized_scopes": "sql:read sql:write" }` | `scopes: "authorized_scopes"` | `session.scopes = ["sql:read", "sql:write"]` | **Scope-Based Authorization** |
 
 **Nested Claim Support:**
 
@@ -1053,13 +1183,14 @@ Array of identity providers trusted by the framework.
 - **Example:** `"algorithms": ["RS256"]`
 
 **Field: claimMappings** (object, required)
-- **Purpose:** Map JWT claims to session properties
+- **Purpose:** Map JWT claims to session properties for authentication and authorization
 - **Subfields:**
   - `legacyUsername` (string, **required**): JWT claim containing legacy username (e.g., "DOMAIN\\user")
-  - `roles` (string, **required**): JWT claim containing user roles (supports nested paths like "realm_access.roles")
-  - `scopes` (string, optional): JWT claim containing OAuth scopes
+  - `roles` (string, **required**): JWT claim containing user roles for **RBAC authorization** (supports nested paths like "realm_access.roles") → Maps to `session.customRoles` and `session.role`
+  - `scopes` (string, optional): JWT claim containing OAuth scopes for **scope-based authorization** → Maps to `session.scopes`
   - `userId` (string, optional): JWT claim for unique user ID (defaults to "sub" if omitted)
   - `username` (string, optional): JWT claim for username (defaults to "preferred_username" if omitted)
+- **Authorization:** See [Authorization Methods](#authorization-methods) for details on RBAC (roles) vs Permission-based (scopes) access control
 - **Example:**
   ```json
   "claimMappings": {

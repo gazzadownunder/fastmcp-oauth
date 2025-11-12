@@ -1118,14 +1118,15 @@ await server.start({ /* ... */ });
         "clockTolerance": 60,
         "maxTokenAge": 3600,
         "requireNbf": true
+      },
+      "roleMappings": {
+        "admin": ["admin", "administrator"],
+        "user": ["user", "member"],
+        "guest": ["guest"],
+        "defaultRole": "guest",
+        "rejectUnmappedRoles": false
       }
     }],
-    "roleMappings": {
-      "adminRole": "admin",
-      "userRole": "user",
-      "guestRole": "guest",
-      "customRoles": ["developer"]
-    },
     "audit": {
       "enabled": true,
       "logAllAttempts": true,

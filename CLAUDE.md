@@ -1038,9 +1038,9 @@ Use in `canAccess` implementations for fine-grained access control:
 - `hasRole(context, role)` - Check if user has specific role
 - `hasAnyRole(context, roles[])` - Check if user has any of multiple roles (OR logic)
 - `hasAllRoles(context, roles[])` - Check if user has all roles (AND logic, checks customRoles)
-- `hasPermission(context, permission)` - Check if user has specific permission
-- `hasAnyPermission(context, permissions[])` - Check if user has any permission (OR logic)
-- `hasAllPermissions(context, permissions[])` - Check if user has all permissions (AND logic)
+- `hasScope(context, scope)` - Check if user has specific OAuth scope
+- `hasAnyScope(context, scopes[])` - Check if user has any scope (OR logic)
+- `hasAllScopes(context, scopes[])` - Check if user has all scopes (AND logic)
 
 #### Hard Checks (Throw on Failure)
 Use in tool handlers to enforce access requirements:
@@ -1048,9 +1048,9 @@ Use in tool handlers to enforce access requirements:
 - `requireRole(context, role)` - Throws 403 if role mismatch
 - `requireAnyRole(context, roles[])` - Throws 403 if lacks all roles
 - `requireAllRoles(context, roles[])` - Throws 403 if missing any role
-- `requirePermission(context, permission)` - Throws 403 if permission missing
-- `requireAnyPermission(context, permissions[])` - Throws 403 if lacks all permissions
-- `requireAllPermissions(context, permissions[])` - Throws 403 if missing any permission
+- `requireScope(context, scope)` - Throws 403 if scope missing
+- `requireAnyScope(context, scopes[])` - Throws 403 if lacks all scopes
+- `requireAllScopes(context, scopes[])` - Throws 403 if missing any scope
 
 **Example Usage:**
 ```typescript
@@ -1059,12 +1059,12 @@ import { Authorization } from './mcp/authorization.js';
 const auth = new Authorization();
 
 // In tool handler (hard check)
-auth.requirePermission(context, 'sql:query');
+auth.requireScope(context, 'sql:query');
 
 // In canAccess implementation (soft check)
 canAccess: (context) => {
   if (!auth.isAuthenticated(context)) return false;
-  return auth.hasAnyPermission(context, ['sql:query', 'sql:execute']);
+  return auth.hasAnyScope(context, ['sql:query', 'sql:execute']);
 }
 ```
 
@@ -1459,19 +1459,19 @@ Configuration files use JSON format with Zod validation. Example structure:
       "roles": "user_roles",
       "scopes": "authorized_scopes"
     },
+    "roleMappings": {
+      "admin": ["admin", "administrator"],
+      "user": ["user", "member"],
+      "guest": ["guest"],
+      "defaultRole": "guest",
+      "rejectUnmappedRoles": false
+    },
     "security": {
       "clockTolerance": 60,
       "maxTokenAge": 3600,
       "requireNbf": true
     }
   }],
-  "roleMappings": {
-    "admin": ["admin", "administrator"],
-    "user": ["user", "member"],
-    "guest": ["guest"],
-    "defaultRole": "guest",
-    "rejectUnmappedRoles": false
-  },
   "rateLimiting": { "maxRequests": 100, "windowMs": 900000 },
   "audit": { "logAllAttempts": true, "retentionDays": 90 },
   "sql": {
@@ -1484,7 +1484,7 @@ Configuration files use JSON format with Zod validation. Example structure:
 
 ### Role Mapping Configuration
 
-The `roleMappings` section controls how JWT roles are mapped to application roles:
+The `roleMappings` section (within each IDP configuration) controls how JWT roles are mapped to application roles for that specific IDP:
 
 - **`admin`**: Array of JWT role values that map to admin role (default: `["admin", "administrator"]`)
 - **`user`**: Array of JWT role values that map to user role (default: `["user"]`)
@@ -1495,12 +1495,15 @@ The `roleMappings` section controls how JWT roles are mapped to application role
 **Example 1 - Permissive (default)**: Accept unmapped roles and assign defaultRole
 ```json
 {
-  "roleMappings": {
-    "admin": ["admin"],
-    "user": ["user"],
-    "defaultRole": "guest",
-    "rejectUnmappedRoles": false
-  }
+  "trustedIDPs": [{
+    "issuer": "https://auth.company.com",
+    "roleMappings": {
+      "admin": ["admin"],
+      "user": ["user"],
+      "defaultRole": "guest",
+      "rejectUnmappedRoles": false
+    }
+  }]
 }
 ```
 User with JWT role `"developer"` → Assigned `guest` role (defaultRole)
@@ -1508,11 +1511,14 @@ User with JWT role `"developer"` → Assigned `guest` role (defaultRole)
 **Example 2 - Strict**: Reject unmapped roles
 ```json
 {
-  "roleMappings": {
-    "admin": ["admin"],
-    "user": ["user"],
-    "rejectUnmappedRoles": true
-  }
+  "trustedIDPs": [{
+    "issuer": "https://auth.company.com",
+    "roleMappings": {
+      "admin": ["admin"],
+      "user": ["user"],
+      "rejectUnmappedRoles": true
+    }
+  }]
 }
 ```
 User with JWT role `"developer"` → Authentication rejected with `HTTP 401 Unauthorized`
