@@ -1305,9 +1305,9 @@ The framework includes two comprehensive web-based testing tools for validating 
 ## License & Support
 
 - **License:** MIT
-- **GitHub:** [MCP-OAuth Repository](https://github.com/your-org/mcp-oauth)
-- **Issues:** [GitHub Issues](https://github.com/your-org/mcp-oauth/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/your-org/mcp-oauth/discussions)
+- **GitHub:** [MCP-OAuth Repository](https://github.com/gazzadownunder/fastmcp-oauth)
+- **Issues:** [GitHub Issues](https://github.com/gazzadownunder/fastmcp-oauth/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/gazzadownunder/fastmcp-oauth/discussions)
 
 ---
 
@@ -1340,8 +1340,8 @@ The framework includes two comprehensive web-based testing tools for validating 
 ### Getting Help
 
 - **📖 Documentation:** [Full documentation](../README.md) with tutorials and API reference
-- **💬 GitHub Discussions:** [Ask questions, share ideas](https://github.com/your-org/mcp-oauth/discussions)
-- **🐛 Issue Tracker:** [Report bugs and request features](https://github.com/your-org/mcp-oauth/issues)
+- **💬 GitHub Discussions:** [Ask questions, share ideas](https://github.com/gazzadownunder/fastmcp-oauth/discussions)
+- **🐛 Issue Tracker:** [Report bugs and request features](https://github.com/gazzadownunder/fastmcp-oauth/issues)
 - **📧 Security Issues:** security@your-domain.com (private disclosure)
 
 ### Contributing
@@ -1390,8 +1390,8 @@ We welcome contributions! See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelin
    - VS Code extension for configuration validation
 
 **Community Requests:**
-- Vote on features via [GitHub Discussions](https://github.com/your-org/mcp-oauth/discussions)
-- Submit feature requests as [GitHub Issues](https://github.com/your-org/mcp-oauth/issues)
+- Vote on features via [GitHub Discussions](https://github.com/gazzadownunder/fastmcp-oauth/discussions)
+- Submit feature requests as [GitHub Issues](https://github.com/gazzadownunder/fastmcp-oauth/issues)
 
 ---
 

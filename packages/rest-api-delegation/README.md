@@ -383,5 +383,5 @@ MIT
 ## Support
 
 - **Documentation**: [MCP OAuth Framework Docs](../../README.md)
-- **Issues**: [GitHub Issues](https://github.com/your-org/mcp-oauth/issues)
+- **Issues**: [GitHub Issues](https://github.com/gazzadownunder/fastmcp-oauth/issues)
 - **Extension Guide**: [Docs/EXTENDING.md](../../Docs/EXTENDING.md)

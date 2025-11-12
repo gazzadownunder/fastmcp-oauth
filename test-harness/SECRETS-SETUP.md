@@ -314,4 +314,4 @@ These secrets are **only required for `phase3-test-config.json`**. Your configur
 - [CONFIGURATION.md](../Docs/CONFIGURATION.md) - Configuration reference
 - [server-with-secrets.ts](../examples/server-with-secrets.ts) - Example server code
 
-For questions or issues, see [GitHub Issues](https://github.com/your-org/mcp-oauth/issues).
+For questions or issues, see [GitHub Issues](https://github.com/gazzadownunder/fastmcp-oauth/issues).
