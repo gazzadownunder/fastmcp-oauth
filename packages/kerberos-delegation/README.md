@@ -1,4 +1,4 @@
-# @mcp-oauth/kerberos-delegation
+# @fastmcp-oauth/kerberos-delegation
 
 Kerberos delegation module for the MCP OAuth framework - provides Windows Kerberos Constrained Delegation support.
 
@@ -12,10 +12,10 @@ This package is a **reference implementation** demonstrating how to build delega
 ## Installation
 
 ```bash
-npm install @mcp-oauth/kerberos-delegation
+npm install @fastmcp-oauth/kerberos-delegation
 ```
 
-This package is an **optional** dependency of `mcp-oauth-framework`. The core framework works without Kerberos support.
+This package is an **optional** dependency of `fastmcp-oauth`. The core framework works without Kerberos support.
 
 ## Platform Requirements
 
@@ -55,8 +55,8 @@ See [Non-Domain-Joined Windows Setup](#non-domain-joined-windows-setup) below
 ### Basic Kerberos Delegation
 
 ```typescript
-import { KerberosDelegationModule } from '@mcp-oauth/kerberos-delegation';
-import { DelegationRegistry } from 'mcp-oauth-framework/delegation';
+import { KerberosDelegationModule } from '@fastmcp-oauth/kerberos-delegation';
+import { DelegationRegistry } from 'fastmcp-oauth/delegation';
 
 const kerberosModule = new KerberosDelegationModule();
 

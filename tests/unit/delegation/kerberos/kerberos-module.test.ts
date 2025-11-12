@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { KerberosDelegationModule } from '@mcp-oauth/kerberos-delegation';
-import type { KerberosConfig, KerberosParams } from '@mcp-oauth/kerberos-delegation';
+import { KerberosDelegationModule } from '@fastmcp-oauth/kerberos-delegation';
+import type { KerberosConfig, KerberosParams } from '@fastmcp-oauth/kerberos-delegation';
 import type { UserSession } from '../../../../src/core/index.js';
 
 describe('KerberosDelegationModule (Placeholder)', () => {

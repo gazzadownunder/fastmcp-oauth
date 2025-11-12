@@ -85,7 +85,7 @@ import { FastMCP } from 'fastmcp';
 import {
   ConfigManager,
   ConfigOrchestrator,
-  MCPAuthMiddleware,
+  FastMCPAuthMiddleware,
   getAllToolFactories
 } from 'fastmcp-oauth-obo';
 
@@ -99,7 +99,7 @@ async function main() {
   await coreContext.authService.initialize();
 
   // 2. Create FastMCP server
-  const middleware = new MCPAuthMiddleware(coreContext.authService);
+  const middleware = new FastMCPAuthMiddleware(coreContext.authService);
   const server = new FastMCP({
     name: 'My OAuth Server',
     version: '1.0.0',
@@ -476,7 +476,7 @@ apiTools.forEach(tool => {
 ### Implementation
 
 ```typescript
-import type { ToolRegistration, MCPContext, LLMResponse } from 'fastmcp-oauth-obo';
+import type { ToolRegistration, FastMCPContext, LLMResponse } from 'fastmcp-oauth-obo';
 import { Authorization } from 'fastmcp-oauth-obo';
 import { z } from 'zod';
 
@@ -488,13 +488,13 @@ const manualTool: ToolRegistration = {
   schema: z.object({ param1: z.string() }),
 
   // Visibility filtering (soft check)
-  canAccess: (mcpContext: MCPContext) => {
+  canAccess: (mcpContext: FastMCPContext) => {
     if (!auth.isAuthenticated(mcpContext)) return false;
     return auth.hasAnyRole(mcpContext, ['user', 'admin']);
   },
 
   // Tool handler (hard check)
-  handler: async (params, mcpContext: MCPContext): Promise<LLMResponse> => {
+  handler: async (params, mcpContext: FastMCPContext): Promise<LLMResponse> => {
     try {
       // 1. Hard authentication check
       auth.requireAuth(mcpContext);
@@ -911,4 +911,4 @@ All three approaches have **identical runtime performance** for delegation opera
 - **[API-REFERENCE.md](API-REFERENCE.md)** - Complete API documentation
 - **[README.md](../README.md)** - Framework overview
 
-**Questions?** Open an issue at https://github.com/your-org/mcp-oauth-framework/issues
+**Questions?** Open an issue at https://github.com/your-org/fastmcp-oauth/issues

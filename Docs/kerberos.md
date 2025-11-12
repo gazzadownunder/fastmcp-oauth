@@ -1217,7 +1217,7 @@ console.log(`  S4U2Proxy Failures: ${metrics.s4u2proxy.failures}`);
 **Commands to run:**
 ```powershell
 # On 192.168.1.25 (Windows Server 2025)
-cd "C:\Path\To\MCP-Oauth"
+cd "C:\Path\To\FastMCP-OAuth"
 .\scripts\setup-ad-kerberos.ps1 -DomainController "192.168.1.25" -Realm "COMPANY.COM"
 ```
 

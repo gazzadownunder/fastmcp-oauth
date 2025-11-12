@@ -15,14 +15,14 @@
  * @see Docs/remediation-plan.md Gap #3 for MCPOAuthServer details
  */
 
-import { MCPOAuthServer } from '../src/mcp/server.js';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
 
 /**
  * Main function - starts the server
  */
 async function main() {
   // Create server instance with config path
-  const server = new MCPOAuthServer('./config/unified-config.json');
+  const server = new FastMCPOAuthServer('./config/unified-config.json');
 
   // Start server (defaults from config, or override here)
   await server.start({

@@ -116,12 +116,12 @@ In your configuration file (e.g., `multi-rest-api-config.json`):
 Example server setup with multiple REST API instances:
 
 ```typescript
-import { MCPOAuthServer } from '../src/mcp/server.js';
-import { RestAPIDelegationModule } from '@mcp-oauth/rest-api-delegation';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
+import { RestAPIDelegationModule } from '@fastmcp-oauth/rest-api-delegation';
 import { createRESTAPIToolsForModule } from '../src/mcp/tools/rest-api-tools-factory.js';
 
 // Start server
-const server = new MCPOAuthServer({
+const server = new FastMCPOAuthServer({
   configPath: './config/multi-rest-api-config.json',
 });
 
@@ -322,7 +322,7 @@ Add API-specific headers:
     "defaultHeaders": {
       "X-API-Version": "v2",
       "X-Client-ID": "mcp-server",
-      "X-Request-Source": "mcp-oauth-framework"
+      "X-Request-Source": "fastmcp-oauth"
     }
   }
 }
@@ -453,7 +453,7 @@ Creates REST API tools for a specific REST API module.
 **Example:**
 
 ```typescript
-import { createRESTAPIToolsForModule } from 'mcp-oauth-framework';
+import { createRESTAPIToolsForModule } from 'fastmcp-oauth';
 
 const api1Tools = createRESTAPIToolsForModule({
   toolPrefix: 'api1',

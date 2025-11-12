@@ -17,11 +17,11 @@ describe('MCP Layer - Standalone Integration', () => {
       // Types are compile-time only, but module should exist
     });
 
-    it('should import MCPAuthMiddleware', async () => {
-      const { MCPAuthMiddleware } = await import('../../../src/mcp/middleware.js');
+    it('should import FastMCPAuthMiddleware', async () => {
+      const { FastMCPAuthMiddleware } = await import('../../../src/mcp/middleware.js');
 
-      expect(MCPAuthMiddleware).toBeDefined();
-      expect(typeof MCPAuthMiddleware).toBe('function');
+      expect(FastMCPAuthMiddleware).toBeDefined();
+      expect(typeof FastMCPAuthMiddleware).toBe('function');
     });
 
     it('should import ConfigOrchestrator', async () => {
@@ -48,7 +48,7 @@ describe('MCP Layer - Standalone Integration', () => {
       const mcp = await import('../../../src/mcp/index.js');
 
       // Middleware
-      expect(mcp.MCPAuthMiddleware).toBeDefined();
+      expect(mcp.FastMCPAuthMiddleware).toBeDefined();
       expect(mcp.requireAuth).toBeDefined();
       expect(mcp.requireRole).toBeDefined();
 
@@ -178,8 +178,8 @@ describe('MCP Layer - Standalone Integration', () => {
     });
   });
 
-  describe('MCPContext and ToolHandler Types (GAP #12)', () => {
-    it('should define MCPContext with session field', () => {
+  describe('FastMCPContext and ToolHandler Types (GAP #12)', () => {
+    it('should define FastMCPContext with session field', () => {
       const mockSession: any = {
         userId: 'user123',
         username: 'test',

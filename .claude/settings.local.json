@@ -102,7 +102,10 @@
       "Bash(npm run test:phase3:integration:*)",
       "Bash(npm run test:coverage:*)",
       "Bash(cp:*)",
-      "Read(//c/Users/gazza/Local Documents/GitHub/**)"
+      "Read(//c/Users/gazza/Local Documents/GitHub/**)",
+      "Bash(npm org:*)",
+      "Bash(npm help:*)",
+      "Bash(xargs sed:*)"
     ],
     "deny": [],
     "ask": []

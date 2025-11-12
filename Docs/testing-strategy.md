@@ -303,7 +303,7 @@ npm run test:performance
 **File:** `test-harness/sql-delegation.test.ts`
 
 **What it does:**
-- Tests SQL Server delegation module (`@mcp-oauth/sql-delegation`)
+- Tests SQL Server delegation module (`@fastmcp-oauth/sql-delegation`)
 - Requires SQL Server + `EXECUTE AS USER` permissions
 - Optional - only for projects using SQL delegation
 
@@ -312,7 +312,7 @@ npm run test:performance
 - Service account with impersonation permissions
 - Install SQL delegation package:
   ```bash
-  npm install @mcp-oauth/sql-delegation
+  npm install @fastmcp-oauth/sql-delegation
   ```
 
 **When to run:**
@@ -709,7 +709,7 @@ npm test
 **Setup:**
 1. **Install SQL delegation package:**
    ```bash
-   npm install @mcp-oauth/sql-delegation
+   npm install @fastmcp-oauth/sql-delegation
    ```
 
 2. **Configure SQL Server:**
@@ -777,7 +777,7 @@ npm test
 
 3. **Provide test utilities**
    - Export mocks for downstream users
-   - Example: `@mcp-oauth/testing`
+   - Example: `@fastmcp-oauth/testing`
 
 4. **Document test requirements**
    - List external dependencies (databases, APIs)

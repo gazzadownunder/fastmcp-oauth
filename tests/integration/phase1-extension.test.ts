@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { z } from 'zod';
-import { MCPOAuthServer } from '../../src/mcp/server.js';
+import { FastMCPOAuthServer } from '../../src/mcp/server.js';
 import { createDelegationTool, createDelegationTools } from '../../src/mcp/tools/delegation-tool-factory.js';
 import type { DelegationModule, DelegationResult } from '../../src/delegation/base.js';
 import type { UserSession } from '../../src/core/types.js';
@@ -138,13 +138,13 @@ class TestDelegationModule implements DelegationModule {
 // ============================================================================
 
 describe('Phase 1: Extension API Integration Tests', () => {
-  let server: MCPOAuthServer;
+  let server: FastMCPOAuthServer;
   let testModule: TestDelegationModule;
   let coreContext: CoreContext;
 
   beforeAll(async () => {
     // Create server with test configuration
-    server = new MCPOAuthServer('./test-harness/config/v2-keycloak-oauth-only.json');
+    server = new FastMCPOAuthServer('./test-harness/config/v2-keycloak-oauth-only.json');
 
     // Start server to initialize CoreContext
     await server.start({
@@ -280,7 +280,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
     });
   });
 
-  describe('MCPOAuthServer.registerTool()', () => {
+  describe('FastMCPOAuthServer.registerTool()', () => {
     it('should register a single custom tool', () => {
       const tool = createDelegationTool(
         'testmodule',
@@ -299,7 +299,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
     });
 
     it('should throw if server not initialized', () => {
-      const uninitializedServer = new MCPOAuthServer(
+      const uninitializedServer = new FastMCPOAuthServer(
         './test-harness/config/v2-keycloak-oauth-only.json'
       );
 
@@ -321,7 +321,7 @@ describe('Phase 1: Extension API Integration Tests', () => {
     });
   });
 
-  describe('MCPOAuthServer.registerTools()', () => {
+  describe('FastMCPOAuthServer.registerTools()', () => {
     it('should register multiple tools at once', () => {
       const tools = createDelegationTools(
         'testmodule',
@@ -429,11 +429,14 @@ describe('Phase 1: Extension API Integration Tests', () => {
         },
       };
 
-      const result = await tool.handler({ message: 'Hello' }, { session: mockSession });
+      // For 403 errors, handler now throws a Response object (per MCP spec)
+      await expect(tool.handler({ message: 'Hello' }, { session: mockSession })).rejects.toThrow();
 
-      expect(result.status).toBe('failure');
-      if ('code' in result) {
-        expect(result.code).toBe('INSUFFICIENT_PERMISSIONS');
+      try {
+        await tool.handler({ message: 'Hello' }, { session: mockSession });
+      } catch (error) {
+        expect(error).toBeInstanceOf(Response);
+        expect((error as Response).status).toBe(403);
       }
     });
 

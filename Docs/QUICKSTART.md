@@ -36,8 +36,8 @@ npm install fastmcp-oauth-obo
 ### Option 2: Clone from source (Development)
 
 ```bash
-git clone https://github.com/your-org/MCP-Oauth.git
-cd MCP-Oauth
+git clone https://github.com/your-org/FastMCP-OAuth.git
+cd FastMCP-OAuth
 npm install
 npm run build
 ```
@@ -46,7 +46,7 @@ npm run build
 
 ## Simplest Setup (Recommended)
 
-Use the `MCPOAuthServer` wrapper for minimal boilerplate (19 lines of code).
+Use the `FastMCPOAuthServer` wrapper for minimal boilerplate (19 lines of code).
 
 ### Step 1: Create Configuration File
 
@@ -95,11 +95,11 @@ Create `config/unified-config.json`:
 Create `server.ts`:
 
 ```typescript
-import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
 
 async function main() {
   // Create server with config path
-  const server = new MCPOAuthServer('./config/unified-config.json');
+  const server = new FastMCPOAuthServer('./config/unified-config.json');
 
   // Start server (automatically initializes AuthenticationService)
   await server.start({
@@ -132,11 +132,11 @@ npx tsx server.ts
 [AuthenticationService] Initializing with 1 trusted IDP(s)
 [JWTValidator] Initialized: https://auth.example.com
 ✓ AuthenticationService initialized (JWKS keys downloaded)
-[MCPOAuthServer] Started on port 3000
+[FastMCPOAuthServer] Started on port 3000
 🚀 MCP OAuth Server running on http://localhost:3000/mcp
 ```
 
-**That's it!** Your OAuth-secured MCP server is running. The `MCPOAuthServer` wrapper handles:
+**That's it!** Your OAuth-secured MCP server is running. The `FastMCPOAuthServer` wrapper handles:
 - ✅ Configuration loading
 - ✅ CoreContext initialization
 - ✅ **AuthenticationService initialization (downloads JWKS keys)**
@@ -161,7 +161,7 @@ Create `server-manual.ts`:
 import {
   ConfigManager,
   ConfigOrchestrator,
-  MCPAuthMiddleware,
+  FastMCPAuthMiddleware,
   getAllToolFactories
 } from 'fastmcp-oauth-obo';
 import { FastMCP } from 'fastmcp';
@@ -187,7 +187,7 @@ async function main() {
   console.log('✓ AuthenticationService initialized (JWKS keys downloaded)');
 
   // 3. Create FastMCP with authentication middleware
-  const middleware = new MCPAuthMiddleware(coreContext.authService);
+  const middleware = new FastMCPAuthMiddleware(coreContext.authService);
 
   const server = new FastMCP({
     name: 'My MCP Server',
@@ -393,7 +393,7 @@ curl -X POST http://localhost:3000/mcp \
 
 **Symptom:**
 ```
-[MCPAuthMiddleware] ❌ Authentication error (statusCode: 500):
+[FastMCPAuthMiddleware] ❌ Authentication error (statusCode: 500):
 JWT validator not initialized. Call initialize() first.
 ```
 
@@ -407,7 +407,7 @@ const coreContext = await orchestrator.buildCoreContext();
 await coreContext.authService.initialize();
 ```
 
-**Solution (MCPOAuthServer):** This is automatic. If you see this error with `MCPOAuthServer`, check that `await server.start()` completed successfully.
+**Solution (FastMCPOAuthServer):** This is automatic. If you see this error with `FastMCPOAuthServer`, check that `await server.start()` completed successfully.
 
 ---
 

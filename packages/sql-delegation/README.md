@@ -1,4 +1,4 @@
-# @mcp-oauth/sql-delegation
+# @fastmcp-oauth/sql-delegation
 
 SQL delegation module for the MCP OAuth framework - provides PostgreSQL and SQL Server delegation capabilities.
 
@@ -12,10 +12,10 @@ This package is a **reference implementation** demonstrating how to build delega
 ## Installation
 
 ```bash
-npm install @mcp-oauth/sql-delegation
+npm install @fastmcp-oauth/sql-delegation
 ```
 
-This package is an **optional** dependency of `mcp-oauth-framework`. The core framework works without SQL support.
+This package is an **optional** dependency of `fastmcp-oauth`. The core framework works without SQL support.
 
 ## Features
 
@@ -41,8 +41,8 @@ When integrated with the framework's TokenExchangeService, SQL delegation can:
 ### PostgreSQL Delegation
 
 ```typescript
-import { PostgreSQLDelegationModule } from '@mcp-oauth/sql-delegation';
-import { DelegationRegistry } from 'mcp-oauth-framework/delegation';
+import { PostgreSQLDelegationModule } from '@fastmcp-oauth/sql-delegation';
+import { DelegationRegistry } from 'fastmcp-oauth/delegation';
 
 const pgModule = new PostgreSQLDelegationModule();
 
@@ -76,8 +76,8 @@ const result = await registry.delegate(
 ### SQL Server Delegation
 
 ```typescript
-import { SQLDelegationModule } from '@mcp-oauth/sql-delegation';
-import { DelegationRegistry } from 'mcp-oauth-framework/delegation';
+import { SQLDelegationModule } from '@fastmcp-oauth/sql-delegation';
+import { DelegationRegistry } from 'fastmcp-oauth/delegation';
 
 const sqlModule = new SQLDelegationModule();
 
@@ -111,7 +111,7 @@ const result = await registry.delegate(
 To enable token exchange for SQL delegation:
 
 ```typescript
-import { TokenExchangeService } from 'mcp-oauth-framework/delegation';
+import { TokenExchangeService } from 'fastmcp-oauth/delegation';
 
 // Create TokenExchangeService
 const tokenExchangeService = new TokenExchangeService(auditService);
@@ -251,7 +251,7 @@ registry.register(pgModule1);
 registry.register(pgModule2);
 
 // Use SQL tools factory to create tools with prefixes
-import { createSQLToolsForModule } from 'mcp-oauth-framework/mcp/tools';
+import { createSQLToolsForModule } from 'fastmcp-oauth/mcp/tools';
 
 const sql1Tools = createSQLToolsForModule({
   toolPrefix: 'sql1',

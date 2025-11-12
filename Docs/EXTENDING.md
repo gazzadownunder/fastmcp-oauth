@@ -172,10 +172,10 @@ export class MyAPIDelegationModule implements DelegationModule {
 In your server initialization code:
 
 ```typescript
-import { MCPOAuthServer } from 'mcp-oauth-framework';
+import { FastMCPOAuthServer } from 'fastmcp-oauth';
 import { MyAPIDelegationModule } from './delegation/my-api/my-api-module.js';
 
-const server = new MCPOAuthServer({
+const server = new FastMCPOAuthServer({
   configPath: './config.json',
 });
 
@@ -194,7 +194,7 @@ const coreContext = server.getCoreContext();
 coreContext.delegationRegistry.register(myApiModule);
 ```
 
-⚠️ **IMPORTANT:** If you're using manual wiring instead of `MCPOAuthServer`, you MUST call:
+⚠️ **IMPORTANT:** If you're using manual wiring instead of `FastMCPOAuthServer`, you MUST call:
 ```typescript
 await coreContext.authService.initialize();
 ```
@@ -205,7 +205,7 @@ after `buildCoreContext()` to download JWKS keys. See [Manual Initialization](#m
 Use the `createDelegationTool()` factory to create a tool with minimal code:
 
 ```typescript
-import { createDelegationTool } from 'mcp-oauth-framework';
+import { createDelegationTool } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 // Define parameters schema
@@ -242,7 +242,7 @@ The `createDelegationTool()` factory is the **recommended way** to create MCP to
 ### Basic Usage
 
 ```typescript
-import { createDelegationTool } from 'mcp-oauth-framework';
+import { createDelegationTool } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 const tool = createDelegationTool(
@@ -347,7 +347,7 @@ const tool = createDelegationTool('admin-api', {
 Create multiple related tools at once:
 
 ```typescript
-import { createDelegationTools } from 'mcp-oauth-framework';
+import { createDelegationTools } from 'fastmcp-oauth';
 
 const sqlTools = createDelegationTools('sql', [
   {
@@ -504,8 +504,8 @@ For maximum control, you can create tools manually without the factory.
 ### Manual Tool Structure
 
 ```typescript
-import type { ToolRegistration, MCPContext, LLMResponse } from 'mcp-oauth-framework';
-import { Authorization } from 'mcp-oauth-framework';
+import type { ToolRegistration, FastMCPContext, LLMResponse } from 'fastmcp-oauth';
+import { Authorization } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 const auth = new Authorization();
@@ -518,7 +518,7 @@ const myTool: ToolRegistration = {
   }),
 
   // Visibility filtering (soft check)
-  canAccess: (mcpContext: MCPContext) => {
+  canAccess: (mcpContext: FastMCPContext) => {
     if (!auth.isAuthenticated(mcpContext)) {
       return false;
     }
@@ -526,7 +526,7 @@ const myTool: ToolRegistration = {
   },
 
   // Tool handler (hard check)
-  handler: async (params, mcpContext: MCPContext): Promise<LLMResponse> => {
+  handler: async (params, mcpContext: FastMCPContext): Promise<LLMResponse> => {
     try {
       // Hard check: Throw on missing auth
       auth.requireAuth(mcpContext);
@@ -824,13 +824,13 @@ const tool = createDelegationTool<typeof paramsSchema>('my-api', {
 
 ## Manual Initialization
 
-If you're using **manual wiring** instead of the `MCPOAuthServer` wrapper, you must explicitly initialize the `AuthenticationService` after building the `CoreContext`.
+If you're using **manual wiring** instead of the `FastMCPOAuthServer` wrapper, you must explicitly initialize the `AuthenticationService` after building the `CoreContext`.
 
 ### Problem: "JWT validator not initialized" Error
 
 When you see this error:
 ```
-[MCPAuthMiddleware] ❌ Authentication error (statusCode: 500):
+[FastMCPAuthMiddleware] ❌ Authentication error (statusCode: 500):
 JWT validator not initialized. Call initialize() first.
 ```
 
@@ -842,7 +842,7 @@ It means the `AuthenticationService` hasn't downloaded JWKS keys from your ident
 import {
   ConfigManager,
   ConfigOrchestrator,
-  MCPAuthMiddleware
+  FastMCPAuthMiddleware
 } from 'fastmcp-oauth-obo';
 import { FastMCP } from 'fastmcp';
 
@@ -863,7 +863,7 @@ async function main() {
   await coreContext.authService.initialize();
 
   // 3. Create middleware (now ready to validate JWTs)
-  const middleware = new MCPAuthMiddleware(coreContext.authService);
+  const middleware = new FastMCPAuthMiddleware(coreContext.authService);
 
   const server = new FastMCP({
     name: 'My MCP Server',
@@ -890,7 +890,7 @@ Without initialization, the JWT validator cannot verify token signatures, causin
 ### When is Initialization Automatic?
 
 **Automatic initialization occurs when:**
-- Using `MCPOAuthServer` wrapper → Calls `initialize()` during `start()`
+- Using `FastMCPOAuthServer` wrapper → Calls `initialize()` during `start()`
 - Using `examples/simple-server.ts` → Handled by wrapper
 
 **Manual initialization required when:**
@@ -942,4 +942,4 @@ If initialization fails, check:
 - **[Examples](../examples/)** - Working code examples
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Detailed debugging guide
 
-**Questions?** Open an issue at https://github.com/your-repo/mcp-oauth-framework/issues
+**Questions?** Open an issue at https://github.com/your-repo/fastmcp-oauth/issues

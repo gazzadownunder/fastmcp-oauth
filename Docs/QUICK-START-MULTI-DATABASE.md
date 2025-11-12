@@ -112,11 +112,11 @@ Create a configuration file (e.g., `multi-db-config.json`) with the following st
 The `v2-test-server.ts` automatically detects PostgreSQL modules and creates tools:
 
 ```typescript
-import { MCPOAuthServer } from '../src/mcp/server.js';
-import { PostgreSQLDelegationModule } from '@mcp-oauth/sql-delegation';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
+import { PostgreSQLDelegationModule } from '@fastmcp-oauth/sql-delegation';
 import { createSQLToolsForModule } from '../src/mcp/tools/sql-tools-factory.js';
 
-const server = new MCPOAuthServer(CONFIG_PATH);
+const server = new FastMCPOAuthServer(CONFIG_PATH);
 await server.start({ transport: 'httpStream', port: 3000 });
 
 const coreContext = server.getCoreContext();

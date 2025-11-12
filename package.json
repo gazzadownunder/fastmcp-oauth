@@ -1,5 +1,5 @@
 {
-  "name": "mcp-oauth-framework",
+  "name": "fastmcp-oauth",
   "version": "2.0.0",
   "description": "Modular OAuth 2.1 authentication and delegation framework for FastMCP with pluggable delegation modules",
   "type": "module",
@@ -9,8 +9,8 @@
     "packages/*"
   ],
   "bin": {
-    "mcp-oauth-scaffold": "./bin/scaffold-module.js",
-    "mcp-oauth-validate": "./bin/validate-config.js"
+    "fastmcp-oauth-scaffold": "./bin/scaffold-module.js",
+    "fastmcp-oauth-validate": "./bin/validate-config.js"
   },
   "exports": {
     ".": {
@@ -68,7 +68,7 @@
     "authentication",
     "on-behalf-of"
   ],
-  "author": "FastMCP OAuth OBO Team",
+  "author": "FastMCP OAuth Team",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
@@ -85,8 +85,8 @@
     "zod": "^3.25.76"
   },
   "optionalDependencies": {
-    "@mcp-oauth/kerberos-delegation": "^1.0.0",
-    "@mcp-oauth/sql-delegation": "^1.0.0"
+    "@fastmcp-oauth/kerberos-delegation": "^1.0.0",
+    "@fastmcp-oauth/sql-delegation": "^1.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

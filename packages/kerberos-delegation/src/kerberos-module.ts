@@ -8,8 +8,8 @@
  * @module delegation/kerberos
  */
 
-import type { DelegationModule, DelegationResult } from 'mcp-oauth-framework/delegation';
-import type { UserSession, AuditEntry } from 'mcp-oauth-framework/core';
+import type { DelegationModule, DelegationResult } from 'fastmcp-oauth/delegation';
+import type { UserSession, AuditEntry } from 'fastmcp-oauth/core';
 import type { KerberosConfig, KerberosParams } from './types.js';
 import { KerberosClient } from './kerberos-client.js';
 import { TicketCache } from './ticket-cache.js';

@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createHealthCheckTool } from '../../../../src/mcp/tools/health-check.js';
 import type { CoreContext } from '../../../../src/core/index.js';
-import type { MCPContext, LLMResponse } from '../../../../src/mcp/types.js';
+import type { FastMCPContext, LLMResponse } from '../../../../src/mcp/types.js';
 import type { DelegationModule } from '../../../../src/delegation/base.js';
 import { DelegationRegistry } from '../../../../src/delegation/registry.js';
 import { AuditService } from '../../../../src/core/audit-service.js';
@@ -73,7 +73,7 @@ describe('health-check Tool', () => {
   describe('canAccess (Visibility Filtering)', () => {
     it('should hide tool from unauthenticated users', () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: null as any,
       };
 
@@ -82,7 +82,7 @@ describe('health-check Tool', () => {
 
     it('should hide tool from rejected sessions', () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           userId: 'user1',
           username: 'testuser',
@@ -100,7 +100,7 @@ describe('health-check Tool', () => {
 
     it('should show tool to admin users', () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           userId: 'admin1',
           username: 'admin',
@@ -117,7 +117,7 @@ describe('health-check Tool', () => {
 
     it('should show tool to regular users', () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           userId: 'user1',
           username: 'user',
@@ -134,7 +134,7 @@ describe('health-check Tool', () => {
 
     it('should hide tool from guest users', () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           userId: 'guest1',
           username: 'guest',
@@ -163,7 +163,7 @@ describe('health-check Tool', () => {
 
     it('should check all services when service=all', async () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ service: 'all' }, mcpContext)) as LLMResponse;
 
@@ -176,7 +176,7 @@ describe('health-check Tool', () => {
 
     it('should check specific service', async () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ service: 'sql' }, mcpContext)) as LLMResponse;
 
@@ -188,7 +188,7 @@ describe('health-check Tool', () => {
 
     it('should return failure for non-existent service', async () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ service: 'kerberos' }, mcpContext)) as LLMResponse;
 
@@ -211,7 +211,7 @@ describe('health-check Tool', () => {
       };
 
       const tool = createHealthCheckTool(freshCoreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ service: 'sql' }, mcpContext)) as LLMResponse;
 
@@ -237,7 +237,7 @@ describe('health-check Tool', () => {
       };
 
       const tool = createHealthCheckTool(freshCoreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ service: 'all' }, mcpContext)) as LLMResponse;
 
@@ -249,7 +249,7 @@ describe('health-check Tool', () => {
 
     it('should require authentication (hard check)', async () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           ...validSession,
           rejected: true,
@@ -265,7 +265,7 @@ describe('health-check Tool', () => {
 
     it('should use default service=all when not specified', async () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({}, mcpContext)) as LLMResponse;
 
@@ -291,7 +291,7 @@ describe('health-check Tool', () => {
       };
 
       const tool = createHealthCheckTool(freshCoreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ service: 'sql' }, mcpContext)) as LLMResponse;
 
@@ -302,7 +302,7 @@ describe('health-check Tool', () => {
 
     it('should return LLMSuccessResponse on success (GAP #5)', async () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ service: 'sql' }, mcpContext)) as LLMResponse;
 
@@ -314,7 +314,7 @@ describe('health-check Tool', () => {
 
     it('should return LLMFailureResponse on error (GAP #4)', async () => {
       const tool = createHealthCheckTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           ...validSession,
           rejected: true,

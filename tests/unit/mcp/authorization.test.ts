@@ -7,11 +7,11 @@
 
 import { describe, it, expect } from 'vitest';
 import { Authorization, requireAuth, requireRole } from '../../../src/mcp/authorization.js';
-import type { MCPContext } from '../../../src/mcp/types.js';
+import type { FastMCPContext } from '../../../src/mcp/types.js';
 import type { UserSession } from '../../../src/core/types.js';
 
 describe('Authorization', () => {
-  const createMockContext = (session?: Partial<UserSession>): MCPContext => {
+  const createMockContext = (session?: Partial<UserSession>): FastMCPContext => {
     return {
       session: session
         ? ({
@@ -24,7 +24,7 @@ describe('Authorization', () => {
             ...session,
           } as UserSession)
         : undefined,
-    } as MCPContext;
+    } as FastMCPContext;
   };
 
   const auth = new Authorization();

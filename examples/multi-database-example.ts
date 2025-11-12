@@ -20,8 +20,8 @@
  *   CONFIG_PATH=./test-harness/config/dual-postgresql-config.json node dist/examples/multi-database-example.js
  */
 
-import { MCPOAuthServer } from '../src/mcp/server.js';
-import { PostgreSQLDelegationModule } from '@mcp-oauth/sql-delegation';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
+import { PostgreSQLDelegationModule } from '@fastmcp-oauth/sql-delegation';
 import { createSQLToolsForModule } from '../src/mcp/tools/sql-tools-factory.js';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || './test-harness/config/dual-postgresql-config.json';
@@ -40,7 +40,7 @@ async function main() {
   try {
     // 1. Create and start MCP OAuth server
     console.log('[1/2] Creating and starting MCP OAuth server...');
-    server = new MCPOAuthServer(CONFIG_PATH);
+    server = new FastMCPOAuthServer(CONFIG_PATH);
     await server.start({
       transport: 'httpStream',
       port: SERVER_PORT,

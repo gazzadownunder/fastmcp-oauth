@@ -193,7 +193,7 @@ npm run test:sql                # SQL delegation tests
 
 **Phase 4: Modularity** (15 tests)
 - ✅ Core framework independence (no SQL dependencies)
-- ✅ Optional delegation packages (`@mcp-oauth/sql-delegation`, `@mcp-oauth/kerberos-delegation`)
+- ✅ Optional delegation packages (`@fastmcp-oauth/sql-delegation`, `@fastmcp-oauth/kerberos-delegation`)
 - ✅ Zero delegation dependencies in core
 
 ### Test Configuration

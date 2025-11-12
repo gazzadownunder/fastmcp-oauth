@@ -270,10 +270,10 @@ export async function demonstrateTokenExchangeUsage() {
   console.log('Code Example:');
   console.log(`
 // In your MCP server setup:
-import { MCPOAuthServer } from 'mcp-oauth-framework';
+import { FastMCPOAuthServer } from 'fastmcp-oauth';
 import { APIDelegationModule } from './examples/api-delegation-with-token-exchange.js';
 
-const server = new MCPOAuthServer({ configPath: './config.json' });
+const server = new FastMCPOAuthServer({ configPath: './config.json' });
 await server.start();
 
 const coreContext = server.getCoreContext();
@@ -293,7 +293,7 @@ await apiModule.initialize({
 });
 
 // Create tool using factory
-import { createDelegationTool } from 'mcp-oauth-framework';
+import { createDelegationTool } from 'fastmcp-oauth';
 
 const apiTool = createDelegationTool('api-with-token-exchange', {
   name: 'call-internal-api',

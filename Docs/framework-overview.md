@@ -1,4 +1,4 @@
-# MCP OAuth 2.1 Framework with Token Exchange
+# FastMCP OAuth Framework with Token Exchange
 ## Production-Ready OAuth Authentication & Delegation Platform
 
 **Version:** 3.2
@@ -88,7 +88,7 @@ server.registerTool(tool);
 ## Getting Started: 5-Minute Example
 
 ```typescript
-import { MCPOAuthServer, createDelegationTool } from 'mcp-oauth-framework';
+import { MCPOAuthServer, createDelegationTool } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 // 1. Create server with OAuth config
@@ -120,12 +120,12 @@ server.start({ transport: 'http-stream', port: 3000 });
 
 ```bash
 # Install core framework
-npm install mcp-oauth-framework
+npm install fastmcp-oauth
 
 # Install optional delegation packages
-npm install @mcp-oauth/sql-delegation       # PostgreSQL + SQL Server
-npm install @mcp-oauth/kerberos-delegation  # Windows AD integration
-npm install @mcp-oauth/rest-api-delegation  # REST API integration
+npm install @ fastmcp-oauth/sql-delegation       # PostgreSQL + SQL Server
+npm install @ fastmcp-oauth/kerberos-delegation  # Windows AD integration
+npm install @ fastmcp-oauth/rest-api-delegation  # REST API integration
 ```
 
 ---
@@ -336,17 +336,17 @@ mcp-oauth/
 │ └── mcp/ - FastMCP integration
 │
 └── packages/ (Optional delegation modules)
-  ├── rest-api-delegation/ (@mcp-oauth/rest-api-delegation)
+  ├── rest-api-delegation/ (@ fastmcp-oauth/rest-api-delegation)
   │ ├── src/ (REST API HTTP/JSON integration)
   │ ├── package.json - Dependencies: zod only
   │ └── README.md
   │
-  ├── sql-delegation/ (@mcp-oauth/sql-delegation)
+  ├── sql-delegation/ (@ fastmcp-oauth/sql-delegation)
   │ ├── src/ (PostgreSQL + SQL Server modules)
   │ ├── package.json - Dependencies: pg, mssql
   │ └── README.md
   │
-  └── kerberos-delegation/ (@mcp-oauth/kerberos-delegation)
+  └── kerberos-delegation/ (@ fastmcp-oauth/kerberos-delegation)
     ├── src/ (Kerberos S4U2Self/S4U2Proxy)
     ├── package.json - Dependencies: kerberos, dns
     └── README.md
@@ -354,7 +354,7 @@ mcp-oauth/
 
 **Key Benefits:**
 - **Zero forced dependencies** - Core has no SQL or Kerberos deps
-- **Install only what you need** - `npm install @mcp-oauth/sql-delegation`
+- **Install only what you need** - `npm install @ fastmcp-oauth/sql-delegation`
 - **Independent versioning** - Packages can evolve separately
 - **Community contributions** - Publish custom modules as packages
 
@@ -364,19 +364,19 @@ The framework provides three production-ready delegation modules as **optional n
 
 ```bash
 # Install REST API delegation support (optional - most common use case)
-npm install @mcp-oauth/rest-api-delegation
+npm install @ fastmcp-oauth/rest-api-delegation
 
 # Install SQL delegation support (optional)
-npm install @mcp-oauth/sql-delegation
+npm install @ fastmcp-oauth/sql-delegation
 
 # Install Kerberos delegation support (optional)
-npm install @mcp-oauth/kerberos-delegation
+npm install @ fastmcp-oauth/kerberos-delegation
 ```
 
-#### **REST API Delegation** (`@mcp-oauth/rest-api-delegation`) Most Common
+#### **REST API Delegation** (`@ fastmcp-oauth/rest-api-delegation`) Most Common
 
 **Location:** `packages/rest-api-delegation/`
-**Installation:** `npm install @mcp-oauth/rest-api-delegation`
+**Installation:** `npm install @ fastmcp-oauth/rest-api-delegation`
 
 - **HTTP/JSON API Integration** - Modern REST API support
 - **Multi-Instance Support** - Multiple API backends with separate tool prefixes (api1-, api2-, api3-)
@@ -398,10 +398,10 @@ npm install @mcp-oauth/kerberos-delegation
 - Legacy REST/SOAP service integration
 - Multiple backend environments (dev, staging, production)
 
-#### **SQL Delegation** (`@mcp-oauth/sql-delegation`)
+#### **SQL Delegation** (`@ fastmcp-oauth/sql-delegation`)
 
 **Location:** `packages/sql-delegation/`
-**Installation:** `npm install @mcp-oauth/sql-delegation`
+**Installation:** `npm install @ fastmcp-oauth/sql-delegation`
 
 - **PostgreSQL Support** - Full OBO delegation via `SET SESSION AUTHORIZATION`
 - **SQL Server (MSSQL) Support** - `EXECUTE AS USER` impersonation
@@ -475,10 +475,10 @@ npm install @mcp-oauth/kerberos-delegation
 - `sql1-delegate` (MSSQL primary)
 - `sql2-delegate` (MSSQL legacy)
 
-#### **Kerberos Delegation** (`@mcp-oauth/kerberos-delegation`)
+#### **Kerberos Delegation** (`@ fastmcp-oauth/kerberos-delegation`)
 
 **Location:** `packages/kerberos-delegation/`
-**Installation:** `npm install @mcp-oauth/kerberos-delegation`
+**Installation:** `npm install @ fastmcp-oauth/kerberos-delegation`
 
 **Current Status:** ⚠️ **Limited Implementation - S4U2Self/S4U2Proxy Not Available**
 
@@ -609,7 +609,7 @@ The framework provides comprehensive authorization checks via the `Authorization
 
 **Example Usage:**
 ```typescript
-import { Authorization } from 'mcp-oauth-framework';
+import { Authorization } from 'fastmcp-oauth';
 
 const auth = new Authorization();
 
@@ -778,17 +778,17 @@ canAccess: (context) => {
  "zod": "^3.25.76"
  },
  "optionalDependencies": {
- "@mcp-oauth/sql-delegation": "^1.0.0",
- "@mcp-oauth/kerberos-delegation": "^1.0.0"
+ "@ fastmcp-oauth/sql-delegation": "^1.0.0",
+ "@ fastmcp-oauth/kerberos-delegation": "^1.0.0"
  }
 }
 
 // Developer's package.json
 {
  "dependencies": {
- "mcp-oauth-framework": "^3.1.0",
+ "fastmcp-oauth": "^3.1.0",
  // Only install delegation packages if needed
- "@mcp-oauth/sql-delegation": "^1.0.0" // Optional
+ "@ fastmcp-oauth/sql-delegation": "^1.0.0" // Optional
  }
 }
 ```
@@ -930,7 +930,7 @@ spec:
 **Implement ISecretProvider interface** for AWS, Azure, GCP, HashiCorp Vault:
 
 ```typescript
-import { ISecretProvider } from '@mcp-oauth/core/config/secrets';
+import { ISecretProvider } from '@ fastmcp-oauth/core/config/secrets';
 
 export class AWSSecretsManagerProvider implements ISecretProvider {
   async resolve(logicalName: string): Promise<string | undefined> {
@@ -952,7 +952,7 @@ export class AWSSecretsManagerProvider implements ISecretProvider {
 **Register custom provider:**
 
 ```typescript
-import { SecretResolver, FileSecretProvider, EnvProvider } from '@mcp-oauth/core/config/secrets';
+import { SecretResolver, FileSecretProvider, EnvProvider } from '@ fastmcp-oauth/core/config/secrets';
 
 const secretResolver = new SecretResolver();
 secretResolver.addProvider(new FileSecretProvider('/run/secrets'));
@@ -1214,7 +1214,7 @@ npx mcp-oauth-scaffold mymodule --type rest-api
 npx mcp-oauth-validate config.json
 
 # Use testing utilities in tests
-import { createMockUserSession, createMockCoreContext } from 'mcp-oauth-framework/testing';
+import { createMockUserSession, createMockCoreContext } from 'fastmcp-oauth/testing';
 ```
 
 ### Interactive Testing Tools
@@ -1313,7 +1313,7 @@ The framework includes two comprehensive web-based testing tools for validating 
 
 ## Summary
 
-**The MCP OAuth 2.1 Framework** transforms OAuth authentication from a complex, months-long development effort into a simple, configuration-driven task. With **90% less code**, **81% better performance**, **92% faster workflows**, and **100% security compliance**, it's the definitive solution for developers building MCP servers with downstream delegation requirements.
+**The FastMCP OAuth Framework** transforms OAuth authentication from a complex, months-long development effort into a simple, configuration-driven task. With **90% less code**, **81% better performance**, **92% faster workflows**, and **100% security compliance**, it's the definitive solution for developers building MCP servers with downstream delegation requirements.
 
 **Current Status:** Production-ready (v3.2) | **Phases Complete:** 6/6 (100%) | **Test Coverage:** 89-100% (748 tests)
 

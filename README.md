@@ -1,4 +1,4 @@
-# MCP OAuth 2.1 Framework with Token Exchange
+# FastMCP OAuth Framework with Token Exchange
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org/)
@@ -55,8 +55,8 @@ The framework follows a **layered modular architecture** with strict one-way dep
 ┌─────────────────────────────────────────────────────────┐
 │             Optional Delegation Packages                │
 │  packages/ - Standalone npm packages                    │
-│  - @mcp-oauth/sql-delegation (PostgreSQL, MSSQL)        │
-│  - @mcp-oauth/kerberos-delegation (S4U2Self/Proxy)      │
+│  - @ fastmcp-oauth/sql-delegation (PostgreSQL, MSSQL)        │
+│  - @ fastmcp-oauth/kerberos-delegation (S4U2Self/Proxy)      │
 │  - Custom modules can be published independently        │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -132,12 +132,12 @@ The framework follows a **layered modular architecture** with strict one-way dep
 -  **Comprehensive Documentation** - 4500+ lines across EXTENDING.md, TESTING.md, CLAUDE.md
 
 ### Delegation Modules
--  **REST API Delegation** - Optional package `@mcp-oauth/rest-api-delegation` (HTTP/JSON APIs with token exchange)
--  **SQL Delegation** - Optional package `@mcp-oauth/sql-delegation` (PostgreSQL + MSSQL)
+-  **REST API Delegation** - Optional package `@ fastmcp-oauth/rest-api-delegation` (HTTP/JSON APIs with token exchange)
+-  **SQL Delegation** - Optional package `@ fastmcp-oauth/sql-delegation` (PostgreSQL + MSSQL)
   - Multi-database support with separate tool prefixes (sql1-, sql2-, etc.)
   - Per-database IDP configuration for token exchange
   - OAuth scope support for fine-grained database permissions
--  **Kerberos Delegation** - Optional package `@mcp-oauth/kerberos-delegation` (S4U2Self/Proxy)
+-  **Kerberos Delegation** - Optional package `@ fastmcp-oauth/kerberos-delegation` (S4U2Self/Proxy)
 -  **GraphQL** - Query/mutation support (example)
 -  **gRPC** - High-performance RPC with retry (example)
 -  **LDAP** - Directory services integration (example)
@@ -163,13 +163,13 @@ The framework follows a **layered modular architecture** with strict one-way dep
 npm install fastmcp-oauth-obo
 
 # Optional delegation packages (install only what you need)
-npm install @mcp-oauth/rest-api-delegation   # For REST/HTTP APIs (most common)
-npm install @mcp-oauth/sql-delegation        # For SQL Server or PostgreSQL
-npm install @mcp-oauth/kerberos-delegation   # For Windows Active Directory
+npm install @ fastmcp-oauth/rest-api-delegation   # For REST/HTTP APIs (most common)
+npm install @ fastmcp-oauth/sql-delegation        # For SQL Server or PostgreSQL
+npm install @ fastmcp-oauth/kerberos-delegation   # For Windows Active Directory
 
 # From source (development)
-git clone https://github.com/your-org/MCP-Oauth.git
-cd MCP-Oauth
+git clone https://github.com/your-org/FastMCP-OAuth.git
+cd FastMCP-OAuth
 npm install
 npm run build
 ```
@@ -287,7 +287,7 @@ See [examples/full-mcp-server.ts](examples/full-mcp-server.ts) for complete exam
 
 ## 🎯 Built-in Tools vs Custom Tools: Quick Decision Guide
 
-The framework provides **built-in SQL delegation tools** that work out-of-the-box with the `@mcp-oauth/sql-delegation` package. Before creating custom tools, consider using the built-in ones.
+The framework provides **built-in SQL delegation tools** that work out-of-the-box with the `@ fastmcp-oauth/sql-delegation` package. Before creating custom tools, consider using the built-in ones.
 
 ### When to Use Built-in Tools (Recommended)
 
@@ -694,7 +694,7 @@ Add SQL delegation without MCP:
 
 ```typescript
 import { AuthenticationService, DelegationRegistry } from 'fastmcp-oauth-obo';
-import { SQLDelegationModule } from '@mcp-oauth/sql-delegation';
+import { SQLDelegationModule } from '@ fastmcp-oauth/sql-delegation';
 
 const registry = new DelegationRegistry(auditService);
 const sqlModule = new SQLDelegationModule();
@@ -864,8 +864,8 @@ This tutorial walks you through creating a complete MCP server with OAuth authen
 ```bash
 npm install fastmcp-oauth-obo fastmcp
 # or from source
-git clone https://github.com/your-org/MCP-Oauth.git
-cd MCP-Oauth && npm install && npm run build
+git clone https://github.com/your-org/FastMCP-OAuth.git
+cd FastMCP-OAuth && npm install && npm run build
 ```
 
 ### Step 2: Configure Your IDP
@@ -1118,14 +1118,15 @@ await server.start({ /* ... */ });
         "clockTolerance": 60,
         "maxTokenAge": 3600,
         "requireNbf": true
+      },
+      "roleMappings": {
+        "admin": ["admin", "administrator"],
+        "user": ["user", "member"],
+        "guest": ["guest"],
+        "defaultRole": "guest",
+        "rejectUnmappedRoles": false
       }
     }],
-    "roleMappings": {
-      "adminRole": "admin",
-      "userRole": "user",
-      "guestRole": "guest",
-      "customRoles": ["developer"]
-    },
     "audit": {
       "enabled": true,
       "logAllAttempts": true,
@@ -1631,7 +1632,7 @@ See [examples/custom-delegation.ts](examples/custom-delegation.ts) for a complet
 Using the `createDelegationTool()` factory, you can create fully-featured MCP tools with OAuth security in just 5 lines:
 
 ```typescript
-import { createDelegationTool } from 'mcp-oauth-framework';
+import { createDelegationTool } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 // Create tool with OAuth auth, authz, audit logging, error handling
@@ -1802,7 +1803,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ##  Summary
 
-The **MCP OAuth 2.1 Framework** transforms OAuth authentication from a complex, months-long development effort into a simple, configuration-driven task.
+The **FastMCP OAuth Framework** transforms OAuth authentication from a complex, months-long development effort into a simple, configuration-driven task.
 
 ### Key Achievements
 

@@ -50,7 +50,7 @@ Traditional configuration management stores sensitive credentials (database pass
 1. **Configuration-Driven** - No hardcoded secret names in framework code
 2. **Provider Chain Pattern** - Multiple resolution strategies with priority ordering
 3. **Fail-Fast Security** - Missing secrets cause immediate startup failure
-4. **Zero-Code Integration** - Works transparently with existing `MCPOAuthServer`
+4. **Zero-Code Integration** - Works transparently with existing `FastMCPOAuthServer`
 5. **Audit by Default** - All secret resolutions logged to audit trail
 
 ---
@@ -293,9 +293,9 @@ Secret resolution is integrated into `ConfigManager.loadConfig()`.
 No code changes required - secret resolution happens transparently:
 
 ```typescript
-import { MCPOAuthServer } from '@mcp-oauth/core';
+import { FastMCPOAuthServer } from '@fastmcp-oauth/core';
 
-const server = new MCPOAuthServer();
+const server = new FastMCPOAuthServer();
 await server.start({
   configPath: './config.json',  // Contains secret descriptors
   transport: 'httpStream',
@@ -356,7 +356,7 @@ Implement the `ISecretProvider` interface to add support for custom secret sourc
 **Step 1: Implement the Interface**
 
 ```typescript
-import { ISecretProvider } from '@mcp-oauth/core/config/secrets';
+import { ISecretProvider } from '@fastmcp-oauth/core/config/secrets';
 
 export class MyCustomProvider implements ISecretProvider {
   private client: any;
@@ -401,8 +401,8 @@ export class MyCustomProvider implements ISecretProvider {
 **Step 2: Register Provider**
 
 ```typescript
-import { SecretResolver } from '@mcp-oauth/core/config/secrets';
-import { FileSecretProvider, EnvProvider } from '@mcp-oauth/core/config/secrets/providers';
+import { SecretResolver } from '@fastmcp-oauth/core/config/secrets';
+import { FileSecretProvider, EnvProvider } from '@fastmcp-oauth/core/config/secrets/providers';
 import { MyCustomProvider } from './MyCustomProvider';
 
 // Create resolver with custom provider chain
@@ -428,7 +428,7 @@ npm install @aws-sdk/client-secrets-manager
 
 ```typescript
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
-import { ISecretProvider } from '@mcp-oauth/core/config/secrets';
+import { ISecretProvider } from '@fastmcp-oauth/core/config/secrets';
 
 export class AWSSecretsManagerProvider implements ISecretProvider {
   private client: SecretsManagerClient;
@@ -1095,7 +1095,7 @@ describe('FileSecretProvider Security', () => {
 ```typescript
 import 'dotenv/config';  // Load .env for development
 import { ConfigManager } from './config/manager.js';
-import { MCPOAuthServer } from './mcp/server.js';
+import { FastMCPOAuthServer } from './mcp/server.js';
 
 async function main() {
   // ConfigManager now uses SecretResolver internally
@@ -1108,7 +1108,7 @@ async function main() {
     console.log('✅ Configuration loaded with secure secret resolution');
 
     // Create and start server
-    const server = new MCPOAuthServer(configManager);
+    const server = new FastMCPOAuthServer(configManager);
     await server.start({ transport: 'httpStream', port: 3000 });
 
   } catch (error) {

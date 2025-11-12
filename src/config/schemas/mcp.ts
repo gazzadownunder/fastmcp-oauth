@@ -1,8 +1,8 @@
 /**
- * MCP Server Configuration Schema
+ * FastMCP Server Configuration Schema
  *
- * Defines configuration for the MCP layer (Phase 3).
- * This config is used by MCP server, middleware, and tool registration.
+ * Defines configuration for the FastMCP layer (Phase 3).
+ * This config is used by FastMCP server, middleware, and tool registration.
  *
  * @see Phase 4.1 of refactor.md
  */
@@ -92,13 +92,13 @@ export const ToolEnablementSchema = z.object({
 });
 
 /**
- * MCP server configuration schema
+ * FastMCP server configuration schema
  *
- * This is the configuration for the MCP layer (Phase 3).
- * Used by MCP server, middleware, and tool registration.
+ * This is the configuration for the FastMCP layer (Phase 3).
+ * Used by FastMCP server, middleware, and tool registration.
  */
-export const MCPConfigSchema = z.object({
-  serverName: z.string().min(1).default('mcp-oauth-server').describe('MCP server name'),
+export const FastMCPConfigSchema = z.object({
+  serverName: z.string().min(1).default('fastmcp-oauth-server').describe('FastMCP server name'),
   version: z.string().min(1).default('1.0.0').describe('MCP server version'),
   transport: z
     .enum(['stdio', 'sse', 'http-stream'])
@@ -122,4 +122,8 @@ export const MCPConfigSchema = z.object({
 
 export type OAuthMetadata = z.infer<typeof OAuthMetadataSchema>;
 export type ToolEnablement = z.infer<typeof ToolEnablementSchema>;
-export type MCPConfig = z.infer<typeof MCPConfigSchema>;
+export type FastMCPConfig = z.infer<typeof FastMCPConfigSchema>;
+
+// Legacy export for backward compatibility (will be deprecated)
+export const MCPConfigSchema = FastMCPConfigSchema;
+export type MCPConfig = FastMCPConfig;

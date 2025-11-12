@@ -16,10 +16,10 @@
 
 import pg from 'pg';
 const { Pool } = pg;
-import type { UserSession, AuditEntry } from 'mcp-oauth-framework/core';
-import type { DelegationModule, DelegationResult } from 'mcp-oauth-framework/delegation';
-import type { TokenExchangeService } from 'mcp-oauth-framework/delegation';
-import { createSecurityError } from 'mcp-oauth-framework/core';
+import type { UserSession, AuditEntry } from 'fastmcp-oauth/core';
+import type { DelegationModule, DelegationResult } from 'fastmcp-oauth/delegation';
+import type { TokenExchangeService } from 'fastmcp-oauth/delegation';
+import { createSecurityError } from 'fastmcp-oauth/core';
 
 // ============================================================================
 // Configuration Types

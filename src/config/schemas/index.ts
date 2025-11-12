@@ -10,7 +10,7 @@
 import { z } from 'zod';
 import { CoreAuthConfigSchema, type CoreAuthConfig } from './core.js';
 import { DelegationConfigSchema, type DelegationConfig } from './delegation.js';
-import { MCPConfigSchema, type MCPConfig } from './mcp.js';
+import { FastMCPConfigSchema, MCPConfigSchema, type FastMCPConfig, type MCPConfig } from './mcp.js';
 
 // ============================================================================
 // Re-exports from Layer Schemas
@@ -48,9 +48,11 @@ export {
 export {
   OAuthMetadataSchema,
   ToolEnablementSchema,
+  FastMCPConfigSchema,
   MCPConfigSchema,
   type OAuthMetadata,
   type ToolEnablement,
+  type FastMCPConfig,
   type MCPConfig,
 } from './mcp.js';
 
@@ -186,12 +188,12 @@ export const DEFAULT_CORE_AUTH_CONFIG: Partial<CoreAuthConfig> = {
 };
 
 /**
- * Default MCP configuration
+ * Default FastMCP configuration
  *
  * Minimal configuration for development/testing.
  */
-export const DEFAULT_MCP_CONFIG: MCPConfig = {
-  serverName: 'mcp-oauth-server',
+export const DEFAULT_MCP_CONFIG: FastMCPConfig = {
+  serverName: 'fastmcp-oauth-server',
   version: '1.0.0',
   transport: 'http-stream',
   port: 3000,

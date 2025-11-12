@@ -22,7 +22,7 @@ export type {
   LLMResponse,
 
   // Tool Handler Types (GAP #12)
-  MCPContext,
+  FastMCPContext,
   ToolHandler,
 
   // Tool Registration
@@ -30,8 +30,13 @@ export type {
   ToolFactory,
 
   // Configuration
-  MCPOAuthConfig,
-  MCPStartOptions,
+  FastMCPOAuthConfig,
+  FastMCPStartOptions,
+
+  // Legacy types (backward compatibility)
+  FastMCPContext as MCPContext,
+  FastMCPOAuthConfig as MCPOAuthConfig,
+  FastMCPStartOptions as MCPStartOptions,
 } from './types.js';
 
 // FastMCP Types (re-export from middleware)
@@ -41,7 +46,7 @@ export type { FastMCPRequest, FastMCPAuthResult } from './middleware.js';
 // Middleware & Authorization
 // ============================================================================
 
-export { MCPAuthMiddleware, requireAuth, requireRole } from './middleware.js';
+export { FastMCPAuthMiddleware, MCPAuthMiddleware, requireAuth, requireRole } from './middleware.js';
 export { Authorization } from './authorization.js';
 
 // ============================================================================
@@ -52,10 +57,10 @@ export { ConfigOrchestrator } from './orchestrator.js';
 export type { OrchestratorOptions } from './orchestrator.js';
 
 // ============================================================================
-// MCP OAuth Server (High-Level API)
+// FastMCP OAuth Server (High-Level API)
 // ============================================================================
 
-export { MCPOAuthServer } from './server.js';
+export { FastMCPOAuthServer, MCPOAuthServer } from './server.js';
 
 // ============================================================================
 // Tool Factories

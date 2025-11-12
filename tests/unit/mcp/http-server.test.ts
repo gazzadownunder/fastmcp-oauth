@@ -49,7 +49,7 @@ describe('HTTP Server', () => {
             },
           ],
         }),
-        getMCPConfig: vi.fn().mockReturnValue({
+        getFastMCPConfig: vi.fn().mockReturnValue({
           oauth: {
             scopes: ['mcp:read', 'mcp:write'],
           },

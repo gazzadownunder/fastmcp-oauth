@@ -111,7 +111,7 @@ export class Authorization {
    * @returns True if session exists and is not rejected
    */
   isAuthenticated(context: MCPContext): boolean {
-    return !!(context.session && !context.session.rejected);
+    return !!(context && context.session && !context.session.rejected);
   }
 
   /**

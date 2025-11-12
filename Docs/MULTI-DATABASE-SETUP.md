@@ -141,8 +141,8 @@ In your configuration file (e.g., `dual-postgresql-config.json`):
 The `v2-test-server.ts` automatically detects and registers all PostgreSQL modules:
 
 ```typescript
-import { MCPOAuthServer } from '../src/mcp/server.js';
-import { PostgreSQLDelegationModule } from '@mcp-oauth/sql-delegation';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
+import { PostgreSQLDelegationModule } from '@fastmcp-oauth/sql-delegation';
 import { createSQLToolsForModule } from '../src/mcp/tools/sql-tools-factory.js';
 
 // ... server setup ...
@@ -433,7 +433,7 @@ Creates SQL tools for a specific PostgreSQL module.
 **Example:**
 
 ```typescript
-import { createSQLToolsForModule } from 'mcp-oauth-framework';
+import { createSQLToolsForModule } from 'fastmcp-oauth';
 
 const sql1Tools = createSQLToolsForModule({
   toolPrefix: 'sql1',

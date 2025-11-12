@@ -2,7 +2,7 @@
  * Tool Auto-Registration Tests
  *
  * Tests for automatic tool registration based on toolPrefix configuration.
- * Validates that MCPOAuthServer correctly detects and registers tools from
+ * Validates that FastMCPOAuthServer correctly detects and registers tools from
  * delegation modules with toolPrefix configured.
  *
  * Test Coverage:
@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MCPOAuthServer } from '../../../src/mcp/server.js';
+import { FastMCPOAuthServer } from '../../../src/mcp/server.js';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -70,7 +70,7 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
+      const server = new FastMCPOAuthServer(tempConfigPath);
 
       // Mock FastMCP to capture registered tools
       const registeredTools: string[] = [];
@@ -78,7 +78,7 @@ describe('Tool Auto-Registration', () => {
 
       // We can't easily test the full start() method without mocking FastMCP,
       // but we can at least verify the config loads correctly
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
     });
 
     it('should use defaultToolPrefix when module toolPrefix is omitted', async () => {
@@ -120,8 +120,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
 
       // Note: Full integration test would require mocking FastMCP
       // to capture actual tool names (db-delegate, db-schema, db-table-details)
@@ -166,8 +166,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
     });
   });
 
@@ -208,8 +208,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
     });
   });
 
@@ -269,8 +269,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
 
       // Expected tools (in integration test):
       // - hr-sql-delegate, hr-sql-schema, hr-sql-table-details
@@ -326,8 +326,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
 
       // Expected: Only hr-sql-* tools auto-registered
       // postgresql2 requires manual registration
@@ -374,8 +374,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
 
       // Note: Kerberos auto-registration not yet implemented
       // Config validates but tools not auto-registered
@@ -420,8 +420,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
 
       // No auto-registration occurs - manual registration required
     });
@@ -468,8 +468,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
 
       // Manual registration pattern still works
     });
@@ -507,8 +507,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
     });
 
     it('should handle missing modules field', async () => {
@@ -541,8 +541,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
     });
 
     it('should handle unknown module types gracefully', async () => {
@@ -581,8 +581,8 @@ describe('Tool Auto-Registration', () => {
 
       await writeFile(tempConfigPath, JSON.stringify(config, null, 2));
 
-      const server = new MCPOAuthServer(tempConfigPath);
-      expect(() => new MCPOAuthServer(tempConfigPath)).not.toThrow();
+      const server = new FastMCPOAuthServer(tempConfigPath);
+      expect(() => new FastMCPOAuthServer(tempConfigPath)).not.toThrow();
 
       // Unknown module types are logged but don't crash
     });

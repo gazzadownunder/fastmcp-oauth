@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-import { MCPOAuthServer } from '../index.js';
+import { FastMCPOAuthServer } from '../index.js';
 import { configManager } from '../config/manager.js';
 
 async function main() {
   // Load configuration from environment or default path
   const configPath = process.env.CONFIG_PATH || './config/oauth-obo.json';
 
-  const server = new MCPOAuthServer(configPath);
+  const server = new FastMCPOAuthServer(configPath);
 
   try {
     console.log('Starting FastMCP OAuth OBO Server...');

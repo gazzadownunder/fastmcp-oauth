@@ -1,7 +1,7 @@
 /**
- * MCP Authentication Middleware
+ * FastMCP Authentication Middleware
  *
- * Handles OAuth authentication for MCP requests with dual rejection checks.
+ * Handles OAuth authentication for FastMCP requests with dual rejection checks.
  *
  * CRITICAL SECURITY (GAP #1):
  * - Performs dual rejection checks (authResult.rejected AND session.rejected)
@@ -13,7 +13,7 @@
 import type { AuthenticationService } from '../core/authentication-service.js';
 import type { UserSession, CoreContext } from '../core/types.js';
 import { createSecurityError, OAuthSecurityError } from '../utils/errors.js';
-import type { MCPContext } from './types.js';
+import type { FastMCPContext } from './types.js';
 import { Authorization } from './authorization.js';
 import { generateWWWAuthenticateHeader } from './oauth-metadata.js';
 
@@ -48,9 +48,9 @@ export interface FastMCPAuthResult {
 // ============================================================================
 
 /**
- * MCP Authentication Middleware
+ * FastMCP Authentication Middleware
  *
- * Authenticates incoming MCP requests using Bearer tokens.
+ * Authenticates incoming FastMCP requests using Bearer tokens.
  *
  * Features:
  * - Extracts Bearer token from Authorization header
@@ -60,7 +60,7 @@ export interface FastMCPAuthResult {
  *
  * @example
  * ```typescript
- * const middleware = new MCPAuthMiddleware(authService);
+ * const middleware = new FastMCPAuthMiddleware(authService);
  * const authResult = await middleware.authenticate(request);
  *
  * if (!authResult.authenticated) {
@@ -71,7 +71,7 @@ export interface FastMCPAuthResult {
  * const session = authResult.session;
  * ```
  */
-export class MCPAuthMiddleware {
+export class FastMCPAuthMiddleware {
   constructor(
     private readonly authService: AuthenticationService,
     private readonly coreContext?: CoreContext
@@ -85,7 +85,7 @@ export class MCPAuthMiddleware {
    * @throws {OAuthSecurityError} If authentication fails or session is rejected
    */
   async authenticate(request: FastMCPRequest): Promise<FastMCPAuthResult> {
-    console.log('[MCPAuthMiddleware] Authenticating request:', {
+    console.log('[FastMCPAuthMiddleware] Authenticating request:', {
       method: request.method,
       path: request.path,
       hasAuthHeader: !!(request.headers['authorization'] || request.headers['Authorization']),
@@ -96,7 +96,7 @@ export class MCPAuthMiddleware {
       const token = this.extractToken(request);
 
       if (!token) {
-        console.log('[MCPAuthMiddleware] ❌ No Bearer token found');
+        console.log('[FastMCPAuthMiddleware] ❌ No Bearer token found');
         throw createSecurityError(
           'MISSING_TOKEN',
           'Unauthorized: Missing Authorization header with Bearer token',
@@ -104,7 +104,7 @@ export class MCPAuthMiddleware {
         );
       }
 
-      console.log('[MCPAuthMiddleware] ✓ Token extracted, validating...');
+      console.log('[FastMCPAuthMiddleware] ✓ Token extracted, validating...');
 
       // Authenticate with AuthenticationService
       // CRITICAL: Always use "requestor-jwt" IDP for middleware authentication
@@ -113,7 +113,7 @@ export class MCPAuthMiddleware {
         idpName: 'requestor-jwt',
       });
 
-      console.log('[MCPAuthMiddleware] Auth result:', {
+      console.log('[FastMCPAuthMiddleware] Auth result:', {
         rejected: authResult.rejected,
         sessionRejected: authResult.session.rejected,
         role: authResult.session.role,
@@ -124,7 +124,7 @@ export class MCPAuthMiddleware {
       // CRITICAL (GAP #1): Dual rejection check
       // Check 1: authResult.rejected (from AuthenticationService)
       if (authResult.rejected) {
-        console.log('[MCPAuthMiddleware] ❌ Auth result rejected:', authResult.rejectionReason);
+        console.log('[FastMCPAuthMiddleware] ❌ Auth result rejected:', authResult.rejectionReason);
 
         // Translate technical role mapping errors to user-friendly authorization errors
         // Note: Must include "Unauthorized" keyword for mcp-proxy to detect as auth error
@@ -133,7 +133,7 @@ export class MCPAuthMiddleware {
         // Log technical details for debugging
         if (authResult.rejectionReason) {
           console.log(
-            '[MCPAuthMiddleware] Technical rejection reason:',
+            '[FastMCPAuthMiddleware] Technical rejection reason:',
             authResult.rejectionReason
           );
         }
@@ -144,7 +144,7 @@ export class MCPAuthMiddleware {
       // Check 2: session.rejected (from UserSession)
       // This prevents timing attacks by ensuring both rejection flags are checked
       if (authResult.session.rejected) {
-        console.log('[MCPAuthMiddleware] ❌ Session rejected - unassigned role');
+        console.log('[FastMCPAuthMiddleware] ❌ Session rejected - unassigned role');
         throw createSecurityError(
           'UNAUTHORIZED',
           'Unauthorized: User has no valid roles assigned',
@@ -153,7 +153,7 @@ export class MCPAuthMiddleware {
       }
 
       // Authentication successful
-      console.log('[MCPAuthMiddleware] ✓ Authentication successful');
+      console.log('[FastMCPAuthMiddleware] ✓ Authentication successful');
       return {
         authenticated: true,
         session: authResult.session,
@@ -171,7 +171,7 @@ export class MCPAuthMiddleware {
             ? configuredScopes.join(' ')
             : undefined;
 
-          console.log('[MCPAuthMiddleware] Scope extraction debug:', {
+          console.log('[FastMCPAuthMiddleware] Scope extraction debug:', {
             configuredScopes,
             scopeString,
             hasScopes: !!scopeString
@@ -190,10 +190,10 @@ export class MCPAuthMiddleware {
             serverUrl // Server URL for resource_metadata parameter
           );
 
-          console.log('[MCPAuthMiddleware] Generated WWW-Authenticate:', wwwAuthenticate);
+          console.log('[FastMCPAuthMiddleware] Generated WWW-Authenticate:', wwwAuthenticate);
         } catch (headerError) {
           console.error(
-            '[MCPAuthMiddleware] Failed to generate WWW-Authenticate header:',
+            '[FastMCPAuthMiddleware] Failed to generate WWW-Authenticate header:',
             headerError
           );
           // Fallback to basic header if generation fails
@@ -206,19 +206,19 @@ export class MCPAuthMiddleware {
       // mcp-proxy's handleResponseError() reads headers from thrown Response objects.
       if (error instanceof OAuthSecurityError && error.statusCode === 401) {
         console.log(
-          '[MCPAuthMiddleware] ❌ Authentication error (401 Unauthorized):',
+          '[FastMCPAuthMiddleware] ❌ Authentication error (401 Unauthorized):',
           error.message
         );
 
         // CRITICAL: Log WWW-Authenticate header generation for OAuth discovery debugging
         if (wwwAuthenticate) {
-          console.log('[MCPAuthMiddleware] ✓ WWW-Authenticate header generated:', wwwAuthenticate);
+          console.log('[FastMCPAuthMiddleware] ✓ WWW-Authenticate header generated:', wwwAuthenticate);
         } else {
           console.warn(
-            '[MCPAuthMiddleware] ⚠️ WARNING: No WWW-Authenticate header generated for 401 response!'
+            '[FastMCPAuthMiddleware] ⚠️ WARNING: No WWW-Authenticate header generated for 401 response!'
           );
           console.warn(
-            '[MCPAuthMiddleware] This will break MCP OAuth discovery flow. Check coreContext availability.'
+            '[FastMCPAuthMiddleware] This will break MCP OAuth discovery flow. Check coreContext availability.'
           );
         }
 
@@ -229,7 +229,7 @@ export class MCPAuthMiddleware {
 
         if (wwwAuthenticate) {
           headers.set('WWW-Authenticate', wwwAuthenticate);
-          console.log('[MCPAuthMiddleware] ✓ WWW-Authenticate header added to Response error');
+          console.log('[FastMCPAuthMiddleware] ✓ WWW-Authenticate header added to Response error');
         }
 
         // NOTE: CORS headers are NOT added here - they're added conditionally in MCPOAuthServer
@@ -254,7 +254,7 @@ export class MCPAuthMiddleware {
       // For non-401 errors, return as auth result
       if (error instanceof OAuthSecurityError) {
         console.log(
-          '[MCPAuthMiddleware] ❌ Authentication error (statusCode: ' + error.statusCode + '):',
+          '[FastMCPAuthMiddleware] ❌ Authentication error (statusCode: ' + error.statusCode + '):',
           error.message
         );
 
@@ -266,7 +266,7 @@ export class MCPAuthMiddleware {
       }
 
       // For unknown errors, convert to FastMCP auth result
-      console.log('[MCPAuthMiddleware] ❌ Unknown authentication error:', error);
+      console.log('[FastMCPAuthMiddleware] ❌ Unknown authentication error:', error);
       if (error instanceof Error) {
         return {
           authenticated: false,
@@ -317,15 +317,15 @@ export class MCPAuthMiddleware {
   }
 
   /**
-   * Create MCP context from authenticated session
+   * Create FastMCP context from authenticated session
    *
-   * Helper method to convert FastMCP auth result to MCPContext.
+   * Helper method to convert FastMCP auth result to FastMCPContext.
    *
    * @param authResult - Authentication result
-   * @returns MCP context with session
+   * @returns FastMCP context with session
    * @throws {Error} If authentication failed
    */
-  createContext(authResult: FastMCPAuthResult): MCPContext {
+  createContext(authResult: FastMCPAuthResult): FastMCPContext {
     if (!authResult.authenticated || !authResult.session) {
       throw new Error(authResult.error || 'Authentication required');
     }
@@ -344,10 +344,10 @@ export class MCPAuthMiddleware {
  * Require authentication for a tool handler
  *
  * @deprecated Import from './authorization.js' instead
- * @param context - MCP context
+ * @param context - FastMCP context
  * @throws {Error} If session is rejected
  */
-export function requireAuth(context: MCPContext): void {
+export function requireAuth(context: FastMCPContext): void {
   const auth = new Authorization();
   auth.requireAuth(context);
 }
@@ -356,11 +356,15 @@ export function requireAuth(context: MCPContext): void {
  * Require specific role for a tool handler
  *
  * @deprecated Import from './authorization.js' instead
- * @param context - MCP context
+ * @param context - FastMCP context
  * @param requiredRole - Required role ('admin', 'user', etc.)
  * @throws {Error} If session lacks required role
  */
-export function requireRole(context: MCPContext, requiredRole: string): void {
+export function requireRole(context: FastMCPContext, requiredRole: string): void {
   const auth = new Authorization();
   auth.requireRole(context, requiredRole);
 }
+
+// Legacy export for backward compatibility (will be deprecated)
+export const MCPAuthMiddleware = FastMCPAuthMiddleware;
+export type MCPContext = FastMCPContext;

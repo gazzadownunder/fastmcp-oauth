@@ -40,7 +40,7 @@
  *
  * **After (Auto-Registration - 15 lines):**
  * ```typescript
- * const server = new MCPOAuthServer(CONFIG_PATH);
+ * const server = new FastMCPOAuthServer(CONFIG_PATH);
  * await server.start({ transport: 'httpStream', port: 3000 });
  * // That's it! Tools auto-registered from config!
  * ```
@@ -81,7 +81,7 @@
  * **Total:** 8 tools from 3 modules, zero boilerplate code!
  */
 
-import { MCPOAuthServer } from '../src/mcp/server.js';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
 
 const CONFIG_PATH = './test-harness/config/multi-module-config.json';
 const SERVER_PORT = 3000;
@@ -109,7 +109,7 @@ async function main() {
 
   // Tool prefixes configured in config.json for ALL module types!
   // No manual tool registration needed!
-  const server = new MCPOAuthServer(CONFIG_PATH);
+  const server = new FastMCPOAuthServer(CONFIG_PATH);
 
   await server.start({
     transport: 'httpStream',

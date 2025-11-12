@@ -10,7 +10,7 @@ This directory contains example applications demonstrating how to use the `fastm
 - `src/mcp/` - FastMCP integration, middleware, tools
 
 **Application code** (what you write):
-- Import framework modules: `import { MCPOAuthServer } from 'fastmcp-oauth-obo'`
+- Import framework modules: `import { FastMCPOAuthServer } from 'fastmcp-oauth-obo'`
 - Configure via JSON (no code changes to framework)
 - Compose your server with the modules you need
 
@@ -20,7 +20,7 @@ This directory contains example applications demonstrating how to use the `fastm
 **Basic server startup with SQL delegation**
 
 Demonstrates:
-- Creating an `MCPOAuthServer` instance
+- Creating an `FastMCPOAuthServer` instance
 - Loading configuration from JSON
 - Registering the SQL delegation module
 - Starting the server with custom transport/port
@@ -158,10 +158,10 @@ Then create your application entry point:
 
 ```typescript
 // my-app/server.ts
-import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
 import { SQLDelegationModule } from 'fastmcp-oauth-obo/delegation';
 
-const server = new MCPOAuthServer('./config/unified-config.json');
+const server = new FastMCPOAuthServer('./config/unified-config.json');
 
 await server.start({ transport: 'httpStream', port: 3000 });
 
@@ -209,7 +209,7 @@ See `config/oauth-obo-test.json` for a complete example.
 ┌─────────────────────────────────────────────────────────┐
 │                  MCP Layer (Framework)                   │
 │  src/mcp/ - FastMCP Integration                         │
-│  - MCPOAuthServer wrapper                                │
+│  - FastMCPOAuthServer wrapper                                │
 │  - Tool factories                                        │
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
