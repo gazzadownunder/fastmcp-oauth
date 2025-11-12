@@ -15,7 +15,7 @@ The MCP-OAuth framework's **Phase 1 Token Exchange** implementation delegates th
 
 **IMPORTANT:** The MCP-OAuth framework supports **two independent delegation modules** that work side-by-side:
 
-1. **SQL Delegation Module** (Already Implemented - `@mcp-oauth/sql-delegation`)
+1. **SQL Delegation Module** (Already Implemented - `@fastmcp-oauth/sql-delegation`)
    - **Purpose:** Access SQL Server/PostgreSQL databases on behalf of users
    - **Method:** T-SQL `EXECUTE AS USER` command
    - **Authentication:** MCP server connects with **service account credentials**
@@ -24,7 +24,7 @@ The MCP-OAuth framework's **Phase 1 Token Exchange** implementation delegates th
    - **Status:** ✅ Fully implemented in `packages/sql-delegation/`
    - **Token Exchange Role:** Gets `legacy_name` claim from Keycloak (via LDAP)
 
-2. **Kerberos Delegation Module** (Trying to Implement - `@mcp-oauth/kerberos-delegation`)
+2. **Kerberos Delegation Module** (Trying to Implement - `@fastmcp-oauth/kerberos-delegation`)
    - **Purpose:** Access SMB file shares, NFS, Kerberos-protected apps on behalf of users
    - **Method:** Kerberos S4U2Self/S4U2Proxy protocol
    - **Authentication:** MCP server obtains **user's Kerberos ticket** via delegation

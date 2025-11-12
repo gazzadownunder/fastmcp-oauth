@@ -1,4 +1,4 @@
-# @mcp-oauth/rest-api-delegation
+# @fastmcp-oauth/rest-api-delegation
 
 REST API delegation module for the MCP OAuth framework - provides HTTP/JSON API integration with token exchange support.
 
@@ -19,21 +19,21 @@ This package provides a **production-ready delegation module** for integrating M
 ## Installation
 
 ```bash
-npm install @mcp-oauth/rest-api-delegation
+npm install @fastmcp-oauth/rest-api-delegation
 ```
 
-This package is an **optional** dependency of `mcp-oauth-framework`. The core framework works without REST API support.
+This package is an **optional** dependency of `fastmcp-oauth`. The core framework works without REST API support.
 
 ## Quick Start
 
 ### Basic Usage with Token Exchange
 
 ```typescript
-import { RestAPIDelegationModule } from '@mcp-oauth/rest-api-delegation';
-import { MCPOAuthServer } from 'mcp-oauth-framework';
+import { RestAPIDelegationModule } from '@fastmcp-oauth/rest-api-delegation';
+import { FastMCPOAuthServer } from 'fastmcp-oauth';
 
 // Create server
-const server = new MCPOAuthServer({
+const server = new FastMCPOAuthServer({
   configPath: './config.json'
 });
 
@@ -66,7 +66,7 @@ await restApiModule.initialize({
 Use the `createDelegationTool()` factory to create OAuth-secured tools in 5 lines:
 
 ```typescript
-import { createDelegationTool } from 'mcp-oauth-framework';
+import { createDelegationTool } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 // Tool 1: Get user profile
@@ -251,13 +251,13 @@ Health check attempts `GET /health` with optional API key authentication.
 ## Complete Example
 
 ```typescript
-import { MCPOAuthServer, createDelegationTool } from 'mcp-oauth-framework';
-import { RestAPIDelegationModule } from '@mcp-oauth/rest-api-delegation';
+import { FastMCPOAuthServer, createDelegationTool } from 'fastmcp-oauth';
+import { RestAPIDelegationModule } from '@fastmcp-oauth/rest-api-delegation';
 import { z } from 'zod';
 
 async function main() {
   // 1. Create server
-  const server = new MCPOAuthServer({
+  const server = new FastMCPOAuthServer({
     configPath: './config.json'
   });
 

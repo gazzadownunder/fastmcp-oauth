@@ -32,7 +32,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
             },
           ],
         }),
-        getMCPConfig: vi.fn().mockReturnValue({
+        getFastMCPConfig: vi.fn().mockReturnValue({
           oauth: {
             scopes: ['mcp:read', 'mcp:write', 'mcp:admin'],
           },
@@ -115,7 +115,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
     });
 
     it('should return empty scopes array when no scopes configured', () => {
-      mockCoreContext.configManager.getMCPConfig = vi.fn().mockReturnValue({
+      mockCoreContext.configManager.getFastMCPConfig = vi.fn().mockReturnValue({
         oauth: {
           // No scopes
         },
@@ -127,7 +127,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
     });
 
     it('should return empty scopes array when oauth config missing', () => {
-      mockCoreContext.configManager.getMCPConfig = vi.fn().mockReturnValue({
+      mockCoreContext.configManager.getFastMCPConfig = vi.fn().mockReturnValue({
         // No oauth config
       });
 
@@ -137,7 +137,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
     });
 
     it('should return empty scopes array when MCP config is null', () => {
-      mockCoreContext.configManager.getMCPConfig = vi.fn().mockReturnValue(null);
+      mockCoreContext.configManager.getFastMCPConfig = vi.fn().mockReturnValue(null);
 
       const metadata = generateProtectedResourceMetadata(mockCoreContext, 'https://mcp.example.com');
 
@@ -167,10 +167,16 @@ describe('OAuth Metadata (RFC 9728)', () => {
 
   describe('generateWWWAuthenticateHeader()', () => {
     it('should generate RFC 6750 Bearer header', () => {
-      const header = generateWWWAuthenticateHeader(mockCoreContext, 'MCP Server');
+      const header = generateWWWAuthenticateHeader(
+        mockCoreContext,
+        'MCP Server',
+        undefined, // no scope
+        true, // include protected resource metadata
+        'http://localhost:3000' // server URL
+      );
 
       expect(header).toBe(
-        'Bearer realm="MCP Server", authorization_server="https://auth.example.com"'
+        'Bearer realm="MCP Server", resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource"'
       );
     });
 
@@ -178,11 +184,13 @@ describe('OAuth Metadata (RFC 9728)', () => {
       const header = generateWWWAuthenticateHeader(
         mockCoreContext,
         'MCP Server',
-        'mcp:read mcp:write'
+        'mcp:read mcp:write',
+        true, // include protected resource metadata
+        'http://localhost:3000' // server URL
       );
 
       expect(header).toBe(
-        'Bearer realm="MCP Server", authorization_server="https://auth.example.com", scope="mcp:read mcp:write"'
+        'Bearer realm="MCP Server", scope="mcp:read mcp:write", resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource"'
       );
     });
 
@@ -209,9 +217,15 @@ describe('OAuth Metadata (RFC 9728)', () => {
         ],
       });
 
-      const header = generateWWWAuthenticateHeader(mockCoreContext, 'MCP Server');
+      const header = generateWWWAuthenticateHeader(
+        mockCoreContext,
+        'MCP Server',
+        undefined,
+        true,
+        'http://localhost:3000'
+      );
 
-      expect(header).toContain('authorization_server="https://primary.example.com"');
+      expect(header).toContain('resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource"');
     });
 
     it('should handle missing trusted IDPs gracefully', () => {
@@ -221,7 +235,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
 
       const header = generateWWWAuthenticateHeader(mockCoreContext, 'MCP Server');
 
-      expect(header).toBe('Bearer realm="MCP Server", authorization_server="unknown"');
+      expect(header).toBe('Bearer realm="MCP Server"');
     });
 
     it('should handle null issuer gracefully', () => {
@@ -231,7 +245,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
 
       const header = generateWWWAuthenticateHeader(mockCoreContext, 'MCP Server');
 
-      expect(header).toContain('authorization_server="unknown"');
+      expect(header).toBe('Bearer realm="MCP Server"');
     });
 
     it('should escape quotes in realm name', () => {
@@ -256,11 +270,13 @@ describe('OAuth Metadata (RFC 9728)', () => {
       const header = generateWWWAuthenticateHeader(
         mockCoreContext,
         'Test Realm',
-        'test:scope'
+        'test:scope',
+        true,
+        'http://localhost:3000'
       );
 
       // Check format: Bearer <param>, <param>, <param>
-      expect(header).toMatch(/^Bearer realm="[^"]+", authorization_server="[^"]+", scope="[^"]+"$/);
+      expect(header).toMatch(/^Bearer realm="[^"]+", scope="[^"]+", resource_metadata="[^"]+"$/);
     });
   });
 
@@ -280,7 +296,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
     });
 
     it('should handle empty scopes array', () => {
-      mockCoreContext.configManager.getMCPConfig = vi.fn().mockReturnValue({
+      mockCoreContext.configManager.getFastMCPConfig = vi.fn().mockReturnValue({
         oauth: {
           scopes: [],
         },
@@ -292,7 +308,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
     });
 
     it('should preserve scope order', () => {
-      mockCoreContext.configManager.getMCPConfig = vi.fn().mockReturnValue({
+      mockCoreContext.configManager.getFastMCPConfig = vi.fn().mockReturnValue({
         oauth: {
           scopes: ['scope:a', 'scope:b', 'scope:c', 'scope:d'],
         },
@@ -309,7 +325,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
       mockCoreContext.configManager.getAuthConfig = vi.fn().mockReturnValue({
         trustedIDPs: [{ issuer: 'https://auth.example.com' }],
       });
-      mockCoreContext.configManager.getMCPConfig = vi.fn().mockReturnValue({});
+      mockCoreContext.configManager.getFastMCPConfig = vi.fn().mockReturnValue({});
 
       const metadata = generateProtectedResourceMetadata(mockCoreContext, 'https://mcp.example.com');
 
@@ -337,7 +353,7 @@ describe('OAuth Metadata (RFC 9728)', () => {
           },
         ],
       });
-      mockCoreContext.configManager.getMCPConfig = vi.fn().mockReturnValue({
+      mockCoreContext.configManager.getFastMCPConfig = vi.fn().mockReturnValue({
         oauth: {
           scopes: [
             'mcp:read',

@@ -106,7 +106,7 @@ export function generateProtectedResourceMetadata(
  * @returns Array of supported scope strings
  */
 function extractSupportedScopes(coreContext: CoreContext): string[] {
-  const mcpConfig = coreContext.configManager.getMCPConfig();
+  const mcpConfig = coreContext.configManager.getFastMCPConfig();
 
   // Debug logging
   console.log('[OAuth Metadata] extractSupportedScopes called');
@@ -162,7 +162,7 @@ export function generateWWWAuthenticateHeader(
   errorDescription?: string
 ): string {
   const authConfig = coreContext.configManager.getAuthConfig();
-  const mcpConfig = coreContext.configManager.getMCPConfig();
+  const mcpConfig = coreContext.configManager.getFastMCPConfig();
 
   // Determine if we should include protected resource metadata
   // Priority: explicit parameter > config > default (true)

@@ -3,7 +3,7 @@
  * @module delegation/kerberos/types
  */
 
-import type { DelegationModuleConfig } from 'mcp-oauth-framework/delegation';
+import type { DelegationModuleConfig } from 'fastmcp-oauth/delegation';
 
 /**
  * Service account configuration for Kerberos authentication

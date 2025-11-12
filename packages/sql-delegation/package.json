@@ -1,7 +1,7 @@
 {
-  "name": "@mcp-oauth/sql-delegation",
+  "name": "@fastmcp-oauth/sql-delegation",
   "version": "1.0.0",
-  "description": "SQL delegation module for MCP OAuth framework - PostgreSQL and SQL Server support",
+  "description": "SQL delegation module for FastMCP OAuth framework - PostgreSQL and SQL Server support",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,20 +18,20 @@
     "clean": "rimraf dist"
   },
   "keywords": [
-    "mcp-oauth",
+    "fastmcp-oauth",
     "sql",
     "postgresql",
     "mssql",
     "delegation",
     "database"
   ],
-  "author": "FastMCP OAuth OBO Team",
+  "author": "FastMCP OAuth Team",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "mcp-oauth-framework": "file:../..",
+    "fastmcp-oauth": "file:../..",
     "mssql": "^11.0.1",
     "pg": "^8.13.1",
     "zod": "^3.25.76"

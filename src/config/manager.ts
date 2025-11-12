@@ -6,6 +6,7 @@ import {
   type UnifiedConfig,
   type CoreAuthConfig,
   type DelegationConfig,
+  type FastMCPConfig,
   type MCPConfig,
 } from './schemas/index.js';
 import { migrateConfigData } from './migrate.js';
@@ -121,13 +122,20 @@ export class ConfigManager {
   }
 
   /**
-   * Get MCP configuration
+   * Get FastMCP configuration
    *
-   * Returns MCP layer configuration if present.
+   * Returns FastMCP layer configuration if present.
    */
-  getMCPConfig(): MCPConfig | undefined {
+  getFastMCPConfig(): FastMCPConfig | undefined {
     const config = this.getConfig();
     return config.mcp;
+  }
+
+  /**
+   * @deprecated Use getFastMCPConfig() instead. This alias is for backward compatibility only.
+   */
+  getMCPConfig(): MCPConfig | undefined {
+    return this.getFastMCPConfig();
   }
 
   /**

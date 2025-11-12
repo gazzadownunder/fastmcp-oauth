@@ -1,10 +1,10 @@
 /**
- * @mcp-oauth/sql-delegation - SQL delegation module package
+ * @fastmcp-oauth/sql-delegation - SQL delegation module package
  *
  * Provides PostgreSQL and SQL Server delegation capabilities for the MCP OAuth framework.
  * This is a reference implementation demonstrating how to build delegation modules.
  *
- * @module @mcp-oauth/sql-delegation
+ * @module @fastmcp-oauth/sql-delegation
  */
 
 export { PostgreSQLDelegationModule } from './postgresql-module.js';

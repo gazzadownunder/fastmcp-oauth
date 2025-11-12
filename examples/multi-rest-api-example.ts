@@ -12,8 +12,8 @@
  * each requiring different authentication and accessed through separate tool sets.
  */
 
-import { MCPOAuthServer } from '../src/mcp/server.js';
-import { RestAPIDelegationModule } from '@mcp-oauth/rest-api-delegation';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
+import { RestAPIDelegationModule } from '@fastmcp-oauth/rest-api-delegation';
 import { createRESTAPIToolsForModule } from '../src/mcp/tools/rest-api-tools-factory.js';
 
 async function main() {
@@ -23,7 +23,7 @@ async function main() {
   console.log('');
 
   // Step 1: Create MCP OAuth Server
-  const server = new MCPOAuthServer({
+  const server = new FastMCPOAuthServer({
     configPath: './test-harness/config/multi-rest-api-config.json',
   });
 

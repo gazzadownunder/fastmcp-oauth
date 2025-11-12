@@ -12,7 +12,7 @@
  *
  * @example
  * ```typescript
- * const server = new MCPOAuthServer('./config/unified-config.json');
+ * const server = new FastMCPOAuthServer('./config/unified-config.json');
  * await server.start({ transport: 'httpStream', port: 3000 });
  * ```
  */
@@ -20,7 +20,7 @@
 import { FastMCP } from 'fastmcp';
 import { ConfigManager } from '../config/manager.js';
 import { ConfigOrchestrator } from './orchestrator.js';
-import { MCPAuthMiddleware } from './middleware.js';
+import { FastMCPAuthMiddleware } from './middleware.js';
 import {
   getAllToolFactories,
   createSQLToolsForModule,
@@ -29,14 +29,14 @@ import {
   type RESTAPIToolsConfig,
 } from './tools/index.js';
 import type { CoreContext } from '../core/index.js';
-import type { MCPStartOptions, MCPContext, ToolRegistration } from './types.js';
+import type { FastMCPStartOptions, FastMCPContext, ToolRegistration } from './types.js';
 import type { DelegationModule } from '../delegation/base.js';
 import type { ToolFactory } from './types.js';
 
 /**
  * MCP OAuth Server
  *
- * Provides a simplified API for setting up an OAuth-enabled MCP server.
+ * Provides a simplified API for setting up an OAuth-enabled FastMCP server.
  *
  * Features:
  * - Automatic configuration loading and validation
@@ -48,7 +48,7 @@ import type { ToolFactory } from './types.js';
  *
  * @see remediation-plan.md Gap #3 for implementation details
  */
-export class MCPOAuthServer {
+export class FastMCPOAuthServer {
   private configManager: ConfigManager;
   private orchestrator: ConfigOrchestrator;
   private coreContext?: CoreContext;
@@ -57,13 +57,13 @@ export class MCPOAuthServer {
   private isRunning: boolean = false;
 
   /**
-   * Create a new MCP OAuth server
+   * Create a new FastMCP OAuth server
    *
    * @param configPath - Path to unified configuration file
    *
    * @example
    * ```typescript
-   * const server = new MCPOAuthServer('./config/unified-config.json');
+   * const server = new FastMCPOAuthServer('./config/unified-config.json');
    * ```
    */
   constructor(configPath: string) {
@@ -74,7 +74,7 @@ export class MCPOAuthServer {
       enableAudit: true,
       onAuditOverflow: (entries) => {
         console.warn(
-          `[MCP OAuth Server] Audit overflow: ${entries.length} entries discarded. ` +
+          `[FastMCP OAuth Server] Audit overflow: ${entries.length} entries discarded. ` +
             'Consider implementing persistent storage for audit logs.'
         );
       },
@@ -109,7 +109,7 @@ export class MCPOAuthServer {
     // DelegationRegistry.register() takes only the module parameter
     // The module's .name property is used as the registration key
     await this.coreContext.delegationRegistry.register(module);
-    console.log(`[MCP OAuth Server] Registered delegation module: ${name}`);
+    console.log(`[FastMCP OAuth Server] Registered delegation module: ${name}`);
   }
 
   /**
@@ -127,7 +127,7 @@ export class MCPOAuthServer {
    *
    * @example
    * ```typescript
-   * import { createDelegationTool } from 'mcp-oauth-framework';
+   * import { createDelegationTool } from 'fastmcp-oauth';
    *
    * // Create custom tool using factory
    * const myTool = createDelegationTool('mymodule', {
@@ -160,7 +160,7 @@ export class MCPOAuthServer {
       );
     }
 
-    console.log(`[MCP OAuth Server] Registering custom tool: ${tool.name}`);
+    console.log(`[FastMCP OAuth Server] Registering custom tool: ${tool.name}`);
 
     this.mcpServer.addTool({
       name: tool.name,
@@ -170,7 +170,7 @@ export class MCPOAuthServer {
       execute: async (args, context) => {
         // Extract UserSession from FastMCP context
         const fastmcpSession = (context as any).session;
-        const mcpContext: MCPContext = {
+        const mcpContext: FastMCPContext = {
           session: fastmcpSession?.session || fastmcpSession,
         };
 
@@ -222,7 +222,7 @@ export class MCPOAuthServer {
    *
    * @example
    * ```typescript
-   * import { createDelegationTools } from 'mcp-oauth-framework';
+   * import { createDelegationTools } from 'fastmcp-oauth';
    *
    * // Create multiple tools for same module
    * const tools = createDelegationTools('myapi', [
@@ -250,11 +250,11 @@ export class MCPOAuthServer {
    * @see Framework-update.md Phase 1.3
    */
   registerTools(tools: ToolRegistration[]): void {
-    console.log(`[MCP OAuth Server] Registering ${tools.length} custom tools...`);
+    console.log(`[FastMCP OAuth Server] Registering ${tools.length} custom tools...`);
     for (const tool of tools) {
       this.registerTool(tool);
     }
-    console.log(`[MCP OAuth Server] ✓ Successfully registered ${tools.length} custom tools`);
+    console.log(`[FastMCP OAuth Server] ✓ Successfully registered ${tools.length} custom tools`);
   }
 
   /**
@@ -279,20 +279,20 @@ export class MCPOAuthServer {
     const primaryIDP = authConfig.trustedIDPs[0];
 
     if (!primaryIDP) {
-      console.log('[MCP OAuth Server] No trusted IDPs configured, OAuth metadata disabled');
+      console.log('[FastMCP OAuth Server] No trusted IDPs configured, OAuth metadata disabled');
       return { enabled: false };
     }
 
     const serverUrl = process.env.SERVER_URL || `http://localhost:${port}`;
 
-    console.log('[MCP OAuth Server] Building OAuth configuration...');
-    console.log(`[MCP OAuth Server]   Primary IDP: ${primaryIDP.issuer}`);
-    console.log(`[MCP OAuth Server]   Resource URL: ${serverUrl}`);
+    console.log('[FastMCP OAuth Server] Building OAuth configuration...');
+    console.log(`[FastMCP OAuth Server]   Primary IDP: ${primaryIDP.issuer}`);
+    console.log(`[FastMCP OAuth Server]   Resource URL: ${serverUrl}`);
 
     // Check if protected resource metadata should be included
     // Default: true (enabled by default, must be explicitly disabled)
     const includeProtectedResource = mcpConfig?.oauth?.protectedResource ?? true;
-    console.log(`[MCP OAuth Server]   Protected Resource Metadata: ${includeProtectedResource ? 'enabled' : 'disabled'}`);
+    console.log(`[FastMCP OAuth Server]   Protected Resource Metadata: ${includeProtectedResource ? 'enabled' : 'disabled'}`);
 
     // Build base config
     const oauthConfig: any = {
@@ -327,21 +327,21 @@ export class MCPOAuthServer {
     // Add oauth_endpoints if explicitly configured in mcp.oauth.oauth_endpoints
     // This allows explicit control when multiple IDPs are configured
     console.log(
-      '[MCP OAuth Server] DEBUG - mcpConfig.oauth:',
+      '[FastMCP OAuth Server] DEBUG - mcpConfig.oauth:',
       JSON.stringify(mcpConfig?.oauth, null, 2)
     );
     if (mcpConfig?.oauth?.oauth_endpoints) {
       oauthConfig.oauth_endpoints = mcpConfig.oauth.oauth_endpoints;
       console.log(
-        '[MCP OAuth Server]   OAuth endpoints (explicit): ' +
+        '[FastMCP OAuth Server]   OAuth endpoints (explicit): ' +
           `${mcpConfig.oauth.oauth_endpoints.authorization_endpoint}`
       );
     } else {
-      console.log('[MCP OAuth Server]   WARNING: No oauth_endpoints configured in mcp.oauth');
+      console.log('[FastMCP OAuth Server]   WARNING: No oauth_endpoints configured in mcp.oauth');
     }
 
     console.log(
-      '[MCP OAuth Server] DEBUG - Final oauthConfig:',
+      '[FastMCP OAuth Server] DEBUG - Final oauthConfig:',
       JSON.stringify(oauthConfig, null, 2)
     );
     return oauthConfig;
@@ -366,7 +366,7 @@ export class MCPOAuthServer {
   }
 
   /**
-   * Start the MCP OAuth server
+   * Start the FastMCP OAuth server
    *
    * This will:
    * 1. Load and validate configuration
@@ -389,34 +389,34 @@ export class MCPOAuthServer {
    * await server.start({ transport: 'stdio' });
    * ```
    */
-  async start(options: MCPStartOptions = {}): Promise<void> {
+  async start(options: FastMCPStartOptions = {}): Promise<void> {
     if (this.isRunning) {
       throw new Error('Server is already running. Call stop() first.');
     }
 
-    console.log('[MCP OAuth Server] Starting server...');
+    console.log('[FastMCP OAuth Server] Starting server...');
 
     // 1. Load configuration
-    console.log(`[MCP OAuth Server] Loading configuration from: ${this.configPath}`);
+    console.log(`[FastMCP OAuth Server] Loading configuration from: ${this.configPath}`);
     await this.configManager.loadConfig(this.configPath);
     const mcpConfig = this.configManager.getMCPConfig();
 
     // 2. Build CoreContext (services created but NOT initialized yet)
-    console.log('[MCP OAuth Server] Building CoreContext...');
+    console.log('[FastMCP OAuth Server] Building CoreContext...');
     this.coreContext = await this.orchestrator.buildCoreContext();
 
     // 3. Initialize AuthenticationService (CRITICAL: fetch JWKS before validation)
-    console.log('[MCP OAuth Server] Initializing AuthenticationService (fetching JWKS)...');
+    console.log('[FastMCP OAuth Server] Initializing AuthenticationService (fetching JWKS)...');
     await this.coreContext.authService.initialize();
-    console.log('[MCP OAuth Server] ✓ AuthenticationService initialized');
+    console.log('[FastMCP OAuth Server] ✓ AuthenticationService initialized');
 
     // 4. Validate CoreContext (MANDATORY GAP #8: validate AFTER initialization)
-    console.log('[MCP OAuth Server] Validating CoreContext...');
+    console.log('[FastMCP OAuth Server] Validating CoreContext...');
     ConfigOrchestrator.validateCoreContext(this.coreContext);
-    console.log('[MCP OAuth Server] ✓ CoreContext validated');
+    console.log('[FastMCP OAuth Server] ✓ CoreContext validated');
 
     // 5. Create authentication middleware with CoreContext (required for WWW-Authenticate header generation)
-    const authMiddleware = new MCPAuthMiddleware(this.coreContext.authService, this.coreContext);
+    const authMiddleware = new FastMCPAuthMiddleware(this.coreContext.authService, this.coreContext);
 
     // 6. Determine transport and port (needed for OAuth config)
     const transport = options.transport || mcpConfig?.transport || 'httpStream';
@@ -426,7 +426,7 @@ export class MCPOAuthServer {
     const serverName = mcpConfig?.serverName || 'MCP OAuth Server';
     const serverVersion = (mcpConfig?.version || '2.0.0') as `${number}.${number}.${number}`;
 
-    console.log(`[MCP OAuth Server] Creating FastMCP server: ${serverName} v${serverVersion}`);
+    console.log(`[FastMCP OAuth Server] Creating FastMCP server: ${serverName} v${serverVersion}`);
 
     this.mcpServer = new FastMCP({
       name: serverName,
@@ -440,7 +440,7 @@ export class MCPOAuthServer {
     const autoRegisterTools: ToolFactory[] = [];
 
     if (delegationConfig?.modules) {
-      console.log('[MCP OAuth Server] Checking for modules with toolPrefix configuration...');
+      console.log('[FastMCP OAuth Server] Checking for modules with toolPrefix configuration...');
 
       for (const [moduleName, moduleConfig] of Object.entries(delegationConfig.modules)) {
         // Get toolPrefix from module config or use defaultToolPrefix
@@ -448,7 +448,7 @@ export class MCPOAuthServer {
 
         if (!toolPrefix) {
           console.log(
-            `[MCP OAuth Server]   Module "${moduleName}" has no toolPrefix - skipping auto-registration`
+            `[FastMCP OAuth Server]   Module "${moduleName}" has no toolPrefix - skipping auto-registration`
           );
           continue; // Skip modules without toolPrefix (manual registration required)
         }
@@ -459,7 +459,7 @@ export class MCPOAuthServer {
         if (moduleName.startsWith('postgresql') || moduleName.startsWith('mssql')) {
           // SQL module (PostgreSQL or MSSQL)
           console.log(
-            `[MCP OAuth Server]   Auto-registering SQL tools for "${moduleName}" with prefix "${toolPrefix}"`
+            `[FastMCP OAuth Server]   Auto-registering SQL tools for "${moduleName}" with prefix "${toolPrefix}"`
           );
           const descriptionSuffix = (moduleConfig as any)._comment || `(${(moduleConfig as any).database})`;
           tools = createSQLToolsForModule({
@@ -470,7 +470,7 @@ export class MCPOAuthServer {
         } else if (moduleName.startsWith('rest-api')) {
           // REST API module
           console.log(
-            `[MCP OAuth Server]   Auto-registering REST API tools for "${moduleName}" with prefix "${toolPrefix}"`
+            `[FastMCP OAuth Server]   Auto-registering REST API tools for "${moduleName}" with prefix "${toolPrefix}"`
           );
           const descriptionSuffix = (moduleConfig as any)._comment || `(${(moduleConfig as any).baseUrl})`;
           tools = createRESTAPIToolsForModule({
@@ -481,22 +481,22 @@ export class MCPOAuthServer {
         } else if (moduleName.startsWith('kerberos')) {
           // Kerberos module (file browsing)
           console.log(
-            `[MCP OAuth Server]   Kerberos module "${moduleName}" detected with prefix "${toolPrefix}"`
+            `[FastMCP OAuth Server]   Kerberos module "${moduleName}" detected with prefix "${toolPrefix}"`
           );
           console.warn(
-            `[MCP OAuth Server]   ⚠ Kerberos tool auto-registration not yet implemented - use manual registration`
+            `[FastMCP OAuth Server]   ⚠ Kerberos tool auto-registration not yet implemented - use manual registration`
           );
           // Note: Kerberos file browsing tools use prefix for list/read/info tools
           // Implementation depends on kerberos-file-browse.ts refactoring
         } else {
           console.warn(
-            `[MCP OAuth Server]   Unknown module type: "${moduleName}" - skipping auto-registration`
+            `[FastMCP OAuth Server]   Unknown module type: "${moduleName}" - skipping auto-registration`
           );
         }
 
         if (tools.length > 0) {
           console.log(
-            `[MCP OAuth Server]   ✓ Created ${tools.length} tool(s) for "${moduleName}"`
+            `[FastMCP OAuth Server]   ✓ Created ${tools.length} tool(s) for "${moduleName}"`
           );
           autoRegisterTools.push(...tools);
         }
@@ -504,7 +504,7 @@ export class MCPOAuthServer {
     }
 
     console.log(
-      `[MCP OAuth Server] Auto-registration created ${autoRegisterTools.length} tool factories`
+      `[FastMCP OAuth Server] Auto-registration created ${autoRegisterTools.length} tool factories`
     );
 
     // 9. Register enabled tools
@@ -526,31 +526,31 @@ export class MCPOAuthServer {
       );
     });
 
-    console.log(`[MCP OAuth Server] Checking for custom SQL tools...`);
-    console.log(`[MCP OAuth Server]   Enabled tool names:`, enabledToolNames);
-    console.log(`[MCP OAuth Server]   Has custom SQL tools:`, hasCustomSqlTools);
-    console.log(`[MCP OAuth Server]   Has auto-registered SQL tools:`, hasAutoRegisteredSqlTools);
+    console.log(`[FastMCP OAuth Server] Checking for custom SQL tools...`);
+    console.log(`[FastMCP OAuth Server]   Enabled tool names:`, enabledToolNames);
+    console.log(`[FastMCP OAuth Server]   Has custom SQL tools:`, hasCustomSqlTools);
+    console.log(`[FastMCP OAuth Server]   Has auto-registered SQL tools:`, hasAutoRegisteredSqlTools);
 
     const toolFactories = getAllToolFactories({
       excludeSqlTools: hasCustomSqlTools || hasAutoRegisteredSqlTools,
     });
 
-    console.log(`[MCP OAuth Server] Found ${toolFactories.length} available tools`);
+    console.log(`[FastMCP OAuth Server] Found ${toolFactories.length} available tools`);
     if (hasCustomSqlTools) {
-      console.log(`[MCP OAuth Server] ✓ Custom SQL tools detected - excluding default SQL tools`);
+      console.log(`[FastMCP OAuth Server] ✓ Custom SQL tools detected - excluding default SQL tools`);
     }
     if (hasAutoRegisteredSqlTools) {
       console.log(
-        `[MCP OAuth Server] ✓ Auto-registered SQL tools detected - excluding default SQL tools`
+        `[FastMCP OAuth Server] ✓ Auto-registered SQL tools detected - excluding default SQL tools`
       );
     }
-    console.log(`[MCP OAuth Server] Enabled tools config:`, enabledTools);
+    console.log(`[FastMCP OAuth Server] Enabled tools config:`, enabledTools);
 
     // 10. Register auto-generated tools first
     let registeredCount = 0;
     for (const factory of autoRegisterTools) {
       const toolReg = factory(this.coreContext!);
-      console.log(`[MCP OAuth Server] Registering auto-generated tool: ${toolReg.name}`);
+      console.log(`[FastMCP OAuth Server] Registering auto-generated tool: ${toolReg.name}`);
       registeredCount++;
 
       this.mcpServer.addTool({
@@ -560,7 +560,7 @@ export class MCPOAuthServer {
         canAccess: toolReg.canAccess as any,
         execute: async (args, context) => {
           const fastmcpSession = (context as any).session;
-          const mcpContext: MCPContext = {
+          const mcpContext: FastMCPContext = {
             session: fastmcpSession?.session || fastmcpSession,
           };
 
@@ -609,20 +609,20 @@ export class MCPOAuthServer {
       const hasAnyToolsConfigured = Object.keys(enabledTools).length > 0;
 
       if (isEnabled === false) {
-        console.log(`[MCP OAuth Server] Skipping disabled tool: ${toolReg.name}`);
+        console.log(`[FastMCP OAuth Server] Skipping disabled tool: ${toolReg.name}`);
         continue;
       }
 
       if (isEnabled === true) {
-        console.log(`[MCP OAuth Server] Registering tool: ${toolReg.name}`);
+        console.log(`[FastMCP OAuth Server] Registering tool: ${toolReg.name}`);
         registeredCount++;
       } else if (!hasAnyToolsConfigured) {
         // No tools configured at all - register everything (backward compatibility)
-        console.log(`[MCP OAuth Server] Registering tool (no filter): ${toolReg.name}`);
+        console.log(`[FastMCP OAuth Server] Registering tool (no filter): ${toolReg.name}`);
         registeredCount++;
       } else {
         // Tools are configured but this one isn't listed - skip it
-        console.log(`[MCP OAuth Server] Skipping unconfigured tool: ${toolReg.name}`);
+        console.log(`[FastMCP OAuth Server] Skipping unconfigured tool: ${toolReg.name}`);
         continue;
       }
 
@@ -635,7 +635,7 @@ export class MCPOAuthServer {
           // FastMCP provides: { authenticated: true, session: UserSession }
           // Extract the actual UserSession from the wrapper
           const fastmcpSession = (context as any).session;
-          const mcpContext: MCPContext = {
+          const mcpContext: FastMCPContext = {
             session: fastmcpSession?.session || fastmcpSession,
           };
 
@@ -679,14 +679,14 @@ export class MCPOAuthServer {
 
     const totalAvailableTools = toolFactories.length + autoRegisterTools.length;
     console.log(
-      `[MCP OAuth Server] Successfully registered ${registeredCount} of ${totalAvailableTools} available tools`
+      `[FastMCP OAuth Server] Successfully registered ${registeredCount} of ${totalAvailableTools} available tools`
     );
     console.log(
-      `[MCP OAuth Server]   Auto-registered: ${autoRegisterTools.length}, Standard: ${registeredCount - autoRegisterTools.length}`
+      `[FastMCP OAuth Server]   Auto-registered: ${autoRegisterTools.length}, Standard: ${registeredCount - autoRegisterTools.length}`
     );
 
     // 12. Start server
-    console.log('[MCP OAuth Server] Starting FastMCP server...');
+    console.log('[FastMCP OAuth Server] Starting FastMCP server...');
     await this.mcpServer.start({
       transportType: transport as any,
       httpStream:
@@ -704,7 +704,7 @@ export class MCPOAuthServer {
 
     // 13. Log startup summary
     console.log('\n' + '='.repeat(60));
-    console.log('[MCP OAuth Server] ✓ Server started successfully');
+    console.log('[FastMCP OAuth Server] ✓ Server started successfully');
     console.log('='.repeat(60));
     console.log(`  Server Name:      ${serverName}`);
     console.log(`  Version:          ${serverVersion}`);
@@ -731,7 +731,7 @@ export class MCPOAuthServer {
   }
 
   /**
-   * Stop the MCP OAuth server
+   * Stop the FastMCP OAuth server
    *
    * This will:
    * 1. Stop the FastMCP server
@@ -750,22 +750,22 @@ export class MCPOAuthServer {
    */
   async stop(): Promise<void> {
     if (!this.isRunning) {
-      console.log('[MCP OAuth Server] Server is not running');
+      console.log('[FastMCP OAuth Server] Server is not running');
       return;
     }
 
-    console.log('[MCP OAuth Server] Stopping server...');
+    console.log('[FastMCP OAuth Server] Stopping server...');
 
     // 1. Stop FastMCP server
     if (this.mcpServer) {
       await this.mcpServer.stop();
-      console.log('[MCP OAuth Server] ✓ FastMCP server stopped');
+      console.log('[FastMCP OAuth Server] ✓ FastMCP server stopped');
     }
 
     // 2. Destroy CoreContext
     if (this.coreContext) {
       await ConfigOrchestrator.destroyCoreContext(this.coreContext);
-      console.log('[MCP OAuth Server] ✓ CoreContext destroyed');
+      console.log('[FastMCP OAuth Server] ✓ CoreContext destroyed');
     }
 
     // 3. Clear state
@@ -773,7 +773,7 @@ export class MCPOAuthServer {
     this.mcpServer = undefined;
     this.isRunning = false;
 
-    console.log('[MCP OAuth Server] ✓ Server stopped');
+    console.log('[FastMCP OAuth Server] ✓ Server stopped');
   }
 
   /**
@@ -815,3 +815,6 @@ export class MCPOAuthServer {
     return this.configManager;
   }
 }
+
+// Legacy export for backward compatibility (will be deprecated)
+export const MCPOAuthServer = FastMCPOAuthServer;

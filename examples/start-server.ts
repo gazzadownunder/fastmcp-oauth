@@ -6,13 +6,13 @@
  *
  * Framework users install the package and import from it:
  *   npm install fastmcp-oauth-obo
- *   import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+ *   import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
  *
  * This example uses relative imports during framework development.
  */
 
-import { MCPOAuthServer } from '../src/mcp/server.js';
-import { SQLDelegationModule } from '@mcp-oauth/sql-delegation';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
+import { SQLDelegationModule } from '@fastmcp-oauth/sql-delegation';
 
 async function main() {
   // Get config path from environment or use default
@@ -28,7 +28,7 @@ async function main() {
 
   try {
     // Create server instance with config path
-    const server = new MCPOAuthServer(configPath);
+    const server = new FastMCPOAuthServer(configPath);
 
     // Start server (this initializes CoreContext)
     await server.start({

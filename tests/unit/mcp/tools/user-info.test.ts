@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { createUserInfoTool } from '../../../../src/mcp/tools/user-info.js';
 import type { CoreContext } from '../../../../src/core/index.js';
-import type { MCPContext, LLMResponse } from '../../../../src/mcp/types.js';
+import type { FastMCPContext, LLMResponse } from '../../../../src/mcp/types.js';
 import { UNASSIGNED_ROLE } from '../../../../src/core/types.js';
 
 describe('user-info Tool', () => {
@@ -38,7 +38,7 @@ describe('user-info Tool', () => {
   describe('canAccess (Visibility Filtering)', () => {
     it('should hide tool from unauthenticated users', () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: null as any,
       };
 
@@ -47,7 +47,7 @@ describe('user-info Tool', () => {
 
     it('should hide tool from rejected sessions', () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           userId: 'user1',
           username: 'testuser',
@@ -65,7 +65,7 @@ describe('user-info Tool', () => {
 
     it('should show tool to all authenticated users', () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           userId: 'user1',
           username: 'user',
@@ -82,7 +82,7 @@ describe('user-info Tool', () => {
 
     it('should show tool to admin users', () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           userId: 'admin1',
           username: 'admin',
@@ -99,7 +99,7 @@ describe('user-info Tool', () => {
 
     it('should show tool to guest users if authenticated', () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           userId: 'guest1',
           username: 'guest',
@@ -136,7 +136,7 @@ describe('user-info Tool', () => {
 
     it('should return basic user info without claims', async () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({}, mcpContext)) as LLMResponse;
 
@@ -151,7 +151,7 @@ describe('user-info Tool', () => {
 
     it('should include claims when includeClaims=true', async () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ includeClaims: true }, mcpContext)) as LLMResponse;
 
@@ -163,7 +163,7 @@ describe('user-info Tool', () => {
 
     it('should sanitize sensitive claims (jti, azp)', async () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({ includeClaims: true }, mcpContext)) as LLMResponse;
 
@@ -178,7 +178,7 @@ describe('user-info Tool', () => {
         ...validSession,
         legacyUsername: 'DOMAIN\\legacy_user',
       };
-      const mcpContext: MCPContext = { session: sessionWithLegacy };
+      const mcpContext: FastMCPContext = { session: sessionWithLegacy };
 
       const result = (await tool.handler({}, mcpContext)) as LLMResponse;
 
@@ -192,7 +192,7 @@ describe('user-info Tool', () => {
         ...validSession,
         customRoles: ['developer', 'analyst'],
       };
-      const mcpContext: MCPContext = { session: sessionWithCustomRoles };
+      const mcpContext: FastMCPContext = { session: sessionWithCustomRoles };
 
       const result = (await tool.handler({}, mcpContext)) as LLMResponse;
 
@@ -207,7 +207,7 @@ describe('user-info Tool', () => {
         ...validSession,
         scopes: ['read', 'write'],
       };
-      const mcpContext: MCPContext = { session: sessionWithScopes };
+      const mcpContext: FastMCPContext = { session: sessionWithScopes };
 
       const result = (await tool.handler({}, mcpContext)) as LLMResponse;
 
@@ -229,7 +229,7 @@ describe('user-info Tool', () => {
         customRoles: [], // Empty array
         scopes: [], // Empty array
       };
-      const mcpContext: MCPContext = { session: minimalSession };
+      const mcpContext: FastMCPContext = { session: minimalSession };
 
       const result = (await tool.handler({}, mcpContext)) as LLMResponse;
 
@@ -241,7 +241,7 @@ describe('user-info Tool', () => {
 
     it('should require authentication (hard check)', async () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           ...validSession,
           rejected: true,
@@ -257,7 +257,7 @@ describe('user-info Tool', () => {
 
     it('should use default includeClaims=false when not specified', async () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({}, mcpContext)) as LLMResponse;
 
@@ -271,7 +271,7 @@ describe('user-info Tool', () => {
         ...validSession,
         claims: undefined,
       };
-      const mcpContext: MCPContext = { session: sessionWithoutClaims as any };
+      const mcpContext: FastMCPContext = { session: sessionWithoutClaims as any };
 
       const result = (await tool.handler({ includeClaims: true }, mcpContext)) as LLMResponse;
 
@@ -281,7 +281,7 @@ describe('user-info Tool', () => {
 
     it('should return LLMSuccessResponse on success (GAP #5)', async () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = { session: validSession };
+      const mcpContext: FastMCPContext = { session: validSession };
 
       const result = (await tool.handler({}, mcpContext)) as LLMResponse;
 
@@ -293,7 +293,7 @@ describe('user-info Tool', () => {
 
     it('should return LLMFailureResponse on error (GAP #4)', async () => {
       const tool = createUserInfoTool(coreContext);
-      const mcpContext: MCPContext = {
+      const mcpContext: FastMCPContext = {
         session: {
           ...validSession,
           rejected: true,

@@ -1,7 +1,7 @@
 {
-  "name": "@mcp-oauth/kerberos-delegation",
+  "name": "@fastmcp-oauth/kerberos-delegation",
   "version": "1.0.0",
-  "description": "Kerberos delegation module for MCP OAuth framework - Windows Kerberos Constrained Delegation support",
+  "description": "Kerberos delegation module for FastMCP OAuth framework - Windows Kerberos Constrained Delegation support",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,19 +18,19 @@
     "clean": "rimraf dist"
   },
   "keywords": [
-    "mcp-oauth",
+    "fastmcp-oauth",
     "kerberos",
     "windows",
     "delegation",
     "authentication"
   ],
-  "author": "FastMCP OAuth OBO Team",
+  "author": "FastMCP OAuth Team",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "mcp-oauth-framework": "file:../..",
+    "fastmcp-oauth": "file:../..",
     "kerberos": "^2.2.2",
     "zod": "^3.25.76"
   },

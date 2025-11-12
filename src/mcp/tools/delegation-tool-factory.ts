@@ -14,7 +14,7 @@
  *
  * @example
  * ```typescript
- * import { createDelegationTool } from 'mcp-oauth-framework';
+ * import { createDelegationTool } from 'fastmcp-oauth';
  * import { z } from 'zod';
  *
  * // Create a tool for your custom delegation module

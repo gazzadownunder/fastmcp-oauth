@@ -12,7 +12,7 @@
  * The MCP server exchanges the user's JWT for an API-specific token and makes authorized requests.
  */
 
-import { MCPOAuthServer, createDelegationTool, type DelegationModule, type DelegationResult } from '../src/index.js';
+import { FastMCPOAuthServer, createDelegationTool, type DelegationModule, type DelegationResult } from '../src/index.js';
 import type { UserSession, AuditEntry } from '../src/core/index.js';
 import { z } from 'zod';
 
@@ -216,7 +216,7 @@ async function main() {
   console.log('='.repeat(80));
 
   // Step 1: Create MCP OAuth Server
-  const server = new MCPOAuthServer({
+  const server = new FastMCPOAuthServer({
     configPath: './test-harness/config/v2-keycloak-token-exchange.json',
   });
 

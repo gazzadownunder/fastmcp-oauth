@@ -70,11 +70,12 @@ describe('ConfigManager', () => {
       },
     },
     mcp: {
-      serverName: 'mcp-oauth-server',
+      serverName: 'fastmcp-oauth-server',
       version: '1.0.0',
       transport: 'http-stream',
       port: 3000,
       oauth: {
+        protectedResource: true,
         scopes: ['mcp:read', 'mcp:write'],
         supportedGrantTypes: ['urn:ietf:params:oauth:grant-type:token-exchange'],
       },
@@ -156,7 +157,7 @@ describe('ConfigManager', () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Detected legacy configuration format')
       );
-      expect(infoSpy).toHaveBeenCalledWith('Configuration migrated successfully.');
+      expect(infoSpy).toHaveBeenCalledWith('[ConfigManager] Configuration migrated successfully.');
       expect(config.auth).toBeDefined();
 
       consoleSpy.mockRestore();
@@ -366,12 +367,12 @@ describe('ConfigManager', () => {
     });
   });
 
-  describe('getMCPConfig()', () => {
+  describe('getFastMCPConfig()', () => {
     it('should return MCP configuration when present', async () => {
       await writeFile(testConfigPath, JSON.stringify(validUnifiedConfig));
       await manager.loadConfig(testConfigPath);
 
-      const mcpConfig = manager.getMCPConfig();
+      const mcpConfig = manager.getFastMCPConfig();
 
       expect(mcpConfig).toEqual(validUnifiedConfig.mcp);
     });
@@ -384,7 +385,7 @@ describe('ConfigManager', () => {
       await writeFile(testConfigPath, JSON.stringify(configWithoutMCP));
       await manager.loadConfig(testConfigPath);
 
-      const mcpConfig = manager.getMCPConfig();
+      const mcpConfig = manager.getFastMCPConfig();
 
       expect(mcpConfig).toBeUndefined();
     });

@@ -1,27 +1,27 @@
 /**
- * MCPOAuthServer Unit Tests
+ * FastMCPOAuthServer Unit Tests
  *
- * Tests the high-level MCPOAuthServer wrapper class.
+ * Tests the high-level FastMCPOAuthServer wrapper class.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MCPOAuthServer } from '../../../src/mcp/server.js';
+import { FastMCPOAuthServer } from '../../../src/mcp/server.js';
 import type { DelegationModule } from '../../../src/delegation/base.js';
 
-describe('MCPOAuthServer', () => {
+describe('FastMCPOAuthServer', () => {
   describe('Constructor', () => {
     it('should create server instance with config path', () => {
-      const server = new MCPOAuthServer('./config/test-config.json');
-      expect(server).toBeInstanceOf(MCPOAuthServer);
+      const server = new FastMCPOAuthServer('./config/test-config.json');
+      expect(server).toBeInstanceOf(FastMCPOAuthServer);
     });
 
     it('should initialize with running state as false', () => {
-      const server = new MCPOAuthServer('./config/test-config.json');
+      const server = new FastMCPOAuthServer('./config/test-config.json');
       expect(server.isServerRunning()).toBe(false);
     });
 
     it('should provide access to config manager', () => {
-      const server = new MCPOAuthServer('./config/test-config.json');
+      const server = new FastMCPOAuthServer('./config/test-config.json');
       const configManager = server.getConfigManager();
       expect(configManager).toBeDefined();
       expect(configManager.loadConfig).toBeDefined();
@@ -30,7 +30,7 @@ describe('MCPOAuthServer', () => {
 
   describe('getCoreContext()', () => {
     it('should throw error if server not started', () => {
-      const server = new MCPOAuthServer('./config/test-config.json');
+      const server = new FastMCPOAuthServer('./config/test-config.json');
 
       expect(() => server.getCoreContext()).toThrow(
         'CoreContext not initialized. Call start() first.'
@@ -40,7 +40,7 @@ describe('MCPOAuthServer', () => {
 
   describe('registerDelegationModule()', () => {
     it('should throw error if server not started', async () => {
-      const server = new MCPOAuthServer('./config/test-config.json');
+      const server = new FastMCPOAuthServer('./config/test-config.json');
 
       const mockModule: DelegationModule = {
         name: 'test-module',
@@ -59,14 +59,14 @@ describe('MCPOAuthServer', () => {
 
   describe('isServerRunning()', () => {
     it('should return false when server is not started', () => {
-      const server = new MCPOAuthServer('./config/test-config.json');
+      const server = new FastMCPOAuthServer('./config/test-config.json');
       expect(server.isServerRunning()).toBe(false);
     });
   });
 
   describe('stop()', () => {
     it('should handle stop when server is not running', async () => {
-      const server = new MCPOAuthServer('./config/test-config.json');
+      const server = new FastMCPOAuthServer('./config/test-config.json');
 
       // Should not throw
       await expect(server.stop()).resolves.toBeUndefined();
@@ -75,19 +75,19 @@ describe('MCPOAuthServer', () => {
 
   describe('Type Safety', () => {
     it('should accept valid config paths', () => {
-      const server1 = new MCPOAuthServer('./config/test.json');
-      const server2 = new MCPOAuthServer('../config/prod.json');
-      const server3 = new MCPOAuthServer('/absolute/path/config.json');
+      const server1 = new FastMCPOAuthServer('./config/test.json');
+      const server2 = new FastMCPOAuthServer('../config/prod.json');
+      const server3 = new FastMCPOAuthServer('/absolute/path/config.json');
 
-      expect(server1).toBeInstanceOf(MCPOAuthServer);
-      expect(server2).toBeInstanceOf(MCPOAuthServer);
-      expect(server3).toBeInstanceOf(MCPOAuthServer);
+      expect(server1).toBeInstanceOf(FastMCPOAuthServer);
+      expect(server2).toBeInstanceOf(FastMCPOAuthServer);
+      expect(server3).toBeInstanceOf(FastMCPOAuthServer);
     });
   });
 
   describe('Method Availability', () => {
     it('should have all required methods', () => {
-      const server = new MCPOAuthServer('./config/test.json');
+      const server = new FastMCPOAuthServer('./config/test.json');
 
       expect(typeof server.start).toBe('function');
       expect(typeof server.stop).toBe('function');
@@ -100,7 +100,7 @@ describe('MCPOAuthServer', () => {
 
   describe('Error Messages', () => {
     it('should provide helpful error message for getCoreContext before start', () => {
-      const server = new MCPOAuthServer('./config/test.json');
+      const server = new FastMCPOAuthServer('./config/test.json');
 
       try {
         server.getCoreContext();
@@ -112,7 +112,7 @@ describe('MCPOAuthServer', () => {
     });
 
     it('should provide helpful error message for registerDelegationModule before start', async () => {
-      const server = new MCPOAuthServer('./config/test.json');
+      const server = new FastMCPOAuthServer('./config/test.json');
       const mockModule: DelegationModule = {
         name: 'test',
         healthCheck: vi.fn(),
@@ -132,21 +132,21 @@ describe('MCPOAuthServer', () => {
 
   describe('Integration Readiness', () => {
     it('should be ready for integration with ConfigManager', () => {
-      const server = new MCPOAuthServer('./config/test.json');
+      const server = new FastMCPOAuthServer('./config/test.json');
       const configManager = server.getConfigManager();
 
       // ConfigManager should have expected methods
       expect(configManager).toHaveProperty('loadConfig');
       expect(configManager).toHaveProperty('getConfig');
       expect(configManager).toHaveProperty('getDelegationConfig');
-      expect(configManager).toHaveProperty('getMCPConfig');
+      expect(configManager).toHaveProperty('getFastMCPConfig');
     });
 
     it('should be ready for integration with ConfigOrchestrator', () => {
       // The server internally creates a ConfigOrchestrator
       // This test verifies the constructor doesn't throw
-      const server = new MCPOAuthServer('./config/test.json');
-      expect(server).toBeInstanceOf(MCPOAuthServer);
+      const server = new FastMCPOAuthServer('./config/test.json');
+      expect(server).toBeInstanceOf(FastMCPOAuthServer);
     });
   });
 });

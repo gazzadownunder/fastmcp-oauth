@@ -66,8 +66,8 @@ They are **not recommended for production use** but serve as learning resources 
 For production tools, use the framework's tool factory pattern:
 
 ```typescript
-import { createDelegationTool } from '@mcp-oauth/mcp';
-import type { CoreContext } from '@mcp-oauth/core';
+import { createDelegationTool } from '@fastmcp-oauth/mcp';
+import type { CoreContext } from '@fastmcp-oauth/core';
 
 const myTool = createDelegationTool('module-name', {
   name: 'my-tool',

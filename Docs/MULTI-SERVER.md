@@ -97,9 +97,9 @@ The framework provides **two approaches** to create tools with custom prefixes:
 **Step 2: Start server**
 
 ```typescript
-import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
 
-const server = new MCPOAuthServer('./config.json');
+const server = new FastMCPOAuthServer('./config.json');
 await server.start({ transport: 'httpStream', port: 3000 });
 
 // Tools auto-registered:
@@ -215,7 +215,7 @@ See [TOOL-FACTORIES.md](TOOL-FACTORIES.md) for detailed manual registration exam
 
 **Server Code (same for all):**
 ```typescript
-const server = new MCPOAuthServer('./config.json');
+const server = new FastMCPOAuthServer('./config.json');
 await server.start({ transport: 'httpStream', port: 3000 });
 ```
 
@@ -252,7 +252,7 @@ await server.start({ transport: 'httpStream', port: 3000 });
 
 **Server Code:**
 ```typescript
-const server = new MCPOAuthServer('./config.json');
+const server = new FastMCPOAuthServer('./config.json');
 await server.start({ transport: 'httpStream', port: 3000 });
 
 // All tools auto-registered:
@@ -367,10 +367,10 @@ await server.start({ transport: 'httpStream', port: 3000 });
 
 **Server Code (15 lines):**
 ```typescript
-import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
 
 async function main() {
-  const server = new MCPOAuthServer('./config.json');
+  const server = new FastMCPOAuthServer('./config.json');
   await server.start({ transport: 'httpStream', port: 3000 });
 
   console.log('✅ Server running on port 3000');
@@ -460,11 +460,11 @@ const hrTools = createSQLToolsForModule({ toolPrefix: 'hr', moduleName: 'postgre
 
 **Symptom:** No tools after adding `toolPrefix` to config.
 
-**Solution:** Use `MCPOAuthServer` wrapper:
+**Solution:** Use `FastMCPOAuthServer` wrapper:
 
 **✅ Correct:**
 ```typescript
-const server = new MCPOAuthServer('./config.json');
+const server = new FastMCPOAuthServer('./config.json');
 await server.start({ transport: 'httpStream', port: 3000 });
 ```
 
@@ -534,4 +534,4 @@ await configManager.loadConfig('./config.json');
 - **[examples/multi-module-auto-registration.ts](../examples/multi-module-auto-registration.ts)** - Complete working example
 - **[README.md](../README.md)** - Framework overview
 
-**Questions?** Open an issue at https://github.com/your-org/mcp-oauth-framework/issues
+**Questions?** Open an issue at https://github.com/your-org/fastmcp-oauth/issues

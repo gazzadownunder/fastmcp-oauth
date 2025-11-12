@@ -4,11 +4,11 @@
  * Production-ready delegation module for integrating with REST APIs.
  * Supports token exchange for API-specific JWT authentication and API key fallback.
  *
- * @module @mcp-oauth/rest-api-delegation
+ * @module @fastmcp-oauth/rest-api-delegation
  */
 
-import type { UserSession, AuditEntry } from 'mcp-oauth-framework/core';
-import type { DelegationModule, DelegationResult } from 'mcp-oauth-framework/delegation';
+import type { UserSession, AuditEntry } from 'fastmcp-oauth/core';
+import type { DelegationModule, DelegationResult } from 'fastmcp-oauth/delegation';
 
 /**
  * REST API configuration
@@ -47,7 +47,7 @@ export interface RestAPIConfig {
  *
  * @example Single instance
  * ```typescript
- * import { RestAPIDelegationModule } from '@mcp-oauth/rest-api-delegation';
+ * import { RestAPIDelegationModule } from '@fastmcp-oauth/rest-api-delegation';
  *
  * const module = new RestAPIDelegationModule();
  * await module.initialize({

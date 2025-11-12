@@ -902,13 +902,13 @@ gss_acquire_cred_impersonate_name enable this pattern.
   - Breaking changes (may require v3.0.0)
 
 **Step 3: Fork if Necessary**
-- If upstream declines, create fork: `@mcp-oauth/kerberos`
+- If upstream declines, create fork: `@fastmcp-oauth/kerberos`
 - Maintain compatibility with original API
 - Publish to npm independently
 
 ### 8.2 Alternative: Separate Package
 
-**Option:** Create `@mcp-oauth/kerberos-s4u` as standalone package
+**Option:** Create `@fastmcp-oauth/kerberos-s4u` as standalone package
 
 **Pros:**
 - No breaking changes to upstream

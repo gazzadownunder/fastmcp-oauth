@@ -34,9 +34,9 @@ import 'dotenv/config';
  *   DOTENV_CONFIG_PATH=./test-harness/.env (optional - dotenv will find .env automatically)
  */
 
-import { MCPOAuthServer } from '../src/mcp/server.js';
-import { PostgreSQLDelegationModule } from '@mcp-oauth/sql-delegation';
-import { KerberosDelegationModule } from '@mcp-oauth/kerberos-delegation';
+import { FastMCPOAuthServer } from '../src/mcp/server.js';
+import { PostgreSQLDelegationModule } from '@fastmcp-oauth/sql-delegation';
+import { KerberosDelegationModule } from '@fastmcp-oauth/kerberos-delegation';
 import { createSQLToolsForModule } from '../src/mcp/tools/sql-tools-factory.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -71,7 +71,7 @@ async function main() {
     const configPath = path.resolve(process.cwd(), CONFIG_PATH);
     console.log(`      Config path: ${configPath}`);
 
-    server = new MCPOAuthServer(configPath);
+    server = new FastMCPOAuthServer(configPath);
     console.log('✓     Server instance created\n');
 
     // Step 2: Start server (this initializes CoreContext)

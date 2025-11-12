@@ -2,11 +2,11 @@
  * SQL Delegation Integration Tests (Optional)
  *
  * Tests PostgreSQL delegation module functionality.
- * This test suite is OPTIONAL - only run if @mcp-oauth/sql-delegation is installed.
+ * This test suite is OPTIONAL - only run if @fastmcp-oauth/sql-delegation is installed.
  *
  * Prerequisites:
  * - PostgreSQL database configured (see test-harness/config/phase3-test-config.json)
- * - @mcp-oauth/sql-delegation package installed: npm install @mcp-oauth/sql-delegation
+ * - @fastmcp-oauth/sql-delegation package installed: npm install @fastmcp-oauth/sql-delegation
  * - Keycloak configured per KEYCLOAK-ROLE-SETUP-INT008.md
  * - MCP Server running on http://localhost:3000 with SQL delegation enabled
  *   Start with: CONFIG_PATH=./test-harness/config/phase3-test-config.json node dist/index.js

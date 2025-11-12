@@ -73,7 +73,7 @@ async function main() {
     console.log('   3. Tools will auto-register from delegation modules');
 
     // In real implementation, you would start the server here:
-    // const server = new MCPOAuthServer(configManager);
+    // const server = new FastMCPOAuthServer(configManager);
     // await server.start({ transport: 'httpStream', port: 3000 });
   } catch (error) {
     console.error('\n❌ FATAL ERROR: Failed to load configuration');

@@ -2,7 +2,7 @@
  * Phase 4 Integration Test - Monorepo Modularity
  *
  * Verifies that:
- * 1. SQL delegation is a separate package (@mcp-oauth/sql-delegation)
+ * 1. SQL delegation is a separate package (@fastmcp-oauth/sql-delegation)
  * 2. Core framework works without SQL dependency
  * 3. SQL delegation package can be imported and used
  * 4. Build system correctly handles monorepo structure

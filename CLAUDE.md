@@ -9,7 +9,7 @@ FastMCP OAuth On-Behalf-Of (OBO) Framework - A production-ready, modular OAuth 2
 **Current Status:** Phases 1-6 completed - Modular architecture with Core, Delegation, and MCP layers fully implemented, tested, and documented. Secret management (v3.2) production-ready with 72/72 tests passing.
 
 **Architecture Highlights:**
-- **Zero delegation dependencies** - Core framework has no SQL/Kerberos dependencies. Optional packages (`@mcp-oauth/sql-delegation`, `@mcp-oauth/kerberos-delegation`) installed only if needed.
+- **Zero delegation dependencies** - Core framework has no SQL/Kerberos dependencies. Optional packages (`@ fastmcp-oauth/sql-delegation`, `@ fastmcp-oauth/kerberos-delegation`) installed only if needed.
 - **Secure by default** - Dynamic secret resolution eliminates hardcoded credentials from configuration files. Kubernetes/Docker secret mounts supported out of the box.
 
 ## Modular Architecture (v2.x)
@@ -37,8 +37,8 @@ The framework follows a **layered modular architecture** with strict one-way dep
 ┌─────────────────────────────────────────────────────────┐
 │             Optional Delegation Packages                │
 │  packages/ - Standalone npm packages                    │
-│  - @mcp-oauth/sql-delegation (PostgreSQL, MSSQL)        │
-│  - @mcp-oauth/kerberos-delegation (S4U2Self/Proxy)      │
+│  - @ fastmcp-oauth/sql-delegation (PostgreSQL, MSSQL)        │
+│  - @ fastmcp-oauth/kerberos-delegation (S4U2Self/Proxy)      │
 │  - Custom modules can be published independently        │
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
@@ -72,7 +72,7 @@ The framework follows a **layered modular architecture** with strict one-way dep
 - ✅ **ALWAYS** use `ConfigOrchestrator.buildCoreContext()` to create CoreContext
 - ✅ **ALWAYS** call `await coreContext.authService.initialize()` after `buildCoreContext()` (when using manual wiring)
 - ✅ **ALWAYS** validate CoreContext with `CoreContextValidator.validate()`
-- ✅ **ALWAYS** import delegation modules from packages: `@mcp-oauth/sql-delegation`, `@mcp-oauth/kerberos-delegation`
+- ✅ **ALWAYS** import delegation modules from packages: `@ fastmcp-oauth/sql-delegation`, `@ fastmcp-oauth/kerberos-delegation`
 
 **Critical Initialization Note:** When using manual wiring (not `MCPOAuthServer`), you MUST call `await coreContext.authService.initialize()` after building the CoreContext. This downloads JWKS keys from your IDP. Without this step, JWT validation will fail with "JWT validator not initialized" error. The `MCPOAuthServer` wrapper handles this automatically during `start()`.
 
@@ -144,7 +144,7 @@ External IDP (OAuth/JWKS) → JWT Middleware (jose lib) → FastMCP Core
                                     ↓
         ┌───────────────────────────┴───────────────────────────┐
         │                                                        │
-  @mcp-oauth/kerberos-delegation            @mcp-oauth/sql-delegation
+  @ fastmcp-oauth/kerberos-delegation            @ fastmcp-oauth/sql-delegation
         │                                                        │
         ↓                                                        ↓
   Windows AD / GSSAPI                               PostgreSQL / MSSQL
@@ -163,13 +163,13 @@ External IDP (OAuth/JWKS) → JWT Middleware (jose lib) → FastMCP Core
   - SQL injection prevention with multiple validation layers
   - Dangerous operation blocking (DROP, CREATE, ALTER, etc.)
   - Automatic context reversion on error
-  - **Location:** Optional package `@mcp-oauth/sql-delegation`
+  - **Location:** Optional package `@ fastmcp-oauth/sql-delegation`
 
 **[packages/kerberos-delegation/src/kerberos-module.ts](packages/kerberos-delegation/src/kerberos-module.ts)** - Kerberos constrained delegation implementing S4U2Self/S4U2Proxy:
   - Windows SSPI and Linux GSSAPI support
   - Service ticket caching
   - Target SPN validation
-  - **Location:** Optional package `@mcp-oauth/kerberos-delegation`
+  - **Location:** Optional package `@ fastmcp-oauth/kerberos-delegation`
 
 **[src/config/manager.ts](src/config/manager.ts)** - Configuration manager with hot-reload capability, Zod validation, and automatic secret resolution
 
@@ -655,7 +655,7 @@ EnvProvider reads from `process.env` but does NOT load .env files automatically.
 import 'dotenv/config';
 
 // Now import framework components
-import { MCPOAuthServer } from 'mcp-oauth-framework/mcp';
+import { MCPOAuthServer } from 'fastmcp-oauth/mcp';
 
 // ConfigManager will now resolve secrets from process.env
 const server = new MCPOAuthServer({ configPath: './config/dev.json' });
@@ -812,7 +812,7 @@ const ConfigSchema = z.object({
 
 ```typescript
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
-import { ISecretProvider } from '@mcp-oauth/core/config/secrets';
+import { ISecretProvider } from '@ fastmcp-oauth/core/config/secrets';
 
 export class AWSSecretsManagerProvider implements ISecretProvider {
   private client: SecretsManagerClient;

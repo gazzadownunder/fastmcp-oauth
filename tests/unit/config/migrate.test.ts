@@ -268,7 +268,7 @@ describe('Config Migration', () => {
       const result = migrateConfig(legacyConfig);
 
       expect(result.mcp).toBeDefined();
-      expect(result.mcp?.serverName).toBe('mcp-oauth-server');
+      expect(result.mcp?.serverName).toBe('fastmcp-oauth-server');
       expect(result.mcp?.version).toBe('1.0.0');
       expect(result.mcp?.transport).toBe('http-stream');
       expect(result.mcp?.port).toBe(3000);

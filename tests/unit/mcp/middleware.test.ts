@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MCPAuthMiddleware, requireAuth, requireRole } from '../../../src/mcp/middleware.js';
+import { FastMCPAuthMiddleware, requireAuth, requireRole } from '../../../src/mcp/middleware.js';
 import type { FastMCPRequest } from '../../../src/mcp/middleware.js';
 import type { AuthenticationService } from '../../../src/core/authentication-service.js';
 import type { UserSession } from '../../../src/core/types.js';
@@ -22,10 +22,10 @@ describe('MCP Middleware', () => {
     vi.clearAllMocks();
   });
 
-  describe('MCPAuthMiddleware', () => {
+  describe('FastMCPAuthMiddleware', () => {
     describe('Token Extraction', () => {
       it('should extract Bearer token from Authorization header', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
           _version: 1,
@@ -61,7 +61,7 @@ describe('MCP Middleware', () => {
       });
 
       it('should handle Authorization header (capital A)', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
           userId: 'user123',
@@ -92,20 +92,25 @@ describe('MCP Middleware', () => {
       });
 
       it('should return error if Authorization header is missing', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const request: FastMCPRequest = {
           headers: {},
         };
 
-        const result = await middleware.authenticate(request);
+        // For 401 errors, middleware throws a Response object
+        await expect(middleware.authenticate(request)).rejects.toThrow();
 
-        expect(result.authenticated).toBe(false);
-        expect(result.error).toContain('Missing Authorization header');
+        try {
+          await middleware.authenticate(request);
+        } catch (error) {
+          expect(error).toBeInstanceOf(Response);
+          expect((error as Response).status).toBe(401);
+        }
       });
 
       it('should return error if Bearer token format is invalid', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const request: FastMCPRequest = {
           headers: {
@@ -113,16 +118,21 @@ describe('MCP Middleware', () => {
           },
         };
 
-        const result = await middleware.authenticate(request);
+        // For 401 errors, middleware throws a Response object
+        await expect(middleware.authenticate(request)).rejects.toThrow();
 
-        expect(result.authenticated).toBe(false);
-        expect(result.error).toContain('Missing Authorization header');
+        try {
+          await middleware.authenticate(request);
+        } catch (error) {
+          expect(error).toBeInstanceOf(Response);
+          expect((error as Response).status).toBe(401);
+        }
       });
     });
 
     describe('Dual Rejection Checks (GAP #1)', () => {
       it('should reject if authResult.rejected is true', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
           userId: 'user123',
@@ -155,7 +165,7 @@ describe('MCP Middleware', () => {
       });
 
       it('should reject if session.rejected is true (GAP #1)', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
           userId: 'user123',
@@ -186,7 +196,7 @@ describe('MCP Middleware', () => {
       });
 
       it('should accept if both checks pass', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
           userId: 'user123',
@@ -218,8 +228,8 @@ describe('MCP Middleware', () => {
     });
 
     describe('Context Creation', () => {
-      it('should create MCPContext from successful auth result', () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+      it('should create FastMCPContext from successful auth result', () => {
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
           userId: 'user123',
@@ -242,7 +252,7 @@ describe('MCP Middleware', () => {
       });
 
       it('should throw if auth result is not authenticated', () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const authResult = {
           authenticated: false,
@@ -309,7 +319,7 @@ describe('MCP Middleware', () => {
   describe('Edge Cases and Error Handling', () => {
     describe('Token Extraction Edge Cases', () => {
       it('should handle authorization header as array (take first)', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
           _version: 1,
@@ -338,7 +348,7 @@ describe('MCP Middleware', () => {
       });
 
       it('should handle empty authorization header array', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const request: FastMCPRequest = {
           headers: {
@@ -346,14 +356,19 @@ describe('MCP Middleware', () => {
           },
         };
 
-        const result = await middleware.authenticate(request);
+        // For 401 errors, middleware throws a Response object
+        await expect(middleware.authenticate(request)).rejects.toThrow();
 
-        expect(result.authenticated).toBe(false);
-        expect(result.error).toContain('Missing Authorization header');
+        try {
+          await middleware.authenticate(request);
+        } catch (error) {
+          expect(error).toBeInstanceOf(Response);
+          expect((error as Response).status).toBe(401);
+        }
       });
 
       it('should handle Bearer with case variations', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const mockSession: UserSession = {
           _version: 1,
@@ -382,7 +397,7 @@ describe('MCP Middleware', () => {
       });
 
       it('should reject empty Bearer token', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const request: FastMCPRequest = {
           headers: {
@@ -390,14 +405,19 @@ describe('MCP Middleware', () => {
           },
         };
 
-        const result = await middleware.authenticate(request);
+        // For 401 errors, middleware throws a Response object
+        await expect(middleware.authenticate(request)).rejects.toThrow();
 
-        expect(result.authenticated).toBe(false);
-        expect(result.error).toContain('Missing Authorization header');
+        try {
+          await middleware.authenticate(request);
+        } catch (error) {
+          expect(error).toBeInstanceOf(Response);
+          expect((error as Response).status).toBe(401);
+        }
       });
 
       it('should reject token without Bearer prefix', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const request: FastMCPRequest = {
           headers: {
@@ -405,16 +425,21 @@ describe('MCP Middleware', () => {
           },
         };
 
-        const result = await middleware.authenticate(request);
+        // For 401 errors, middleware throws a Response object
+        await expect(middleware.authenticate(request)).rejects.toThrow();
 
-        expect(result.authenticated).toBe(false);
-        expect(result.error).toContain('Missing Authorization header');
+        try {
+          await middleware.authenticate(request);
+        } catch (error) {
+          expect(error).toBeInstanceOf(Response);
+          expect((error as Response).status).toBe(401);
+        }
       });
     });
 
     describe('Error Response Handling', () => {
       it('should return 500 for generic Error', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         vi.mocked(mockAuthService.authenticate).mockRejectedValue(new Error('Unexpected error'));
 
@@ -432,7 +457,7 @@ describe('MCP Middleware', () => {
       });
 
       it('should return 500 for non-Error rejections', async () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         vi.mocked(mockAuthService.authenticate).mockRejectedValue('string error');
 
@@ -452,7 +477,7 @@ describe('MCP Middleware', () => {
 
     describe('Context Creation Edge Cases', () => {
       it('should throw with specific error message from auth result', () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const authResult = {
           authenticated: false,
@@ -465,7 +490,7 @@ describe('MCP Middleware', () => {
       });
 
       it('should throw generic message if error is undefined', () => {
-        const middleware = new MCPAuthMiddleware(mockAuthService);
+        const middleware = new FastMCPAuthMiddleware(mockAuthService);
 
         const authResult = {
           authenticated: false,

@@ -24,7 +24,7 @@ The framework uses a unified JSON configuration file that defines:
 2. **Delegation** - Downstream resource connections (SQL, APIs, etc.)
 3. **MCP Server** - Server metadata and tool configuration
 
-**Location:** Typically `config/unified-config.json` or specified via `MCPOAuthServer(configPath)`
+**Location:** Typically `config/unified-config.json` or specified via `FastMCPOAuthServer(configPath)`
 
 ---
 
@@ -46,7 +46,7 @@ The framework uses a unified JSON configuration file that defines:
 }
 ```
 
-**Why?** The `MCPAuthMiddleware` is hardcoded to use `"requestor-jwt"` when validating incoming requests ([src/mcp/middleware.ts:113](../src/mcp/middleware.ts#L113)):
+**Why?** The `FastMCPAuthMiddleware` is hardcoded to use `"requestor-jwt"` when validating incoming requests ([src/mcp/middleware.ts:113](../src/mcp/middleware.ts#L113)):
 
 ```typescript
 const authResult = await this.authService.authenticate(token, {
@@ -220,7 +220,7 @@ Use **secret descriptors** that reference logical names:
 ✅ **Production-ready** - Kubernetes/Docker secret mounts supported
 ✅ **Fail-fast security** - Server won't start with missing secrets
 ✅ **Audit logging** - Track which provider resolved each secret
-✅ **Zero code changes** - Works with existing MCPOAuthServer
+✅ **Zero code changes** - Works with existing FastMCPOAuthServer
 ✅ **Backward compatible** - Plain strings still supported
 
 ### Secret Descriptor Format
@@ -1151,7 +1151,7 @@ Array of identity providers trusted by the framework.
 
 **Field: name** (string, optional but recommended)
 - **Purpose:** Identifier for this IDP configuration for explicit IDP selection
-- **Requestor IDP:** Convention is `"requestor-jwt"` (used by MCPAuthMiddleware)
+- **Requestor IDP:** Convention is `"requestor-jwt"` (used by FastMCPAuthMiddleware)
 - **Delegation IDPs:** Can be any name (e.g., `"sql-db-idp"`, `"analytics-idp"`)
 - **Fallback Behavior:** If omitted, IDP matching falls back to issuer + audience matching only
 - **Example:** `"name": "requestor-jwt"`
@@ -1400,7 +1400,7 @@ server.registerTools(sqlTools.map(factory => factory(coreContext)));
 
 **After (Auto-Registration - 15 lines):**
 ```typescript
-const server = new MCPOAuthServer(CONFIG_PATH);
+const server = new FastMCPOAuthServer(CONFIG_PATH);
 await server.start({ transport: 'httpStream', port: 3000 });
 // Tools auto-registered from config!
 ```
@@ -1511,12 +1511,12 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
 
 **Field: serverName** (string, optional)
 - **Purpose:** Server display name shown to MCP clients
-- **Default:** `"MCP OAuth Server"` (hardcoded in MCPOAuthServer)
+- **Default:** `"MCP OAuth Server"` (hardcoded in FastMCPOAuthServer)
 - **Example:** `"serverName": "HR Database MCP Server"`
 
 **Field: version** (string, optional)
 - **Purpose:** Server version (semantic versioning)
-- **Default:** `"2.0.0"` (hardcoded in MCPOAuthServer)
+- **Default:** `"2.0.0"` (hardcoded in FastMCPOAuthServer)
 - **Example:** `"version": "1.0.0"`
 
 **Field: transport** (string, optional)
@@ -1847,4 +1847,4 @@ try {
 
 ---
 
-**Questions?** Open an issue at https://github.com/your-org/mcp-oauth-framework/issues
+**Questions?** Open an issue at https://github.com/your-org/fastmcp-oauth/issues

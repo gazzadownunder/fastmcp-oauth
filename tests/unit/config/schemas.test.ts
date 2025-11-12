@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CoreAuthConfigSchema,
   DelegationConfigSchema,
-  MCPConfigSchema,
+  FastMCPConfigSchema,
   UnifiedConfigSchema,
   isLegacyConfig,
   isUnifiedConfig
@@ -194,7 +194,7 @@ describe('Config Schemas', () => {
     });
   });
 
-  describe('MCPConfigSchema', () => {
+  describe('FastMCPConfigSchema', () => {
     it('should validate valid MCP config', () => {
       const validConfig = {
         serverName: 'Test MCP Server',
@@ -203,15 +203,15 @@ describe('Config Schemas', () => {
         port: 3000
       };
 
-      const result = MCPConfigSchema.safeParse(validConfig);
+      const result = FastMCPConfigSchema.safeParse(validConfig);
       expect(result.success).toBe(true);
     });
 
     it('should use default values', () => {
       const minimalConfig = {};
 
-      const result = MCPConfigSchema.parse(minimalConfig);
-      expect(result.serverName).toBe('mcp-oauth-server');
+      const result = FastMCPConfigSchema.parse(minimalConfig);
+      expect(result.serverName).toBe('fastmcp-oauth-server');
       expect(result.version).toBe('1.0.0');
       expect(result.transport).toBe('http-stream');
       expect(result.port).toBe(3000);
@@ -222,7 +222,7 @@ describe('Config Schemas', () => {
         transport: 'invalid-transport'
       };
 
-      const result = MCPConfigSchema.safeParse(invalidConfig);
+      const result = FastMCPConfigSchema.safeParse(invalidConfig);
       expect(result.success).toBe(false);
     });
   });

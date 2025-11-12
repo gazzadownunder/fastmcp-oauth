@@ -64,7 +64,7 @@ async function main() {
   console.log('✓ AuthenticationService initialized (JWKS keys downloaded)');
 
   // 4. Create FastMCP server with authentication middleware
-  const mcpMiddleware = new MCPAuthMiddleware(coreContext.authService);
+  const mcpMiddleware = new FastMCPAuthMiddleware(coreContext.authService);
 
   const server = new FastMCP({
     name: 'MCP OAuth Server',

@@ -75,12 +75,12 @@ export type LLMResponse<T = any> = LLMSuccessResponse<T> | LLMFailureResponse;
 // ============================================================================
 
 /**
- * MCP Context provided to tool handlers
+ * FastMCP Context provided to tool handlers
  *
  * Contains the authenticated user session for authorization checks.
- * Tools receive this context from the MCP middleware after authentication.
+ * Tools receive this context from the FastMCP middleware after authentication.
  */
-export interface MCPContext {
+export interface FastMCPContext {
   session: UserSession;
 }
 
@@ -109,7 +109,7 @@ export interface MCPContext {
  * };
  * ```
  */
-export type ToolHandler<P = any, R = LLMResponse> = (params: P, context: MCPContext) => Promise<R>;
+export type ToolHandler<P = any, R = LLMResponse> = (params: P, context: FastMCPContext) => Promise<R>;
 
 // ============================================================================
 // Tool Registration Types
@@ -152,7 +152,7 @@ export interface ToolRegistration<P = any, R = LLMResponse> {
    * }
    * ```
    */
-  canAccess?: (context: MCPContext) => boolean;
+  canAccess?: (context: FastMCPContext) => boolean;
 }
 
 /**
@@ -190,11 +190,11 @@ export type ToolFactory = (context: CoreContext) => ToolRegistration;
 // ============================================================================
 
 /**
- * OAuth configuration for MCP server
+ * OAuth configuration for FastMCP server
  *
  * Extends FastMCP configuration with OAuth-specific settings.
  */
-export interface MCPOAuthConfig {
+export interface FastMCPOAuthConfig {
   /** Server name */
   name: string;
 
@@ -217,9 +217,9 @@ export interface MCPOAuthConfig {
 }
 
 /**
- * MCP server start options
+ * FastMCP server start options
  */
-export interface MCPStartOptions {
+export interface FastMCPStartOptions {
   /** Path to configuration file */
   configPath?: string;
 
@@ -229,6 +229,25 @@ export interface MCPStartOptions {
   /** Port override (for http-stream) */
   port?: number;
 }
+
+// ============================================================================
+// Legacy Type Aliases (Backward Compatibility)
+// ============================================================================
+
+/**
+ * @deprecated Use FastMCPContext instead. This alias is for backward compatibility only.
+ */
+export type MCPContext = FastMCPContext;
+
+/**
+ * @deprecated Use FastMCPOAuthConfig instead. This alias is for backward compatibility only.
+ */
+export type MCPOAuthConfig = FastMCPOAuthConfig;
+
+/**
+ * @deprecated Use FastMCPStartOptions instead. This alias is for backward compatibility only.
+ */
+export type MCPStartOptions = FastMCPStartOptions;
 
 // ============================================================================
 // Re-exports

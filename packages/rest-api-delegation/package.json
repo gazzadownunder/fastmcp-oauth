@@ -1,7 +1,7 @@
 {
-  "name": "@mcp-oauth/rest-api-delegation",
+  "name": "@fastmcp-oauth/rest-api-delegation",
   "version": "1.0.0",
-  "description": "REST API delegation module for MCP OAuth framework - HTTP/JSON API integration with token exchange support",
+  "description": "REST API delegation module for FastMCP OAuth framework - HTTP/JSON API integration with token exchange support",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rimraf dist"
   },
   "keywords": [
-    "mcp-oauth",
+    "fastmcp-oauth",
     "rest-api",
     "http",
     "json",
@@ -26,13 +26,13 @@
     "token-exchange",
     "oauth"
   ],
-  "author": "FastMCP OAuth OBO Team",
+  "author": "FastMCP OAuth Team",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "mcp-oauth-framework": "file:../..",
+    "fastmcp-oauth": "file:../..",
     "zod": "^3.25.76"
   },
   "devDependencies": {
