@@ -12,6 +12,13 @@
     "fastmcp-oauth-scaffold": "./bin/scaffold-module.js",
     "fastmcp-oauth-validate": "./bin/validate-config.js"
   },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE",
+    "CLAUDE.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -76,11 +83,11 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "fastmcp": "file:../fastmcp",
+    "fastmcp": "^3.22.0",
     "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
-    "mcp-proxy": "file:../mcp-proxy",
+    "mcp-proxy": "^5.11.0",
     "undici": "^7.13.0",
     "zod": "^3.25.76"
   },
