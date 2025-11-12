@@ -5,8 +5,8 @@
 [![Jose](https://img.shields.io/badge/Jose-6.1.0-orange)](https://github.com/panva/jose)
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.20.2-purple)](https://github.com/modelcontextprotocol/fastmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-748%20passing-brightgreen)](https://github.com/your-org/mcp-oauth)
-[![Coverage](https://img.shields.io/badge/coverage-89--100%25-brightgreen)](https://github.com/your-org/mcp-oauth)
+[![Tests](https://img.shields.io/badge/tests-748%20passing-brightgreen)](https://github.com/gazzadownunder/fastmcp-oauth)
+[![Coverage](https://img.shields.io/badge/coverage-89--100%25-brightgreen)](https://github.com/gazzadownunder/fastmcp-oauth)
 
 **Production-Ready OAuth Authentication & Delegation Platform**
 
@@ -864,8 +864,8 @@ This tutorial walks you through creating a complete MCP server with OAuth authen
 ```bash
 npm install fastmcp-oauth-obo fastmcp
 # or from source
-git clone https://github.com/your-org/FastMCP-OAuth.git
-cd FastMCP-OAuth && npm install && npm run build
+git clone https://github.com/gazzadownunder/fastmcp-oauth.git
+cd fastmcp-oauth && npm install && npm run build
 ```
 
 ### Step 2: Configure Your IDP

@@ -648,8 +648,8 @@ git merge feature/new-delegation-module
 **Installation:**
 ```bash
 # Clone repository
-git clone https://github.com/your-org/mcp-oauth.git
-cd mcp-oauth
+git clone https://github.com/gazzadownunder/fastmcp-oauth.git
+cd fastmcp-oauth
 
 # Install dependencies
 npm install

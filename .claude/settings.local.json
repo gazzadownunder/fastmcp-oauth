@@ -105,7 +105,11 @@
       "Read(//c/Users/gazza/Local Documents/GitHub/**)",
       "Bash(npm org:*)",
       "Bash(npm help:*)",
-      "Bash(xargs sed:*)"
+      "Bash(xargs sed:*)",
+      "Bash(gh pr create:*)",
+      "Bash(npm pack:*)",
+      "Read(//c/Users/gazza/AppData/Local/npm-cache/_logs/**)",
+      "Bash(npm publish:*)"
     ],
     "deny": [],
     "ask": []
