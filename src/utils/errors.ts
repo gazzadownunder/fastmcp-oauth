@@ -36,6 +36,29 @@ export function createSecurityError(
   return new OAuthSecurityError(code, message, statusCode, details);
 }
 
+/**
+ * Create security error with required scopes
+ *
+ * Helper for authorization errors that need to communicate required scopes
+ * to clients via WWW-Authenticate header.
+ *
+ * @param code - Error code
+ * @param message - Human-readable error message
+ * @param statusCode - HTTP status code (typically 403)
+ * @param requiredScopes - Array of required scope strings (e.g., ['admin', 'sql:write'])
+ * @returns OAuthSecurityError with requiredScopes in details
+ */
+export function createAuthorizationError(
+  code: string,
+  message: string,
+  statusCode: number,
+  requiredScopes: string[]
+): OAuthSecurityError {
+  return new OAuthSecurityError(code, message, statusCode, {
+    requiredScopes,
+  });
+}
+
 // Predefined security error types
 export const SecurityErrors = {
   INVALID_TOKEN_FORMAT: (details?: Record<string, unknown>) =>

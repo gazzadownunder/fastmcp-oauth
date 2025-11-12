@@ -110,10 +110,23 @@ export function createOAuthMetadataServer(
   // 401 error handler - Add WWW-Authenticate header
   app.use((err: any, req: Request, res: Response, next: any) => {
     if (err.statusCode === 401 || err.status === 401) {
+      // Extract scopes from mcp.oauth.scopes configuration
+      const mcpConfig = coreContext.configManager.getMCPConfig();
+      const configuredScopes = mcpConfig?.oauth?.scopes;
+      const scopeString = configuredScopes && configuredScopes.length > 0
+        ? configuredScopes.join(' ')
+        : undefined;
+
+      // Get server URL for resource_metadata parameter
+      const mcpPort = options?.port || mcpConfig?.port || 3000;
+      const serverUrl = `http://localhost:${mcpPort}`;
+
       const wwwAuthenticate = generateWWWAuthenticateHeader(
         coreContext,
         'MCP OAuth Server',
-        'mcp:read mcp:write'
+        scopeString, // Include scopes if defined in mcp.oauth.scopes
+        undefined, // includeProtectedResource controlled by mcp.oauth.protectedResource config
+        serverUrl // Server URL for resource_metadata parameter
       );
 
       res.setHeader('WWW-Authenticate', wwwAuthenticate);

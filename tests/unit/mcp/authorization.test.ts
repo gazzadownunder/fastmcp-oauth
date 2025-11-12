@@ -285,6 +285,17 @@ describe('Authorization', () => {
         expect(error.statusCode).toBe(403);
       }
     });
+
+    it('should include requiredScopes in error details for WWW-Authenticate header', () => {
+      const context = createMockContext({ role: 'user' });
+      try {
+        auth.requireRole(context, 'admin');
+        expect.fail('Should have thrown');
+      } catch (error: any) {
+        expect(error.details).toBeDefined();
+        expect(error.details.requiredScopes).toEqual(['admin']);
+      }
+    });
   });
 
   describe('requireAnyRole()', () => {
@@ -303,6 +314,17 @@ describe('Authorization', () => {
     it('should throw 401 when not authenticated', () => {
       const context = createMockContext();
       expect(() => auth.requireAnyRole(context, ['admin'])).toThrow('Authentication required');
+    });
+
+    it('should include requiredScopes in error details', () => {
+      const context = createMockContext({ role: 'guest' });
+      try {
+        auth.requireAnyRole(context, ['admin', 'user']);
+        expect.fail('Should have thrown');
+      } catch (error: any) {
+        expect(error.details).toBeDefined();
+        expect(error.details.requiredScopes).toEqual(['admin', 'user']);
+      }
     });
   });
 
@@ -348,6 +370,17 @@ describe('Authorization', () => {
       expect(() => auth.requireScope(context, 'sql:query')).toThrow(
         "This tool requires the 'sql:query' scope. Your scopes: none"
       );
+    });
+
+    it('should include requiredScopes in error details', () => {
+      const context = createMockContext({ scopes: ['api:read'] });
+      try {
+        auth.requireScope(context, 'sql:query');
+        expect.fail('Should have thrown');
+      } catch (error: any) {
+        expect(error.details).toBeDefined();
+        expect(error.details.requiredScopes).toEqual(['sql:query']);
+      }
     });
   });
 

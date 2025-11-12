@@ -45,6 +45,13 @@ export const OAuthMetadataSchema = z.object({
     .describe(
       'OAuth scopes to advertise in metadata (e.g., ["mcp:read", "mcp:write", "sql:query"])'
     ),
+  protectedResource: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe(
+      'Include protected resource metadata in WWW-Authenticate header (enabled by default, set to false to disable)'
+    ),
 });
 
 /**

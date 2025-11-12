@@ -50,7 +50,8 @@
         "mcp:read",
         "mcp:write",
         "mcp:admin"
-      ]
+      ],
+      "protectedResource": true
     }
   }
 }

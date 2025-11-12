@@ -8,6 +8,35 @@
  */
 
 // ============================================================================
+// TAB NAVIGATION
+// ============================================================================
+
+/**
+ * Switch between tabs (Authentication / Validation)
+ * @param {string} tabName - Name of the tab to switch to
+ */
+function switchTab(tabName) {
+    // Hide all tabs
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => tab.classList.remove('active'));
+
+    // Deactivate all tab buttons
+    const buttons = document.querySelectorAll('.tab-button');
+    buttons.forEach(btn => btn.classList.remove('active'));
+
+    // Show selected tab
+    const selectedTab = document.getElementById(`${tabName}-tab`);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+
+    // Activate selected button
+    event.target.classList.add('active');
+
+    log('info', `Switched to ${tabName} tab`);
+}
+
+// ============================================================================
 // LOGGING UTILITIES
 // ============================================================================
 
@@ -64,6 +93,7 @@ function updateAuthUI() {
     const loginSsoBtn = document.getElementById('login-sso-btn');
     const loginMcpOAuthBtn = document.getElementById('login-mcp-oauth-btn');
     const loginInspectorBtn = document.getElementById('login-inspector-btn');
+    const loginMcpClientBtn = document.getElementById('login-mcp-client-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const userInfo = document.getElementById('user-info');
     const initMcpBtn = document.getElementById('init-mcp-btn');
@@ -76,6 +106,7 @@ function updateAuthUI() {
         loginSsoBtn.style.display = 'none';
         loginMcpOAuthBtn.style.display = 'none';
         loginInspectorBtn.style.display = 'none';
+        loginMcpClientBtn.style.display = 'none';
         logoutBtn.style.display = 'block';
         userInfo.style.display = 'block';
 
@@ -95,8 +126,9 @@ function updateAuthUI() {
 
         loginPasswordBtn.style.display = 'inline-block';
         loginSsoBtn.style.display = 'inline-block';
-        loginMcpOAuthBtn.style.display = 'block';
-        loginInspectorBtn.style.display = 'block';
+        loginMcpOAuthBtn.style.display = 'inline-block';
+        loginInspectorBtn.style.display = 'inline-block';
+        loginMcpClientBtn.style.display = 'inline-block';
         logoutBtn.style.display = 'none';
         userInfo.style.display = 'none';
 
@@ -424,6 +456,20 @@ async function loginWithInspectorAuth() {
 }
 
 /**
+ * Login with MCP Client Compliant OAuth
+ * Full MCP specification compliance with protected resource discovery + fallback
+ */
+async function loginWithMCPClientCompliant() {
+    try {
+        log('info', 'Starting MCP Client Compliant OAuth authentication...');
+        await authManager.redirectToMCPClientCompliant();
+    } catch (error) {
+        log('error', `MCP Client Compliant OAuth failed: ${error.message}`);
+        alert(`MCP Client Compliant OAuth failed: ${error.message}`);
+    }
+}
+
+/**
  * Toggle manual JWT import UI
  */
 function toggleManualJWT() {
@@ -643,10 +689,34 @@ window.addEventListener('DOMContentLoaded', () => {
 
         console.log('[APP] Logout complete - ready for fresh authentication');
     } else if (code) {
-        // Check if this is MCP OAuth Discovery callback or standard SSO callback
+        // Check which OAuth flow callback this is
+        const authMethod = sessionStorage.getItem('auth_method');
         const isMCPOAuthCallback = sessionStorage.getItem('mcp_oauth_code_verifier');
+        const isMCPClientCallback = authMethod === 'mcpClient';
 
-        if (isMCPOAuthCallback) {
+        if (isMCPClientCallback) {
+            // MCP Client Compliant callback
+            log('info', 'MCP Client Compliant callback detected, exchanging authorization code...');
+            authManager.handleSSOCallback(code)
+                .then(() => {
+                    updateAuthUI();
+                    updateMCPUI();
+                    log('success', '✓ MCP Client Compliant authentication successful!');
+                    log('info', 'You can now initialize MCP session with the token');
+
+                    // Clear URL parameter and session storage
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    sessionStorage.removeItem('auth_method');
+                })
+                .catch(error => {
+                    log('error', `MCP Client Compliant callback failed: ${error.message}`);
+                    alert(`MCP Client Compliant authentication failed: ${error.message}`);
+
+                    // Clear URL parameter even on error
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    sessionStorage.removeItem('auth_method');
+                });
+        } else if (isMCPOAuthCallback) {
             // MCP OAuth Discovery callback
             log('info', 'MCP OAuth Discovery callback detected, exchanging authorization code...');
             mcpOAuthDiscovery.handleCallback(code)

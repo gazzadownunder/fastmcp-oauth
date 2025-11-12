@@ -1363,6 +1363,10 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
     "port": 3000,                            // Optional: HTTP server port
     "endpoint": "/mcp",                      // Optional: HTTP endpoint path
     "stateless": true,                       // Optional: Stateless mode
+    "oauth": {                               // Optional: OAuth metadata configuration
+      "scopes": ["mcp:read", "mcp:write"],   // Optional: Advertised OAuth scopes
+      "protectedResource": true              // Optional: Include protected resource in WWW-Authenticate header (default: true)
+    },
     "enabledTools": {                        // Optional: Tool enable/disable map
       "sql-delegate": true,
       "health-check": true,
@@ -1404,6 +1408,47 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
 - **Purpose:** Enable stateless mode (JWT validation on every request)
 - **Default:** `true`
 - **Example:** `"stateless": true`
+
+**Field: oauth** (object, optional)
+- **Purpose:** OAuth metadata configuration for the MCP server
+- **Subfields:**
+  - `scopes` (string[]): OAuth scopes to advertise in protected resource metadata
+  - `protectedResource` (boolean): Include protected resource metadata in WWW-Authenticate header (default: `true`)
+- **Example:**
+  ```json
+  "oauth": {
+    "scopes": ["mcp:read", "mcp:write", "mcp:admin"],
+    "protectedResource": true
+  }
+  ```
+
+**Field: oauth.scopes** (string[], optional)
+- **Purpose:** List of OAuth scopes supported by this MCP server
+- **Usage:** Advertised in OAuth Protected Resource Metadata and used by clients for authorization
+- **Example:** `"scopes": ["mcp:read", "mcp:write", "sql:query"]`
+
+**Field: oauth.protectedResource** (boolean, optional)
+- **Purpose:** Control whether authorization server information is included in WWW-Authenticate header on 401 responses
+- **Default:** `true` (enabled by default, must be explicitly disabled)
+- **Behavior:**
+  - When `true` (default): WWW-Authenticate header includes authorization server information
+    ```
+    WWW-Authenticate: Bearer realm="MCP Server", authorization_server="https://auth.example.com"
+    ```
+  - When `false`: WWW-Authenticate header includes only realm (minimal RFC 6750 format)
+    ```
+    WWW-Authenticate: Bearer realm="MCP Server"
+    ```
+- **When to disable:**
+  - Security requirement to not expose IDP information in response headers
+  - Client applications perform OAuth discovery through other means
+  - Reduced header size requirements
+- **Example:**
+  ```json
+  "oauth": {
+    "protectedResource": false  // Disable authorization server in WWW-Authenticate header
+  }
+  ```
 
 **Field: enabledTools** (object, optional)
 - **Purpose:** Enable/disable specific tools
@@ -1455,7 +1500,11 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
   "mcp": {
     "serverName": "Company Database Server",
     "version": "1.0.0",
-    "port": 3000
+    "port": 3000,
+    "oauth": {
+      "scopes": ["mcp:read", "mcp:write"],
+      "protectedResource": true
+    }
   }
 }
 ```
@@ -1518,6 +1567,10 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
   "mcp": {
     "serverName": "Multi-Database MCP Server",
     "version": "2.0.0",
+    "oauth": {
+      "scopes": ["mcp:read", "mcp:write", "sql:read", "sql:write"],
+      "protectedResource": true
+    },
     "enabledTools": {
       "sql1-delegate": true,
       "sql1-schema": true,
@@ -1535,6 +1588,7 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
 - ✅ Per-database token exchange with different scopes
 - ✅ **Secure secret management** with secret descriptors
 - ✅ Prefixed SQL tools (`sql1-delegate`, `sql2-delegate`)
+- ✅ **OAuth metadata** with advertised scopes and protected resource configuration
 
 **Required Environment Variables / Files:**
 - `PRIMARY_DB_OAUTH_SECRET` - OAuth client secret for primary database IDP

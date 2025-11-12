@@ -120,56 +120,139 @@ function extractSupportedScopes(coreContext: CoreContext): string[] {
 }
 
 /**
- * Generate WWW-Authenticate header value for 401 responses
+ * Generate WWW-Authenticate header value for 401/403 responses
  *
- * Generates RFC 6750 Bearer format with authorization_server parameter
+ * Generates RFC 6750 Bearer format with optional parameters for OAuth error responses
  * - Standard OAuth 2.1 format
  * - Clients use /.well-known/oauth-protected-resource for endpoint discovery
- * - Example: `Bearer realm="MCP Server", authorization_server="https://auth.example.com"`
+ * - Example (401): `Bearer realm="MCP Server", resource_metadata="http://..."`
+ * - Example (403): `Bearer realm="MCP Server", error="insufficient_scope", scope="admin sql:write", resource_metadata="http://..."`
  *
  * @param coreContext - Core context with authentication configuration
  * @param realm - Realm name (typically server name)
- * @param scope - Space-separated list of required scopes (optional)
+ * @param scope - Space-separated list of required scopes (optional, used for 403 insufficient_scope)
+ * @param includeProtectedResource - Include authorization_server parameter (default: true, controlled by mcp.oauth.protectedResource config)
+ * @param serverUrl - Server URL for resource_metadata parameter (optional)
+ * @param error - OAuth error code (e.g., 'insufficient_scope', 'invalid_token') - optional
+ * @param errorDescription - Human-readable error description (optional)
  * @returns WWW-Authenticate header value
  *
  * @example
  * ```typescript
- * const headerValue = generateWWWAuthenticateHeader(coreContext, "MCP Server");
- * // Returns: 'Bearer realm="MCP Server", authorization_server="https://auth.example.com"'
+ * // 401 Unauthorized (token missing/invalid)
+ * const headerValue = generateWWWAuthenticateHeader(coreContext, "MCP Server", undefined, true, serverUrl);
+ * // Returns: 'Bearer realm="MCP Server", resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource"'
+ *
+ * // 403 Forbidden (insufficient scope)
+ * const headerValue = generateWWWAuthenticateHeader(
+ *   coreContext, "MCP Server", "admin sql:write", true, serverUrl,
+ *   "insufficient_scope", "This tool requires admin role"
+ * );
+ * // Returns: 'Bearer realm="MCP Server", error="insufficient_scope", scope="admin sql:write",
+ * //           error_description="This tool requires admin role", resource_metadata="http://..."'
  * ```
  */
 export function generateWWWAuthenticateHeader(
   coreContext: CoreContext,
   realm: string,
-  scope?: string
+  scope?: string,
+  includeProtectedResource?: boolean,
+  serverUrl?: string,
+  error?: string,
+  errorDescription?: string
 ): string {
   const authConfig = coreContext.configManager.getAuthConfig();
+  const mcpConfig = coreContext.configManager.getMCPConfig();
 
-  // Always use Bearer format (RFC 6750 + RFC 9728)
-  return generateBearerHeader(authConfig, realm, scope);
+  // Determine if we should include protected resource metadata
+  // Priority: explicit parameter > config > default (true)
+  const shouldIncludeMetadata =
+    includeProtectedResource !== undefined
+      ? includeProtectedResource
+      : mcpConfig?.oauth?.protectedResource ?? true;
+
+  // Determine server URL for resource_metadata parameter
+  // Use provided serverUrl or construct from config
+  const resourceMetadataUrl = serverUrl
+    ? `${serverUrl}/.well-known/oauth-protected-resource`
+    : undefined;
+
+  // Generate Bearer header with optional authorization_server and resource_metadata parameters
+  return generateBearerHeader(
+    authConfig,
+    realm,
+    scope,
+    shouldIncludeMetadata,
+    resourceMetadataUrl,
+    error,
+    errorDescription
+  );
 }
 
 /**
  * Generate RFC 6750 Bearer WWW-Authenticate header
  *
- * Standard OAuth 2.1 Bearer format with authorization_server parameter.
- * Clients should use /.well-known/oauth-protected-resource for endpoint discovery.
+ * Per RFC 6750 Section 3, valid parameters are: realm, scope, error, error_description, error_uri
+ * Per RFC 9728, resource_metadata parameter provides OAuth Protected Resource Metadata URL
+ * Authorization server discovery can happen via /.well-known/oauth-protected-resource (RFC 9728)
  *
  * @param authConfig - Authentication configuration
- * @param realm - Realm name
+ * @param realm - Realm name (typically server name)
  * @param scope - Space-separated list of required scopes (optional)
+ * @param includeMetadata - Include resource_metadata parameter (default: true)
+ * @param resourceMetadataUrl - URL to OAuth Protected Resource Metadata endpoint
+ * @param error - OAuth error code (e.g., 'insufficient_scope', 'invalid_token')
+ * @param errorDescription - Human-readable error description
  * @returns Bearer header value
  */
-function generateBearerHeader(authConfig: any, realm: string, scope?: string): string {
-  // Use first trusted IDP as primary authorization server
-  const authServer = authConfig.trustedIDPs[0]?.issuer || 'unknown';
+function generateBearerHeader(
+  authConfig: any,
+  realm: string,
+  scope?: string,
+  includeMetadata: boolean = true,
+  resourceMetadataUrl?: string,
+  error?: string,
+  errorDescription?: string
+): string {
+  console.log('[OAuth Metadata] generateBearerHeader called with:', {
+    realm,
+    scope,
+    hasScope: !!scope,
+    includeMetadata,
+    resourceMetadataUrl,
+    error,
+    errorDescription
+  });
 
-  // Build WWW-Authenticate header per RFC 6750 Section 3
-  const params: string[] = [`realm="${realm}"`, `authorization_server="${authServer}"`];
+  // Build WWW-Authenticate header per RFC 6750 Section 3 and RFC 9728
+  // Valid parameters: realm, scope, error, error_description, error_uri, resource_metadata
+  // Parameter order per MCP spec: realm, error, scope, error_description, resource_metadata
+  const params: string[] = [`realm="${realm}"`];
 
+  // Add error parameter if present (typically for 403 insufficient_scope)
+  if (error) {
+    params.push(`error="${error}"`);
+  }
+
+  // Add scope parameter if present (required scopes for 403 responses)
   if (scope) {
     params.push(`scope="${scope}"`);
   }
 
-  return `Bearer ${params.join(', ')}`;
+  // Add error_description if present
+  if (errorDescription) {
+    params.push(`error_description="${errorDescription}"`);
+  }
+
+  // Include resource_metadata parameter per RFC 9728 (MCP requirement)
+  // This is the REQUIRED parameter for mcp-proxy to forward the header
+  // Clients use this URL to discover authorization_servers (not included directly per RFC 6750)
+  if (includeMetadata && resourceMetadataUrl) {
+    params.push(`resource_metadata="${resourceMetadataUrl}"`);
+  }
+
+  const header = `Bearer ${params.join(', ')}`;
+  console.log('[OAuth Metadata] Generated header:', header);
+
+  return header;
 }

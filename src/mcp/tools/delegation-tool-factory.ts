@@ -40,6 +40,7 @@ import type { ToolRegistration, LLMResponse, MCPContext } from '../types.js';
 import { Authorization } from '../authorization.js';
 import { OAuthSecurityError, createSecurityError } from '../../utils/errors.js';
 import { handleToolError } from '../utils/error-helpers.js';
+import { generateWWWAuthenticateHeader } from '../oauth-metadata.js';
 
 // ============================================================================
 // Types
@@ -274,9 +275,58 @@ export function createDelegationTool<TParams extends z.ZodType>(
           data: finalData,
         };
       } catch (error) {
-        // Security errors: Return specific error code
+        // Security errors: Handle 401 and 403 with WWW-Authenticate headers
         if (error instanceof OAuthSecurityError || (error as any).code) {
           const secError = error as OAuthSecurityError;
+
+          // For 403 errors, throw Response with WWW-Authenticate header (MCP spec compliant)
+          if (secError.statusCode === 403) {
+            // Extract required scopes from error details
+            const requiredScopes = (secError.details?.requiredScopes as string[]) || [];
+            const scopeString = requiredScopes.join(' ');
+
+            // Get server URL for resource_metadata parameter
+            const mcpConfig = coreContext.configManager.getMCPConfig();
+            const mcpPort = mcpConfig?.port || 3000;
+            const serverUrl = `http://localhost:${mcpPort}`;
+
+            // Generate WWW-Authenticate header per MCP OAuth 2.1 spec
+            const wwwAuthenticate = generateWWWAuthenticateHeader(
+              coreContext,
+              'MCP Server',
+              scopeString, // Required scopes (e.g., "admin sql:write")
+              undefined, // includeProtectedResource controlled by config
+              serverUrl, // Server URL for resource_metadata parameter
+              'insufficient_scope', // RFC 6750 error code
+              secError.message // Human-readable error description
+            );
+
+            console.log('[DelegationToolFactory] ✓ Generated WWW-Authenticate for 403:', wwwAuthenticate);
+
+            // Throw Response object with WWW-Authenticate header
+            // mcp-proxy's handleResponseError() (startHTTPServer.ts:72-96) handles this
+            const headers = new Headers();
+            headers.set('Content-Type', 'application/json');
+            headers.set('WWW-Authenticate', wwwAuthenticate);
+
+            const responseBody = JSON.stringify({
+              error: {
+                code: -32000, // JSON-RPC application error
+                message: secError.message,
+              },
+              id: null,
+              jsonrpc: '2.0',
+            });
+
+            throw new Response(responseBody, {
+              status: 403,
+              statusText: 'Forbidden',
+              headers,
+            });
+          }
+
+          // For other security errors (e.g., 401), return as LLMResponse
+          // Note: 401 errors are handled at middleware level, not in tool handlers
           return {
             status: 'failure',
             code: secError.code || 'INTERNAL_ERROR',

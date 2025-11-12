@@ -86,7 +86,7 @@
  * @see Gap #4 in refactor-progress.md
  */
 
-import { createSecurityError } from '../utils/errors.js';
+import { createSecurityError, createAuthorizationError } from '../utils/errors.js';
 import type { MCPContext } from './types.js';
 
 // ============================================================================
@@ -285,10 +285,11 @@ export class Authorization {
     this.requireAuth(context);
 
     if (context.session.role !== requiredRole) {
-      throw createSecurityError(
+      throw createAuthorizationError(
         'INSUFFICIENT_PERMISSIONS',
         `This tool requires the '${requiredRole}' role. Your role: ${context.session.role}`,
-        403
+        403,
+        [requiredRole] // Include required scope for WWW-Authenticate header
       );
     }
   }
@@ -312,10 +313,11 @@ export class Authorization {
     this.requireAuth(context);
 
     if (!this.hasAnyRole(context, roles)) {
-      throw createSecurityError(
+      throw createAuthorizationError(
         'INSUFFICIENT_PERMISSIONS',
         `This tool requires one of these roles: ${roles.join(', ')}. Your role: ${context.session.role}`,
-        403
+        403,
+        roles // Include required scopes for WWW-Authenticate header
       );
     }
   }
@@ -340,10 +342,11 @@ export class Authorization {
 
     if (!this.hasAllRoles(context, roles)) {
       const userRoles = [context.session.role, ...(context.session.customRoles || [])];
-      throw createSecurityError(
+      throw createAuthorizationError(
         'INSUFFICIENT_PERMISSIONS',
         `This tool requires all of these roles: ${roles.join(', ')}. Your roles: ${userRoles.join(', ')}`,
-        403
+        403,
+        roles // Include required scopes for WWW-Authenticate header
       );
     }
   }
@@ -362,10 +365,11 @@ export class Authorization {
 
     if (!this.hasScope(context, requiredScope)) {
       const userScopes = context.session.scopes?.join(', ') || 'none';
-      throw createSecurityError(
+      throw createAuthorizationError(
         'INSUFFICIENT_PERMISSIONS',
         `This tool requires the '${requiredScope}' scope. Your scopes: ${userScopes}`,
-        403
+        403,
+        [requiredScope] // Include required scope for WWW-Authenticate header
       );
     }
   }
@@ -390,10 +394,11 @@ export class Authorization {
 
     if (!this.hasAnyScope(context, scopes)) {
       const userScopes = context.session.scopes?.join(', ') || 'none';
-      throw createSecurityError(
+      throw createAuthorizationError(
         'INSUFFICIENT_PERMISSIONS',
         `This tool requires one of these scopes: ${scopes.join(', ')}. Your scopes: ${userScopes}`,
-        403
+        403,
+        scopes // Include required scopes for WWW-Authenticate header
       );
     }
   }
@@ -418,10 +423,11 @@ export class Authorization {
 
     if (!this.hasAllScopes(context, scopes)) {
       const userScopes = context.session.scopes?.join(', ') || 'none';
-      throw createSecurityError(
+      throw createAuthorizationError(
         'INSUFFICIENT_PERMISSIONS',
         `This tool requires all of these scopes: ${scopes.join(', ')}. Your scopes: ${userScopes}`,
-        403
+        403,
+        scopes // Include required scopes for WWW-Authenticate header
       );
     }
   }

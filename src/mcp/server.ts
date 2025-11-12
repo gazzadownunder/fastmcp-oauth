@@ -289,6 +289,11 @@ export class MCPOAuthServer {
     console.log(`[MCP OAuth Server]   Primary IDP: ${primaryIDP.issuer}`);
     console.log(`[MCP OAuth Server]   Resource URL: ${serverUrl}`);
 
+    // Check if protected resource metadata should be included
+    // Default: true (enabled by default, must be explicitly disabled)
+    const includeProtectedResource = mcpConfig?.oauth?.protectedResource ?? true;
+    console.log(`[MCP OAuth Server]   Protected Resource Metadata: ${includeProtectedResource ? 'enabled' : 'disabled'}`);
+
     // Build base config
     const oauthConfig: any = {
       enabled: true,
@@ -303,7 +308,11 @@ export class MCPOAuthServer {
         scopesSupported: ['openid', 'profile', 'email'],
         tokenEndpointAuthMethodsSupported: ['client_secret_basic', 'client_secret_post'],
       },
-      protectedResource: {
+    };
+
+    // Conditionally include protected resource metadata based on configuration
+    if (includeProtectedResource) {
+      oauthConfig.protectedResource = {
         resource: serverUrl,
         authorizationServers: authConfig.trustedIDPs.map((idp: any) => idp.issuer),
         scopesSupported: this.extractSupportedScopes(delegationConfig),
@@ -312,8 +321,8 @@ export class MCPOAuthServer {
         resourceDocumentation: `${serverUrl}/docs`,
         // MCP HTTP with SSE transport supports both JSON-RPC and SSE streaming
         acceptTypesSupported: ['application/json', 'text/event-stream'],
-      },
-    };
+      };
+    }
 
     // Add oauth_endpoints if explicitly configured in mcp.oauth.oauth_endpoints
     // This allows explicit control when multiple IDPs are configured
@@ -419,38 +428,10 @@ export class MCPOAuthServer {
 
     console.log(`[MCP OAuth Server] Creating FastMCP server: ${serverName} v${serverVersion}`);
 
-    // Wrap authenticate callback to add CORS headers to all responses (including errors)
-    // CRITICAL: mcp-proxy doesn't add CORS headers to error responses, so we must do it here
-    const authenticateWithCORS = async (request: any) => {
-      try {
-        return await authMiddleware.authenticate(request);
-      } catch (error) {
-        // If middleware throws a Response object, add CORS headers
-        if (error instanceof Response) {
-          const headers = new Headers(error.headers);
-          headers.set('Access-Control-Allow-Origin', '*');
-          headers.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Mcp-Session-Id');
-          headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-          headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id');
-
-          console.log('[MCP OAuth Server] ✓ Added CORS headers to error response');
-
-          // Re-throw with updated headers
-          throw new Response(error.body, {
-            status: error.status,
-            statusText: error.statusText,
-            headers,
-          });
-        }
-        // Re-throw other errors as-is
-        throw error;
-      }
-    };
-
     this.mcpServer = new FastMCP({
       name: serverName,
       version: serverVersion,
-      authenticate: authenticateWithCORS as any,
+      authenticate: authMiddleware.authenticate.bind(authMiddleware) as any,
       oauth: this.buildOAuthConfig(port),
     });
 

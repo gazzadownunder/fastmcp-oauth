@@ -37,7 +37,8 @@ const CONFIG = {
         // - password: Password grant flow (Resource Owner Password Credentials)
         // - sso: SSO redirect (Authorization Code Flow with PKCE)
         // - mcpOAuth: MCP OAuth Discovery (discovers endpoints from MCP server)
-        // - inspector: Inspector-style OAuth (minimal parameter OAuth 2.1)
+        // - inspector: Inspector-style OAuth (direct auth server discovery)
+        // - mcpClient: MCP Client Compliant (protected resource + fallback)
         //
         // To modify scopes, edit the values below. For example:
         // - 'email openid': Basic OIDC scopes for email and user ID
@@ -50,7 +51,8 @@ const CONFIG = {
             password: 'email openid',           // Password grant flow
             sso: 'email openid',                // SSO redirect (authorization code)
             mcpOAuth: 'email openid',           // MCP OAuth discovery
-            inspector: 'email openid'           // Inspector-style OAuth (only if useDefaultScopes=false)
+            inspector: 'email openid',          // Inspector-style OAuth (only if useDefaultScopes=false)
+            mcpClient: 'email openid'           // MCP Client Compliant (full spec)
         },
 
         // PKCE (Proof Key for Code Exchange) - RFC 7636

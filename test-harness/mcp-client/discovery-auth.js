@@ -24,12 +24,12 @@ class MCPOAuthDiscovery {
     }
 
     /**
-     * Parse WWW-Authenticate header to extract authorization server URL
+     * Parse WWW-Authenticate header
      *
-     * Expected format (RFC 6750):
-     * WWW-Authenticate: Bearer realm="http://localhost:3000",
-     *                   as_uri="http://localhost:8080/realms/mcp_security",
-     *                   scope="mcp:read mcp:write"
+     * Per RFC 6750 Section 3, valid parameters are: realm, scope, error, error_description, error_uri
+     * Authorization server discovery happens via /.well-known/oauth-protected-resource (RFC 9728)
+     *
+     * WWW-Authenticate: Bearer realm="MCP Server", scope="mcp:read mcp:write"
      *
      * @param {string} header - WWW-Authenticate header value
      * @returns {object} Parsed authentication parameters
@@ -53,14 +53,11 @@ class MCPOAuthDiscovery {
             params[match[1]] = match[2];
         }
 
-        log('success', `Discovered authorization server: ${params.as_uri || 'not found'}`);
         log('info', `Realm: ${params.realm || 'not specified'}`);
         log('info', `Required scopes: ${params.scope || 'not specified'}`);
 
-        if (!params.as_uri) {
-            throw new Error('WWW-Authenticate header missing required "as_uri" parameter');
-        }
-
+        // Note: Authorization server URL is NOT in WWW-Authenticate header
+        // It's discovered via /.well-known/oauth-protected-resource (RFC 9728)
         return params;
     }
 
@@ -185,25 +182,29 @@ class MCPOAuthDiscovery {
 
                 log('info', `WWW-Authenticate: ${wwwAuthenticate}`);
 
-                // Step 3: Parse WWW-Authenticate header
+                // Step 3: Parse WWW-Authenticate header (for realm/scope only)
                 const authParams = this.parseWWWAuthenticate(wwwAuthenticate);
 
                 // Extract base URL from MCP endpoint
                 const mcpBaseUrl = new URL(mcpUrl).origin;
 
-                // Step 4: Fetch protected resource metadata
+                // Step 4: Fetch protected resource metadata (RFC 9728)
+                // This is where we discover the authorization server URL
                 const resourceMetadata = await this.fetchProtectedResourceMetadata(mcpBaseUrl);
 
-                // Step 5: Fetch authorization server metadata
-                const authServerUrl = authParams.as_uri || resourceMetadata.authorization_servers?.[0];
+                // Step 5: Get authorization server URL from metadata (RFC-compliant)
+                const authServerUrl = resourceMetadata.authorization_servers?.[0];
 
                 if (!authServerUrl) {
-                    throw new Error('Could not determine authorization server URL from discovery');
+                    throw new Error('Protected resource metadata missing authorization_servers');
                 }
 
+                log('success', `Discovered authorization server: ${authServerUrl}`);
+
+                // Step 6: Fetch authorization server metadata
                 const authServerMetadata = await this.fetchAuthorizationServerMetadata(authServerUrl);
 
-                // Step 6: Build discovered OAuth configuration
+                // Step 7: Build discovered OAuth configuration
                 this.discoveredConfig = {
                     authorizationEndpoint: authServerMetadata.authorization_endpoint,
                     tokenEndpoint: authServerMetadata.token_endpoint,

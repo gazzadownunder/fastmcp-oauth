@@ -280,6 +280,7 @@
       "_comment_kerberos": "Kerberos tools automatically perform delegation (S4U2Self/S4U2Proxy) when called. Token exchange provides legacy_name claim."
     },
     "oauth": {
+      "protectedResource": true,
       "scopes": [
         "openid"
       ]

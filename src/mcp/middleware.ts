@@ -160,14 +160,37 @@ export class MCPAuthMiddleware {
       };
     } catch (error) {
       // Generate WWW-Authenticate header for 401 responses
+      // Header format controlled by mcp.oauth.protectedResource config (default: true)
       let wwwAuthenticate: string | undefined;
       if (this.coreContext && error instanceof OAuthSecurityError && error.statusCode === 401) {
         try {
+          // Extract scopes from mcp.oauth.scopes configuration
+          const mcpConfig = this.coreContext.configManager.getMCPConfig();
+          const configuredScopes = mcpConfig?.oauth?.scopes;
+          const scopeString = configuredScopes && configuredScopes.length > 0
+            ? configuredScopes.join(' ')
+            : undefined;
+
+          console.log('[MCPAuthMiddleware] Scope extraction debug:', {
+            configuredScopes,
+            scopeString,
+            hasScopes: !!scopeString
+          });
+
+          // Get server URL for resource_metadata parameter
+          // Try to determine from config or use localhost as fallback
+          const mcpPort = mcpConfig?.port || 3000;
+          const serverUrl = `http://localhost:${mcpPort}`;
+
           wwwAuthenticate = generateWWWAuthenticateHeader(
             this.coreContext,
             'MCP Server',
-            undefined // TODO: Extract required scopes from error
+            scopeString, // Include scopes if defined in mcp.oauth.scopes
+            undefined, // includeProtectedResource controlled by mcp.oauth.protectedResource config
+            serverUrl // Server URL for resource_metadata parameter
           );
+
+          console.log('[MCPAuthMiddleware] Generated WWW-Authenticate:', wwwAuthenticate);
         } catch (headerError) {
           console.error(
             '[MCPAuthMiddleware] Failed to generate WWW-Authenticate header:',
@@ -204,17 +227,13 @@ export class MCPAuthMiddleware {
         const headers = new Headers();
         headers.set('Content-Type', 'application/json');
 
-        // CRITICAL: Add CORS headers for browser-based clients
-        // Without these, browsers will block JavaScript from reading WWW-Authenticate
-        headers.set('Access-Control-Allow-Origin', '*');
-        headers.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Mcp-Session-Id');
-        headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id');
-
         if (wwwAuthenticate) {
           headers.set('WWW-Authenticate', wwwAuthenticate);
           console.log('[MCPAuthMiddleware] ✓ WWW-Authenticate header added to Response error');
         }
+
+        // NOTE: CORS headers are NOT added here - they're added conditionally in MCPOAuthServer
+        // when mcp.browserCorsEnabled=true (opt-in for browser-based clients only)
 
         const responseBody = JSON.stringify({
           error: {
