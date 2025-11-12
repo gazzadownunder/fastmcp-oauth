@@ -17,9 +17,9 @@ export default defineConfig({
   resolve: {
     alias: {
       // Map package imports to source files for testing
-      'mcp-oauth-framework/core': path.resolve(__dirname, './src/core/index.ts'),
-      'mcp-oauth-framework/delegation': path.resolve(__dirname, './src/delegation/index.ts'),
-      'mcp-oauth-framework': path.resolve(__dirname, './src/index.ts'),
+      'fastmcp-oauth/core': path.resolve(__dirname, './src/core/index.ts'),
+      'fastmcp-oauth/delegation': path.resolve(__dirname, './src/delegation/index.ts'),
+      'fastmcp-oauth': path.resolve(__dirname, './src/index.ts'),
     },
   },
   test: {
