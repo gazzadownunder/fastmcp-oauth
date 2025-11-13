@@ -108,17 +108,18 @@ export function createMockCoreContext(overrides: Partial<CoreContext> = {}): Cor
   };
 
   const mockAuthService = {
-    authenticate: async (token: string) => {
+    authenticate: async (_token: string) => {
       return createMockUserSession();
     },
-    validateToken: async (token: string) => true,
+    validateToken: async (_token: string) => true,
   };
 
-  const mockRoleMapper = {
-    mapRole: (jwtRoles: string[]) => 'user',
+  // Legacy mock objects - kept for backward compatibility but not currently used
+  const _mockRoleMapper = {
+    mapRole: (_jwtRoles: string[]) => 'user',
   };
 
-  const mockJWTValidator = {
+  const _mockJWTValidator = {
     validateJWT: async (token: string) => {
       return {
         iss: 'https://test-idp.example.com',
@@ -142,7 +143,7 @@ export function createMockCoreContext(overrides: Partial<CoreContext> = {}): Cor
     unregister: (name: string) => mockDelegationRegistry.modules.delete(name),
   };
 
-  const mockTokenExchangeService = {
+  const _mockTokenExchangeService = {
     performExchange: async (params: any) => {
       // Return a mock exchanged token
       return generateMockJWT({
@@ -197,12 +198,12 @@ export class MockDelegationModule implements DelegationModule {
   private mockResponse: DelegationResult<any> | null = null;
   private delegateCallLog: any[] = [];
 
-  constructor(name: string, type: string = 'custom') {
+  constructor(name: string, type = 'custom') {
     this.name = name;
     this.type = type;
   }
 
-  async initialize(config: any): Promise<void> {
+  async initialize(_config: any): Promise<void> {
     this.initialized = true;
   }
 
@@ -244,7 +245,7 @@ export class MockDelegationModule implements DelegationModule {
     this.initialized = false;
   }
 
-  async validateAccess(session: UserSession): Promise<boolean> {
+  async validateAccess(_session: UserSession): Promise<boolean> {
     // Mock implementation - always allow access in tests
     return true;
   }
@@ -269,7 +270,7 @@ export class MockDelegationModule implements DelegationModule {
   wasCalledWith(action: string, params?: any): boolean {
     return this.delegateCallLog.some((call) => {
       const actionMatches = call.action === action;
-      if (!params) return actionMatches;
+      if (!params) {return actionMatches;}
       return actionMatches && JSON.stringify(call.params) === JSON.stringify(params);
     });
   }
@@ -312,8 +313,8 @@ export function createSpy<T extends (...args: any[]) => any>(
  */
 export async function waitFor(
   condition: () => boolean,
-  timeoutMs: number = 5000,
-  checkIntervalMs: number = 100
+  timeoutMs = 5000,
+  checkIntervalMs = 100
 ): Promise<void> {
   const startTime = Date.now();
 

@@ -128,7 +128,7 @@ export class FastMCPAuthMiddleware {
 
         // Translate technical role mapping errors to user-friendly authorization errors
         // Note: Must include "Unauthorized" keyword for mcp-proxy to detect as auth error
-        let userMessage = 'Unauthorized: User has no valid roles assigned';
+        const userMessage = 'Unauthorized: User has no valid roles assigned';
 
         // Log technical details for debugging
         if (authResult.rejectionReason) {

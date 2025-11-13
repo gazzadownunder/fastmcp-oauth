@@ -661,7 +661,7 @@ export class EncryptedTokenCache {
     if (this.auditService && typeof this.auditService.log === 'function') {
       try {
         await this.auditService.log(entry);
-      } catch (error) {
+      } catch {
         // Silently fail - audit logging should never crash the service
       }
     }

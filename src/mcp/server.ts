@@ -25,8 +25,6 @@ import {
   getAllToolFactories,
   createSQLToolsForModule,
   createRESTAPIToolsForModule,
-  type SQLToolsConfig,
-  type RESTAPIToolsConfig,
 } from './tools/index.js';
 import type { CoreContext } from '../core/index.js';
 import type { FastMCPStartOptions, FastMCPContext, ToolRegistration } from './types.js';
@@ -54,7 +52,7 @@ export class FastMCPOAuthServer {
   private coreContext?: CoreContext;
   private mcpServer?: FastMCP;
   private configPath: string;
-  private isRunning: boolean = false;
+  private isRunning = false;
 
   /**
    * Create a new FastMCP OAuth server
@@ -274,7 +272,6 @@ export class FastMCPOAuthServer {
     }
 
     const authConfig = this.coreContext.configManager.getAuthConfig();
-    const delegationConfig = this.coreContext.configManager.getDelegationConfig();
     const mcpConfig = this.coreContext.configManager.getMCPConfig();
     const primaryIDP = authConfig.trustedIDPs[0];
 
@@ -315,7 +312,7 @@ export class FastMCPOAuthServer {
       oauthConfig.protectedResource = {
         resource: serverUrl,
         authorizationServers: authConfig.trustedIDPs.map((idp: any) => idp.issuer),
-        scopesSupported: this.extractSupportedScopes(delegationConfig),
+        scopesSupported: this.extractSupportedScopes(),
         bearerMethodsSupported: ['header'],
         resourceSigningAlgValuesSupported: primaryIDP.algorithms || ['RS256', 'ES256'],
         resourceDocumentation: `${serverUrl}/docs`,
@@ -358,7 +355,7 @@ export class FastMCPOAuthServer {
    *
    * @private
    */
-  private extractSupportedScopes(delegationConfig: any): string[] {
+  private extractSupportedScopes(): string[] {
     const mcpConfig = this.configManager.getMCPConfig();
 
     // Return configured scopes or empty array if not configured

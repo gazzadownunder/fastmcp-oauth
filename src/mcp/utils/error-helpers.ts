@@ -33,7 +33,7 @@ export async function handleToolError(
   toolName: string,
   mcpContext: MCPContext,
   auditService: AuditService | undefined,
-  params: any
+  params: Record<string, unknown>
 ): Promise<LLMFailureResponse> {
   // Log to console for debugging
   console.error(`\n[ERROR-HANDLER] Tool execution error in ${toolName}`);
@@ -82,12 +82,12 @@ export async function handleToolError(
  * @param params - Original tool parameters
  * @returns Sanitized parameters safe for logging
  */
-function sanitizeParams(params: any): any {
+function sanitizeParams(params: Record<string, unknown>): Record<string, unknown> | string {
   if (!params || typeof params !== 'object') {
-    return params;
+    return params as string;
   }
 
-  const sanitized = { ...params };
+  const sanitized: Record<string, unknown> = { ...params };
 
   // Remove SQL queries (may contain sensitive data)
   if (sanitized.sql) {

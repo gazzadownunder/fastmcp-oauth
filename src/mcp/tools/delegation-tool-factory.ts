@@ -38,7 +38,7 @@ import { z } from 'zod';
 import type { CoreContext } from '../../core/index.js';
 import type { ToolRegistration, LLMResponse, MCPContext } from '../types.js';
 import { Authorization } from '../authorization.js';
-import { OAuthSecurityError, createSecurityError } from '../../utils/errors.js';
+import { OAuthSecurityError } from '../../utils/errors.js';
 import { handleToolError } from '../utils/error-helpers.js';
 import { generateWWWAuthenticateHeader } from '../oauth-metadata.js';
 

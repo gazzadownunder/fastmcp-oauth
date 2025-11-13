@@ -98,7 +98,7 @@ export class SecretResolver {
    * @param node - The current node (object, array, or primitive) to resolve
    * @param path - Current path in the config tree (for error messages)
    */
-  private async resolveNode(node: any, path: string = 'config'): Promise<void> {
+  private async resolveNode(node: any, path = 'config'): Promise<void> {
     // Not an object/array - stop recursion
     if (typeof node !== 'object' || node === null) {
       return;

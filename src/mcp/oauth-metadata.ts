@@ -209,7 +209,7 @@ function generateBearerHeader(
   authConfig: any,
   realm: string,
   scope?: string,
-  includeMetadata: boolean = true,
+  includeMetadata = true,
   resourceMetadataUrl?: string,
   error?: string,
   errorDescription?: string

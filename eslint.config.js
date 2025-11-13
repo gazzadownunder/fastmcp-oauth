@@ -48,17 +48,25 @@ export default [
       '@typescript-eslint': tseslint,
     },
     rules: {
-      // TypeScript rules (warn instead of error for gradual improvement)
-      '@typescript-eslint/no-unused-vars': ['warn', {
+      // TypeScript rules - strict enforcement for resolved issues
+      '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
       }],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn', // Keep as warn - 102 intentional cases documented
       '@typescript-eslint/explicit-function-return-type': 'off',
 
-      // General rules
+      // Additional strict TypeScript rules
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/prefer-as-const': 'warn',
+      '@typescript-eslint/no-inferrable-types': 'warn',
+
+      // General rules - strict enforcement
       'no-console': 'off', // Allow console in this project
-      'prefer-const': 'warn',
+      'prefer-const': 'error', // Enforce immutability
+      'no-var': 'error', // Enforce let/const only
+      'eqeqeq': ['error', 'always'], // Require === and !==
+      'curly': ['error', 'all'], // Require curly braces for all control statements
 
       // Disable rules that conflict with TypeScript
       'no-undef': 'off',

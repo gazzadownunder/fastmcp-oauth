@@ -14,9 +14,6 @@
 import type { CoreContext } from '../core/index.js';
 import { CoreContextValidator } from '../core/validators.js';
 import { AuditService } from '../core/audit-service.js';
-import { JWTValidator } from '../core/jwt-validator.js';
-import { RoleMapper } from '../core/role-mapper.js';
-import { SessionManager } from '../core/session-manager.js';
 import { AuthenticationService } from '../core/authentication-service.js';
 import { DelegationRegistry } from '../delegation/registry.js';
 import { TokenExchangeService } from '../delegation/token-exchange.js';
