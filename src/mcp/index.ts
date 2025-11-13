@@ -63,6 +63,22 @@ export type { OrchestratorOptions } from './orchestrator.js';
 export { FastMCPOAuthServer, MCPOAuthServer } from './server.js';
 
 // ============================================================================
+// OAuth Metadata (RFC 8414, RFC 7591, RFC 9728)
+// ============================================================================
+
+export type {
+  AuthorizationServerMetadata,
+  ProtectedResourceMetadata
+} from './oauth-metadata.js';
+
+export {
+  generateProtectedResourceMetadata,
+  generateWWWAuthenticateHeader,
+  fetchAuthorizationServerMetadata,
+  getAuthorizationServerMetadata
+} from './oauth-metadata.js';
+
+// ============================================================================
 // Tool Factories
 // ============================================================================
 

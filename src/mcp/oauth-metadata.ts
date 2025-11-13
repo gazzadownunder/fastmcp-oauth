@@ -1,14 +1,60 @@
 /**
  * OAuth 2.0 Protected Resource Metadata (RFC 9728)
+ * OAuth 2.0 Authorization Server Metadata (RFC 8414)
+ * OAuth 2.0 Dynamic Client Registration (RFC 7591)
  *
  * MCP servers act as OAuth 2.1 Resource Servers and must advertise
  * their OAuth configuration to clients.
  *
- * Spec: https://datatracker.ietf.org/doc/html/rfc9728
+ * Specs:
+ * - RFC 9728: https://datatracker.ietf.org/doc/html/rfc9728
+ * - RFC 8414: https://datatracker.ietf.org/doc/html/rfc8414
+ * - RFC 7591: https://datatracker.ietf.org/doc/html/rfc7591
  * MCP Spec: https://modelcontextprotocol.io/specification/draft/basic/authorization
  */
 
 import type { CoreContext } from '../core/types.js';
+
+/**
+ * OAuth 2.0 Authorization Server Metadata (RFC 8414)
+ *
+ * Metadata about the authorization server that issues tokens.
+ * This is typically retrieved from the issuer's /.well-known/oauth-authorization-server endpoint.
+ */
+export interface AuthorizationServerMetadata {
+  /** Authorization server's issuer identifier URL */
+  issuer: string;
+
+  /** URL of the authorization endpoint */
+  authorization_endpoint?: string;
+
+  /** URL of the token endpoint */
+  token_endpoint: string;
+
+  /** URL of the dynamic client registration endpoint (RFC 7591) */
+  registration_endpoint?: string;
+
+  /** URL of the JSON Web Key Set document */
+  jwks_uri?: string;
+
+  /** OAuth 2.0 scopes supported by the authorization server */
+  scopes_supported?: string[];
+
+  /** OAuth 2.0 response types supported */
+  response_types_supported?: string[];
+
+  /** OAuth 2.0 grant types supported */
+  grant_types_supported?: string[];
+
+  /** Token endpoint authentication methods supported */
+  token_endpoint_auth_methods_supported?: string[];
+
+  /** JWS signing algorithms supported for the ID Token */
+  id_token_signing_alg_values_supported?: string[];
+
+  /** Additional metadata fields */
+  [key: string]: unknown;
+}
 
 /**
  * OAuth 2.0 Protected Resource Metadata
@@ -255,4 +301,117 @@ function generateBearerHeader(
   console.log('[OAuth Metadata] Generated header:', header);
 
   return header;
+}
+
+/**
+ * Fetch Authorization Server Metadata from a trusted IDP
+ *
+ * Per RFC 8414, authorization servers publish metadata at:
+ * - {issuer}/.well-known/oauth-authorization-server
+ * - {issuer}/.well-known/openid-configuration (OpenID Connect)
+ *
+ * This function attempts to fetch the metadata and extract key endpoints
+ * including the registration_endpoint for Dynamic Client Registration (RFC 7591).
+ *
+ * @param issuer - Issuer URL from trusted IDP configuration
+ * @returns Authorization server metadata including registration endpoint
+ *
+ * @example
+ * ```typescript
+ * const metadata = await fetchAuthorizationServerMetadata('https://auth.example.com');
+ * console.log(metadata.registration_endpoint); // https://auth.example.com/register
+ * ```
+ */
+export async function fetchAuthorizationServerMetadata(
+  issuer: string
+): Promise<AuthorizationServerMetadata | null> {
+  // Try RFC 8414 endpoint first
+  const wellKnownUrl = `${issuer}/.well-known/oauth-authorization-server`;
+
+  try {
+    const response = await fetch(wellKnownUrl);
+    if (response.ok) {
+      const metadata = await response.json() as AuthorizationServerMetadata;
+      console.log(`[OAuth Metadata] Fetched authorization server metadata from ${wellKnownUrl}`);
+      return metadata;
+    }
+  } catch (error) {
+    console.warn(`[OAuth Metadata] Failed to fetch from ${wellKnownUrl}:`, error);
+  }
+
+  // Try OpenID Connect discovery endpoint as fallback
+  const oidcUrl = `${issuer}/.well-known/openid-configuration`;
+  try {
+    const response = await fetch(oidcUrl);
+    if (response.ok) {
+      const metadata = await response.json() as AuthorizationServerMetadata;
+      console.log(`[OAuth Metadata] Fetched authorization server metadata from ${oidcUrl}`);
+      return metadata;
+    }
+  } catch (error) {
+    console.warn(`[OAuth Metadata] Failed to fetch from ${oidcUrl}:`, error);
+  }
+
+  return null;
+}
+
+/**
+ * Get authorization server metadata with registration endpoint support
+ *
+ * This function retrieves authorization server metadata from the trusted IDP configuration
+ * or fetches it from the well-known endpoint. It includes the registration_endpoint
+ * for Dynamic Client Registration (RFC 7591).
+ *
+ * @param coreContext - Core context with authentication configuration
+ * @param issuer - Issuer URL (optional - uses first trusted IDP if not provided)
+ * @returns Authorization server metadata with registration endpoint
+ *
+ * @example
+ * ```typescript
+ * const metadata = await getAuthorizationServerMetadata(coreContext);
+ * if (metadata.registration_endpoint) {
+ *   console.log('Dynamic Client Registration supported at:', metadata.registration_endpoint);
+ * }
+ * ```
+ */
+export async function getAuthorizationServerMetadata(
+  coreContext: CoreContext,
+  issuer?: string
+): Promise<AuthorizationServerMetadata | null> {
+  const authConfig = coreContext.configManager.getAuthConfig();
+
+  // Use provided issuer or default to first trusted IDP
+  const targetIssuer = issuer || authConfig.trustedIDPs[0]?.issuer;
+
+  if (!targetIssuer) {
+    console.error('[OAuth Metadata] No issuer specified and no trusted IDPs configured');
+    return null;
+  }
+
+  // Find the IDP configuration
+  const idpConfig = authConfig.trustedIDPs.find((idp: { issuer: string }) => idp.issuer === targetIssuer);
+
+  if (!idpConfig) {
+    console.error(`[OAuth Metadata] No trusted IDP found for issuer: ${targetIssuer}`);
+    return null;
+  }
+
+  // Try to fetch metadata from well-known endpoint
+  const metadata = await fetchAuthorizationServerMetadata(targetIssuer);
+
+  if (metadata) {
+    return metadata;
+  }
+
+  // Fallback: construct metadata from IDP configuration
+  console.log('[OAuth Metadata] Constructing metadata from IDP configuration');
+  return {
+    issuer: targetIssuer,
+    token_endpoint: idpConfig.tokenExchange?.tokenEndpoint || `${targetIssuer}/token`,
+    jwks_uri: idpConfig.jwksUri || `${targetIssuer}/.well-known/jwks.json`,
+    grant_types_supported: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:token-exchange'],
+    response_types_supported: ['code'],
+    token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
+    // registration_endpoint is typically not in IDP config, must be fetched from well-known
+  };
 }

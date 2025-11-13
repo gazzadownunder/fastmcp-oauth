@@ -64,6 +64,7 @@ export function createOAuthMetadataServer(
   // This advertises the external IDP's endpoints to clients
   app.get('/.well-known/oauth-authorization-server', (req: Request, res: Response) => {
     const authConfig = coreContext.configManager.getAuthConfig();
+    const mcpConfig = coreContext.configManager.getFastMCPConfig();
     const primaryIDP = authConfig.trustedIDPs[0];
 
     if (!primaryIDP) {
@@ -74,7 +75,7 @@ export function createOAuthMetadataServer(
     }
 
     // Return authorization server metadata pointing to external IDP
-    const metadata = {
+    const metadata: Record<string, unknown> = {
       issuer: primaryIDP.issuer,
       authorization_endpoint: `${primaryIDP.issuer}/protocol/openid-connect/auth`,
       token_endpoint: `${primaryIDP.issuer}/protocol/openid-connect/token`,
@@ -87,6 +88,11 @@ export function createOAuthMetadataServer(
       code_challenge_methods_supported: ['S256'], // PKCE required
       scopes_supported: ['openid', 'profile', 'email'],
     };
+
+    // Add registration_endpoint if configured (RFC 7591 Dynamic Client Registration)
+    if (mcpConfig?.oauth?.registrationEndpoint) {
+      metadata.registration_endpoint = mcpConfig.oauth.registrationEndpoint;
+    }
 
     res.json(metadata);
   });
@@ -113,9 +119,8 @@ export function createOAuthMetadataServer(
       // Extract scopes from mcp.oauth.scopes configuration
       const mcpConfig = coreContext.configManager.getMCPConfig();
       const configuredScopes = mcpConfig?.oauth?.scopes;
-      const scopeString = configuredScopes && configuredScopes.length > 0
-        ? configuredScopes.join(' ')
-        : undefined;
+      const scopeString =
+        configuredScopes && configuredScopes.length > 0 ? configuredScopes.join(' ') : undefined;
 
       // Get server URL for resource_metadata parameter
       const mcpPort = options?.port || mcpConfig?.port || 3000;

@@ -3,7 +3,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org/)
 [![Jose](https://img.shields.io/badge/Jose-6.1.0-orange)](https://github.com/panva/jose)
-[![FastMCP](https://img.shields.io/badge/FastMCP-3.20.2-purple)](https://github.com/modelcontextprotocol/fastmcp)
+[![FastMCP](https://img.shields.io/badge/FastMCP-3.22.0-purple)](https://github.com/punkpeye/fastmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-748%20passing-brightgreen)](https://github.com/gazzadownunder/fastmcp-oauth)
 [![Coverage](https://img.shields.io/badge/coverage-89--100%25-brightgreen)](https://github.com/gazzadownunder/fastmcp-oauth)

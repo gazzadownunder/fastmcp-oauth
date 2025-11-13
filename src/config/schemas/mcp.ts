@@ -34,6 +34,23 @@ export const OAuthMetadataSchema = z.object({
     .describe('JWKS endpoint URL (defaults to first trustedIDP jwksUri)'),
   tokenEndpoint: z.string().url().optional().describe('Token endpoint URL'),
   authorizationEndpoint: z.string().url().optional().describe('Authorization endpoint URL'),
+  registrationEndpoint: z
+    .string()
+    .url()
+    .optional()
+    .refine(
+      (url) => {
+        if (!url) {
+          return true; // Optional field
+        }
+        const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+        return isDev || url.startsWith('https://');
+      },
+      {
+        message: 'Registration endpoint must use HTTPS (HTTP allowed in development/test)',
+      }
+    )
+    .describe('RFC 7591 Dynamic Client Registration endpoint (optional)'),
   supportedGrantTypes: z
     .array(z.string())
     .optional()

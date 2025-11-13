@@ -289,7 +289,9 @@ export class FastMCPOAuthServer {
     // Check if protected resource metadata should be included
     // Default: true (enabled by default, must be explicitly disabled)
     const includeProtectedResource = mcpConfig?.oauth?.protectedResource ?? true;
-    console.log(`[FastMCP OAuth Server]   Protected Resource Metadata: ${includeProtectedResource ? 'enabled' : 'disabled'}`);
+    console.log(
+      `[FastMCP OAuth Server]   Protected Resource Metadata: ${includeProtectedResource ? 'enabled' : 'disabled'}`
+    );
 
     // Build base config
     const oauthConfig: any = {
@@ -306,6 +308,11 @@ export class FastMCPOAuthServer {
         tokenEndpointAuthMethodsSupported: ['client_secret_basic', 'client_secret_post'],
       },
     };
+
+    // Add registration_endpoint if configured (RFC 7591 Dynamic Client Registration)
+    if (mcpConfig?.oauth?.registrationEndpoint) {
+      oauthConfig.authorizationServer.registrationEndpoint = mcpConfig.oauth.registrationEndpoint;
+    }
 
     // Conditionally include protected resource metadata based on configuration
     if (includeProtectedResource) {
@@ -413,7 +420,10 @@ export class FastMCPOAuthServer {
     console.log('[FastMCP OAuth Server] ✓ CoreContext validated');
 
     // 5. Create authentication middleware with CoreContext (required for WWW-Authenticate header generation)
-    const authMiddleware = new FastMCPAuthMiddleware(this.coreContext.authService, this.coreContext);
+    const authMiddleware = new FastMCPAuthMiddleware(
+      this.coreContext.authService,
+      this.coreContext
+    );
 
     // 6. Determine transport and port (needed for OAuth config)
     const transport = options.transport || mcpConfig?.transport || 'httpStream';
@@ -458,7 +468,8 @@ export class FastMCPOAuthServer {
           console.log(
             `[FastMCP OAuth Server]   Auto-registering SQL tools for "${moduleName}" with prefix "${toolPrefix}"`
           );
-          const descriptionSuffix = (moduleConfig as any)._comment || `(${(moduleConfig as any).database})`;
+          const descriptionSuffix =
+            (moduleConfig as any)._comment || `(${(moduleConfig as any).database})`;
           tools = createSQLToolsForModule({
             toolPrefix,
             moduleName,
@@ -469,7 +480,8 @@ export class FastMCPOAuthServer {
           console.log(
             `[FastMCP OAuth Server]   Auto-registering REST API tools for "${moduleName}" with prefix "${toolPrefix}"`
           );
-          const descriptionSuffix = (moduleConfig as any)._comment || `(${(moduleConfig as any).baseUrl})`;
+          const descriptionSuffix =
+            (moduleConfig as any)._comment || `(${(moduleConfig as any).baseUrl})`;
           tools = createRESTAPIToolsForModule({
             toolPrefix,
             moduleName,
@@ -526,7 +538,10 @@ export class FastMCPOAuthServer {
     console.log(`[FastMCP OAuth Server] Checking for custom SQL tools...`);
     console.log(`[FastMCP OAuth Server]   Enabled tool names:`, enabledToolNames);
     console.log(`[FastMCP OAuth Server]   Has custom SQL tools:`, hasCustomSqlTools);
-    console.log(`[FastMCP OAuth Server]   Has auto-registered SQL tools:`, hasAutoRegisteredSqlTools);
+    console.log(
+      `[FastMCP OAuth Server]   Has auto-registered SQL tools:`,
+      hasAutoRegisteredSqlTools
+    );
 
     const toolFactories = getAllToolFactories({
       excludeSqlTools: hasCustomSqlTools || hasAutoRegisteredSqlTools,
@@ -534,7 +549,9 @@ export class FastMCPOAuthServer {
 
     console.log(`[FastMCP OAuth Server] Found ${toolFactories.length} available tools`);
     if (hasCustomSqlTools) {
-      console.log(`[FastMCP OAuth Server] ✓ Custom SQL tools detected - excluding default SQL tools`);
+      console.log(
+        `[FastMCP OAuth Server] ✓ Custom SQL tools detected - excluding default SQL tools`
+      );
     }
     if (hasAutoRegisteredSqlTools) {
       console.log(
