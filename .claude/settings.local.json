@@ -109,7 +109,8 @@
       "Bash(gh pr create:*)",
       "Bash(npm pack:*)",
       "Read(//c/Users/gazza/AppData/Local/npm-cache/_logs/**)",
-      "Bash(npm publish:*)"
+      "Bash(npm publish:*)",
+      "Bash(git remote set-url:*)"
     ],
     "deny": [],
     "ask": []

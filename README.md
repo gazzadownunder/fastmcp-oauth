@@ -1782,14 +1782,25 @@ Our goal: **30 minutes from zero to working custom module**
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests (`npm test`)
-5. Run type checking (`npm run typecheck`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
+
+### Quick Start for Contributors
+
+1. **Fork and clone** the repository
+2. **Install dependencies:** `npm install`
+3. **Create a feature branch:** `git checkout -b feature/your-feature`
+4. **Make your changes** and add tests
+5. **Run quality checks locally:**
+   ```bash
+   npm run typecheck  # Type checking
+   npm run lint       # Linting
+   npm run format -- --check  # Format checking
+   npm test           # All tests
+   ```
+6. **Commit and push** your changes
+7. **Open a Pull Request** (PR template will guide you)
+
+**Note:** All PRs require passing CI checks and code review before merging. See [CONTRIBUTING.md](CONTRIBUTING.md) for complete guidelines.
 
 ## License
 
