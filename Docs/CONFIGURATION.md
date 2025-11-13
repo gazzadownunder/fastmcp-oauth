@@ -1496,7 +1496,8 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
     "stateless": true,                       // Optional: Stateless mode
     "oauth": {                               // Optional: OAuth metadata configuration
       "scopes": ["mcp:read", "mcp:write"],   // Optional: Advertised OAuth scopes
-      "protectedResource": true              // Optional: Include protected resource in WWW-Authenticate header (default: true)
+      "protectedResource": true,             // Optional: Include protected resource in WWW-Authenticate header (default: true)
+      "registrationEndpoint": "string"       // Optional: RFC 7591 Dynamic Client Registration endpoint
     },
     "enabledTools": {                        // Optional: Tool enable/disable map
       "sql-delegate": true,
@@ -1545,11 +1546,13 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
 - **Subfields:**
   - `scopes` (string[]): OAuth scopes to advertise in protected resource metadata
   - `protectedResource` (boolean): Include protected resource metadata in WWW-Authenticate header (default: `true`)
+  - `registrationEndpoint` (string): RFC 7591 Dynamic Client Registration endpoint URL
 - **Example:**
   ```json
   "oauth": {
     "scopes": ["mcp:read", "mcp:write", "mcp:admin"],
-    "protectedResource": true
+    "protectedResource": true,
+    "registrationEndpoint": "https://auth.company.com/register"
   }
   ```
 
@@ -1580,6 +1583,43 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
     "protectedResource": false  // Disable authorization server in WWW-Authenticate header
   }
   ```
+
+**Field: oauth.registrationEndpoint** (string, optional)
+- **Purpose:** RFC 7591 Dynamic Client Registration endpoint URL
+- **Usage:** Advertised in `/.well-known/oauth-authorization-server` metadata response to enable clients to dynamically register
+- **Format:** HTTPS URL (HTTP allowed in development/test mode only)
+- **Validation:** Must be valid URL; HTTPS required in production (`NODE_ENV !== 'development' && NODE_ENV !== 'test'`)
+- **RFC Compliance:** RFC 7591 (OAuth 2.0 Dynamic Client Registration Protocol), RFC 8414 (Authorization Server Metadata)
+- **Behavior:**
+  - When configured: `registration_endpoint` field appears in authorization server metadata
+  - When omitted: Field not included in metadata (standard behavior for servers without DCR support)
+- **Example:**
+  ```json
+  "oauth": {
+    "registrationEndpoint": "https://auth.company.com/register"
+  }
+  ```
+- **Metadata Response Example:**
+  ```json
+  {
+    "issuer": "https://auth.company.com",
+    "authorization_endpoint": "https://auth.company.com/protocol/openid-connect/auth",
+    "token_endpoint": "https://auth.company.com/protocol/openid-connect/token",
+    "jwks_uri": "https://auth.company.com/.well-known/jwks.json",
+    "registration_endpoint": "https://auth.company.com/register",
+    "response_types_supported": ["code"],
+    "grant_types_supported": ["authorization_code"],
+    ...
+  }
+  ```
+- **Use Cases:**
+  - Enable MCP clients to dynamically register without manual configuration
+  - Support multi-tenant deployments where clients register on-demand
+  - Facilitate automated client onboarding workflows
+- **Security Notes:**
+  - The MCP server only advertises this endpoint; it does NOT implement the registration handler
+  - Actual client registration logic must be implemented by your IDP or authorization server
+  - Ensure proper authentication/authorization on the registration endpoint to prevent unauthorized client registration
 
 **Field: enabledTools** (object, optional)
 - **Purpose:** Enable/disable specific tools
@@ -1634,7 +1674,8 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
     "port": 3000,
     "oauth": {
       "scopes": ["mcp:read", "mcp:write"],
-      "protectedResource": true
+      "protectedResource": true,
+      "registrationEndpoint": "https://auth.company.com/register"
     }
   }
 }
@@ -1700,7 +1741,8 @@ See [examples/multi-module-auto-registration.ts](../examples/multi-module-auto-r
     "version": "2.0.0",
     "oauth": {
       "scopes": ["mcp:read", "mcp:write", "sql:read", "sql:write"],
-      "protectedResource": true
+      "protectedResource": true,
+      "registrationEndpoint": "https://auth.company.com/register"
     },
     "enabledTools": {
       "sql1-delegate": true,
