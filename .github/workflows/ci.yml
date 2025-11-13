@@ -1,0 +1,71 @@
+name: CI Tests
+
+# Run on pull requests and pushes to main branch
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the code
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js 20 (required for File API in undici)
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build the project first (workspaces need core types)
+      - name: Build project
+        run: npm run build
+
+      # 5. Type check (after build so workspace packages can find core types)
+      - name: Run TypeScript type check
+        run: npm run typecheck
+
+      # 6. Run linter
+      - name: Run linter
+        run: npm run lint
+
+      # 7. Check code formatting
+      - name: Check code formatting
+        run: npm run format -- --check
+
+      # 8. Run all tests
+      - name: Run tests
+        run: npm test -- --run
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Run npm audit to check for vulnerabilities
+      - name: Run security audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true

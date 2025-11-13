@@ -1,6 +1,9 @@
 /node_modules
 node_modules
 
+# Claude Code settings
+.claude/
+
 # Test harness
 test-harness/config/test.env
 test-harness/.subject-token
@@ -15,7 +18,4 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
-/node_modules
-/node_modules
-/coverage
 /coverage
