@@ -42,7 +42,6 @@ import type {
   UnifiedConfig,
   CoreAuthConfig,
   DelegationConfig,
-  MCPConfig,
 } from './schemas/index.js';
 import { UnifiedConfigSchema, DEFAULT_MCP_CONFIG } from './schemas/index.js';
 

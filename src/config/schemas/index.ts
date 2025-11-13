@@ -9,8 +9,9 @@
 
 import { z } from 'zod';
 import { CoreAuthConfigSchema, type CoreAuthConfig } from './core.js';
-import { DelegationConfigSchema, type DelegationConfig } from './delegation.js';
-import { FastMCPConfigSchema, MCPConfigSchema, type FastMCPConfig, type MCPConfig } from './mcp.js';
+import { DelegationConfigSchema } from './delegation.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Re-exported for barrel export
+import { FastMCPConfigSchema, MCPConfigSchema, type FastMCPConfig } from './mcp.js';
 
 // ============================================================================
 // Re-exports from Layer Schemas

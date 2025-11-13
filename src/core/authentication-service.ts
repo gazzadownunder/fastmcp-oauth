@@ -18,7 +18,7 @@
 import { UNASSIGNED_ROLE } from './types.js';
 import type { UserSession, AuditEntry, RoleMapperResult } from './types.js';
 import { JWTValidator } from './jwt-validator.js';
-import type { JWTPayload, IDPConfig, ValidationContext } from './jwt-validator.js';
+import type { IDPConfig, ValidationContext } from './jwt-validator.js';
 import { RoleMapper } from './role-mapper.js';
 import type { RoleMappingConfig } from './role-mapper.js';
 import { SessionManager } from './session-manager.js';

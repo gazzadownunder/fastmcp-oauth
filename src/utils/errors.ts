@@ -4,7 +4,7 @@ export class OAuthSecurityError extends Error implements SecurityError {
   constructor(
     public code: string,
     message: string,
-    public statusCode: number = 500,
+    public statusCode = 500,
     public details?: Record<string, unknown>
   ) {
     super(message);
@@ -30,7 +30,7 @@ export class OAuthSecurityError extends Error implements SecurityError {
 export function createSecurityError(
   code: string,
   message: string,
-  statusCode: number = 500,
+  statusCode = 500,
   details?: Record<string, unknown>
 ): OAuthSecurityError {
   return new OAuthSecurityError(code, message, statusCode, details);

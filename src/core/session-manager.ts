@@ -10,7 +10,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { UNASSIGNED_ROLE, ROLE_ADMIN, ROLE_USER, ROLE_GUEST } from './types.js';
+import { UNASSIGNED_ROLE } from './types.js';
 import type { UserSession, RoleMapperResult } from './types.js';
 
 // ============================================================================
@@ -27,7 +27,7 @@ export interface JWTPayload {
   legacy_sam_account?: string;
   roles?: string[];
   scopes?: string | string[];
-  [key: string]: any; // Additional claims
+  [key: string]: unknown; // Additional claims
 }
 
 // ============================================================================
@@ -148,8 +148,8 @@ export class SessionManager {
    * @param rawSession - Raw session object (potentially old schema)
    * @returns Migrated UserSession with current schema
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   migrateSession(rawSession: any): UserSession {
-    const currentVersion = this.SESSION_VERSION;
     const sessionVersion = rawSession._version || 0;
 
     // Apply migrations based on version

@@ -351,7 +351,7 @@ export class DelegationRegistry {
       try {
         const healthy = await module.healthCheck();
         results.set(module.name, healthy);
-      } catch (error) {
+      } catch {
         results.set(module.name, false);
       }
     }

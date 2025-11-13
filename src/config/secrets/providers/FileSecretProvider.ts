@@ -39,7 +39,7 @@ export class FileSecretProvider implements ISecretProvider {
    * @param secretDir - The directory to search for secret files (e.g., "/run/secrets/")
    *                    Defaults to "/run/secrets" (standard for Docker/Kubernetes)
    */
-  constructor(secretDir: string = '/run/secrets') {
+  constructor(secretDir = '/run/secrets') {
     this.secretDir = secretDir;
   }
 

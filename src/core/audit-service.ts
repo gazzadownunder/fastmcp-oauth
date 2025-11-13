@@ -64,7 +64,7 @@ class InMemoryAuditStorage implements AuditStorage {
   private readonly maxEntries: number;
   private onOverflow?: (entries: AuditEntry[]) => void;
 
-  constructor(maxEntries: number = 10000, onOverflow?: (entries: AuditEntry[]) => void) {
+  constructor(maxEntries = 10000, onOverflow?: (entries: AuditEntry[]) => void) {
     this.maxEntries = maxEntries;
     this.onOverflow = onOverflow;
   }

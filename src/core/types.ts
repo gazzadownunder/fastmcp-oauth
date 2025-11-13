@@ -45,18 +45,23 @@ export const ROLE_GUEST = 'guest';
  */
 export interface CoreContext {
   /** Authentication service for JWT validation and session management */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authService: any; // Will be typed as AuthenticationService once implemented
 
   /** Audit service for centralized logging (Null Object Pattern) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   auditService: any; // Will be typed as AuditService once implemented
 
   /** Delegation registry for pluggable delegation modules */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   delegationRegistry: any; // Forward reference - typed later
 
   /** Configuration manager for config orchestration */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   configManager: any; // Will be typed as ConfigManager once implemented
 
   /** Token exchange service for delegation modules (Phase 2: per-module) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tokenExchangeService?: any; // Will be typed as TokenExchangeService once implemented
 }
 

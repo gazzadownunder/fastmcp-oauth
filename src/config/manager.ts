@@ -1,5 +1,4 @@
 import { readFile } from 'fs/promises';
-import { join } from 'path';
 import {
   UnifiedConfigSchema,
   isLegacyConfig,
@@ -12,9 +11,6 @@ import {
 import { migrateConfigData } from './migrate.js';
 import { SecretResolver, FileSecretProvider, EnvProvider } from './secrets/index.js';
 import { AuditService } from '../core/audit-service.js';
-
-// Legacy schema import for backward compatibility
-import { OAuthOBOConfigSchema, type OAuthOBOConfig } from './schema.js';
 
 export class ConfigManager {
   private config: UnifiedConfig | null = null;
@@ -58,7 +54,7 @@ export class ConfigManager {
 
     try {
       const configFile = await readFile(path, 'utf-8');
-      let rawConfig = JSON.parse(configFile);
+      const rawConfig = JSON.parse(configFile);
 
       // STEP 1: Resolve secrets BEFORE validation
       // This allows {"$secret": "NAME"} descriptors in the config

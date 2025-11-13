@@ -140,7 +140,7 @@ export function createOAuthMetadataServer(
   });
 
   // Generic error handler
-  app.use((err: any, req: Request, res: Response, next: any) => {
+  app.use((err: any, req: Request, res: Response, _next: any) => {
     console.error('[HTTP Server] Error:', err);
     res.status(err.statusCode || err.status || 500).json({
       error: 'server_error',
