@@ -32,21 +32,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 4. Type check
+      # 4. Build the project first (workspaces need core types)
+      - name: Build project
+        run: npm run build
+
+      # 5. Type check (after build so workspace packages can find core types)
       - name: Run TypeScript type check
         run: npm run typecheck
 
-      # 5. Run linter
+      # 6. Run linter
       - name: Run linter
         run: npm run lint
 
-      # 6. Check code formatting
+      # 7. Check code formatting
       - name: Check code formatting
         run: npm run format -- --check
-
-      # 7. Build the project
-      - name: Build project
-        run: npm run build
 
       # 8. Run all tests
       - name: Run tests
