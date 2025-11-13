@@ -1,0 +1,10 @@
+# Code Owners for fastmcp-oauth
+# These owners will be automatically requested for review when someone opens a pull request
+
+# Global owner for all files
+* @gazzadownunder
+
+# Specific ownership (optional - adjust as needed)
+/src/core/ @gazzadownunder
+/src/mcp/ @gazzadownunder
+/src/delegation/ @gazzadownunder
