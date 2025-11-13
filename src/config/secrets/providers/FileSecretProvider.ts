@@ -50,17 +50,31 @@ export class FileSecretProvider implements ISecretProvider {
    * Returns undefined if the file doesn't exist or cannot be read.
    *
    * Security Notes:
-   * - No path traversal checks needed since logicalName comes from trusted config, not user input
-   * - However, we still normalize paths to prevent accidental traversal
+   * - Validates that resolved path stays within secretDir (prevents path traversal)
+   * - Rejects paths containing '..' or starting with '/'
    * - File permissions should be set to 0400 (read-only) in production
    *
    * @param logicalName - The logical name of the secret (e.g., "DB_PASSWORD")
    * @returns The secret string (trimmed), or undefined if not found
    */
   public async resolve(logicalName: string): Promise<string | undefined> {
+    // Security: Prevent path traversal attacks
+    // Reject any path containing '..' or starting with '/'
+    if (logicalName.includes('..') || logicalName.startsWith('/')) {
+      return undefined;
+    }
+
     // Construct file path
-    // Note: path.join handles normalization automatically (prevents ../ traversal)
     const filePath = path.join(this.secretDir, logicalName);
+
+    // Security: Verify resolved path is still within secretDir
+    const normalizedSecretDir = path.resolve(this.secretDir);
+    const normalizedFilePath = path.resolve(filePath);
+
+    if (!normalizedFilePath.startsWith(normalizedSecretDir + path.sep)) {
+      // Path escaped secretDir boundary - reject
+      return undefined;
+    }
 
     try {
       // Read file contents
