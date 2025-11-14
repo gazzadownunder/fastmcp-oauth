@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FastMCP OAuth On-Behalf-Of (OBO) Framework - A production-ready, modular OAuth 2.1 authentication and delegation framework for FastMCP. Provides on-behalf-of (OBO) authentication with pluggable delegation modules for SQL Server, Kerberos, and custom integrations.
 
-**Current Status:** Phases 1-6 completed - Modular architecture with Core, Delegation, and MCP layers fully implemented, tested, and documented. Secret management (v3.2) production-ready with 72/72 tests passing.
+**Current Status:** Phases 1-6 completed - Modular architecture with Core, Delegation, and MCP layers fully implemented, tested, and documented. Secret management (v3.2) production-ready with 865 tests (853 passing, 12 skipped).
 
 **Architecture Highlights:**
 - **Zero delegation dependencies** - Core framework has no SQL/Kerberos dependencies. Optional packages (`@ fastmcp-oauth/sql-delegation`, `@ fastmcp-oauth/kerberos-delegation`) installed only if needed.
@@ -945,7 +945,7 @@ spec:
 - **EnvProvider:** 23 tests (100% coverage)
 - **SecretResolver:** 28 tests (98% coverage)
 
-**Test Coverage:** 72/72 tests passing (100%), >95% code coverage
+**Test Coverage:** 865 tests (853 passing, 12 skipped), >95% code coverage
 
 **Security Test Scenarios:**
 - Path traversal prevention (blocks `../`, `..\\`)
@@ -1439,6 +1439,60 @@ MCP servers only need to know about trusted authorization servers:
 ```
 
 No OAuth redirect configuration needed - that's the client's responsibility.
+
+---
+
+### Dynamic Client Registration (RFC 7591)
+
+**Status:** Discovery Support | **Version:** v3.2 | **Added:** 2025-01-14
+
+The framework supports **Discovery of Dynamic Client Registration (DCR)** endpoints through RFC 8414 Authorization Server Metadata. This enables MCP clients to automatically discover where to register with the Identity Provider.
+
+#### Key Points
+
+- **IDP Feature** - DCR is implemented by the Authorization Server (IDP), not by the MCP server (Resource Server)
+- **Discovery Only** - The MCP server advertises the IDP's DCR endpoint in the `/.well-known/oauth-authorization-server` metadata
+- **Client-Initiated** - MCP clients register with the IDP using the discovered `registration_endpoint`
+- **Optional Configuration** - The `registrationEndpoint` field is optional in the MCP configuration
+
+#### Configuration
+
+```json
+{
+  "mcp": {
+    "oauth": {
+      "registrationEndpoint": "https://auth.company.com/register"
+    }
+  }
+}
+```
+
+#### Metadata Response
+
+The `/.well-known/oauth-authorization-server` endpoint returns:
+
+```json
+{
+  "issuer": "https://auth.company.com",
+  "authorization_endpoint": "https://auth.company.com/authorize",
+  "token_endpoint": "https://auth.company.com/token",
+  "registration_endpoint": "https://auth.company.com/register",
+  "jwks_uri": "https://auth.company.com/.well-known/jwks.json"
+}
+```
+
+#### Client Registration Flow
+
+1. **Client discovers DCR endpoint** from `/.well-known/oauth-authorization-server`
+2. **Client registers with IDP** using `POST /register` (IDP's endpoint)
+3. **IDP returns credentials** (`client_id`, `client_secret`)
+4. **Client performs OAuth flow** with IDP using credentials
+5. **Client calls MCP server** with Bearer token from IDP
+6. **MCP server validates token** and enforces authorization
+
+**Architecture Principle:** The MCP server is a **Resource Server** and does NOT implement the DCR endpoint itself. The `registrationEndpoint` in the configuration points to the IDP's DCR endpoint for client discovery purposes only.
+
+**Documentation:** [Docs/DYNAMIC-CLIENT-REGISTRATION.md](Docs/DYNAMIC-CLIENT-REGISTRATION.md) - Complete DCR analysis and implementation guide
 
 ---
 

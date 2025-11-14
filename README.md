@@ -5,8 +5,8 @@
 [![Jose](https://img.shields.io/badge/Jose-6.1.0-orange)](https://github.com/panva/jose)
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.22.0-purple)](https://github.com/punkpeye/fastmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-748%20passing-brightgreen)](https://github.com/gazzadownunder/fastmcp-oauth)
-[![Coverage](https://img.shields.io/badge/coverage-89--100%25-brightgreen)](https://github.com/gazzadownunder/fastmcp-oauth)
+[![Tests](https://img.shields.io/badge/tests-853%20passing-brightgreen)](https://github.com/gazzadownunder/fastmcp-oauth)
+[![Coverage](https://img.shields.io/badge/coverage->90%25-brightgreen)](https://github.com/gazzadownunder/fastmcp-oauth)
 
 **Production-Ready OAuth Authentication & Delegation Platform**
 
@@ -19,7 +19,7 @@ A developer-friendly, modular OAuth 2.1 authentication framework for MCP (Model 
 -  **RFC 8693 Token Exchange** - Standards-compliant on-behalf-of delegation
 -  **81% Latency Reduction** - Optional encrypted token cache (AES-256-GCM with AAD binding)
 -  **8 Delegation Examples** - REST, GraphQL, gRPC, SQL, Kerberos, LDAP, Filesystem, Token Exchange
--  **Production-Ready** - 748+ tests passing, 89-100% coverage, all 6 phases complete
+-  **Production-Ready** - 865 tests (853 passing), >90% coverage, all 6 phases complete
 -  **Developer Tooling** - CLI scaffolding, config validation, testing utilities
 
 **Transform OAuth 2.1 authentication and token exchange from a 6-week development effort into a 15-minute configuration task.**
@@ -74,7 +74,7 @@ The framework follows a **layered modular architecture** with strict one-way dep
 
 **Project Timeline**: January 2025 → October 2025 (9 months)
 
-**Test Coverage**: 748/748 tests passing (100% pass rate)
+**Test Coverage**: 865 tests (853 passing, 12 skipped)
 -  Phase 1: Core Extension APIs (11/12 passing - 91.7%)
 -  Phase 2: Token Exchange Context (8/8 passing - 100%)
 -  Phase 3: Documentation & Examples (Manual validation - 100%)
@@ -101,6 +101,8 @@ The framework follows a **layered modular architecture** with strict one-way dep
 -  **RFC 6750 Bearer Token** - Standard Authorization header support
 -  **RFC 7517 JWKS Discovery** - Automatic public key rotation
 -  **RFC 8707 Resource Indicators** - Token audience binding
+-  **RFC 8414 Authorization Server Metadata** - IDP metadata discovery with DCR endpoint
+-  **RFC 7591 Dynamic Client Registration** - DCR endpoint discovery (IDP feature)
 
 ### Core Framework 
 -  **Modular Architecture** - Core, Delegation, MCP layers (one-way dependencies)
@@ -117,6 +119,11 @@ The framework follows a **layered modular architecture** with strict one-way dep
   - 81% latency reduction (3300ms → 620ms for 20 delegation calls)
   - Perfect forward secrecy with session-specific keys
   - Automatic invalidation on JWT refresh
+-  **Secure Secrets Management** - Dynamic configuration resolution (v3.2+)
+  - Kubernetes/Docker secret mounts (FileSecretProvider)
+  - Environment variable fallback (EnvProvider)
+  - Custom vault integration (AWS, Azure, HashiCorp)
+  - Zero secrets in Git (configuration-driven)
 -  **SQL Injection Prevention** - Multi-layer validation, parameterized queries only
 -  **Dangerous Operation Blocking** - DROP/CREATE/ALTER/TRUNCATE blocked
 -  **Comprehensive Audit Logging** - Null Object Pattern (works without config)
@@ -146,8 +153,8 @@ The framework follows a **layered modular architecture** with strict one-way dep
 **Note**: REST API, SQL, and Kerberos are optional packages - install only what you need. Core framework has zero delegation dependencies.
 
 ### Quality & Testing
--  **748 Tests Passing** - 100% pass rate
--  **89-100% Coverage** - Comprehensive unit and integration tests
+-  **865 Tests (853 Passing)** - 100% pass rate
+-  **>90% Coverage** - Comprehensive unit and integration tests
 -  **Zero TypeScript Errors** - Strict mode enabled
 -  **Zero Lint Errors** - ESLint enforcement
 -  **Security Testing** - Attack resistance validated (impersonation, replay, spoofing, SQL injection)
@@ -1542,7 +1549,7 @@ npm run test:coverage
 npm test -- --watch
 ```
 
-**Test Coverage**: 748/748 tests passing (100% pass rate)
+**Test Coverage**: 865 tests (853 passing, 12 skipped)
 -  **Core layer**: 280+ tests
   - JWT Validator: 75 tests (89.71% statements, 90.42% branches, 100% functions)
   - Authorization: 63 tests (100% statements, 94.3% branches, 100% functions)
@@ -1772,6 +1779,9 @@ Our goal: **30 minutes from zero to working custom module**
 - **[Docs/MULTI-SERVER.md](Docs/MULTI-SERVER.md)** - Multi-server deployment patterns with tool prefixing
 - **[Docs/TOOL-FACTORIES.md](Docs/TOOL-FACTORIES.md)** - Tool creation approaches and best practices
 - **[Docs/API-REFERENCE.md](Docs/API-REFERENCE.md)** - Complete API documentation with TypeScript signatures
+- **[Docs/TESTING.md](Docs/TESTING.md)** - Comprehensive testing guide (unit, integration, performance, test-harness)
+- **[Docs/DYNAMIC-CLIENT-REGISTRATION.md](Docs/DYNAMIC-CLIENT-REGISTRATION.md)** - RFC 7591 DCR analysis and implementation guide
+- **[Docs/SECRETS-MANAGEMENT.md](Docs/SECRETS-MANAGEMENT.md)** - Secure secrets management with dynamic resolution
 - **[Docs/TROUBLESHOOTING.md](Docs/TROUBLESHOOTING.md)** - Common issues and debugging tips
 - **[examples/rest-api-delegation.ts](examples/rest-api-delegation.ts)** - REST API integration example
 - **[examples/custom-delegation.ts](examples/custom-delegation.ts)** - Custom delegation module example
@@ -1808,7 +1818,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
-- [FastMCP](https://github.com/modelcontextprotocol/fastmcp) - FastMCP TypeScript framework
+- [FastMCP](https://github.com/punkpeye/fastmcp) - FastMCP TypeScript framework
 - [jose](https://github.com/panva/jose) - JWT and JWK library
 - [Zod](https://github.com/colinhacks/zod) - TypeScript-first schema validation
 
@@ -1823,7 +1833,7 @@ The **FastMCP OAuth Framework** transforms OAuth authentication from a complex, 
 | **Code Reduction** | 90% (50+ lines → 5 lines per tool) |
 | **Latency Improvement** | 81% (with encrypted token cache) |
 | **Developer Time** | 92% faster (3 hours → 15 minutes) |
-| **Test Coverage** | 89-100% (748 tests passing) |
+| **Test Coverage** | >90% (865 tests, 853 passing) |
 | **Phases Complete** | 6/6 (100%)   |
 | **Project Status** | **Production Ready (v3.2)** |
 
@@ -1868,4 +1878,4 @@ The **FastMCP OAuth Framework** transforms OAuth authentication from a complex, 
 
 ---
 
-**Current Status**: Production-ready (v3.2) | **Phases Complete**: 6/6 (100%)  | **Test Coverage**: 89-100% (748 tests)
+**Current Status**: Production-ready (v3.2) | **Phases Complete**: 6/6 (100%)  | **Test Coverage**: >90% (865 tests, 853 passing)
