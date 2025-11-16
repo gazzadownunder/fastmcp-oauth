@@ -281,6 +281,7 @@
     },
     "oauth": {
       "protectedResource": true,
+      "registrationEndpoint": "http://localhost:8080/realms/mcp-security/register",
       "scopes": [
         "openid"
       ]

@@ -2,10 +2,13 @@
   "auth": {
     "trustedIDPs": [
       {
-        "issuer": "http://localhost:8080/realms/mcp_security",
-        "discoveryUrl": "http://localhost:8080/realms/mcp_security/.well-known/openid-configuration",
-        "jwksUri": "http://localhost:8080/realms/mcp_security/protocol/openid-connect/certs",
+        "name": "test-idp",
+        "issuer": "https://auth.example.com",
+        "discoveryUrl": "https://auth.example.com/.well-known/openid-configuration",
+        "jwksUri": "https://auth.example.com/.well-known/jwks.json",
+        "clientId": "mcp-oauth",
         "audience": "mcp-oauth",
+        "scope": "openid profile",
         "algorithms": ["RS256"],
         "claimMappings": {
           "legacyUsername": "legacy_name",
@@ -15,12 +18,11 @@
           "username": "preferred_username"
         },
         "roleMappings": {
-          "admin": ["admin", "administrator", "realm-admin", "mcp-oauth-admin"],
+          "admin": ["admin", "administrator"],
           "user": ["user", "authenticated"],
-          "write": ["mcp-oauth-write"],
-          "read": ["mcp-oauth-read"],
           "guest": ["guest", "anonymous"],
-          "defaultRole": "guest"
+          "defaultRole": "guest",
+          "rejectUnmappedRoles": false
         },
         "security": {
           "clockTolerance": 60,
@@ -31,7 +33,7 @@
     ],
     "rateLimiting": {
       "enabled": true,
-      "maxRequests": 100,
+      "maxRequests": 1000,
       "windowMs": 900000
     },
     "audit": {
@@ -40,18 +42,21 @@
       "retentionDays": 90
     }
   },
+  "delegation": {
+    "modules": {}
+  },
   "mcp": {
-    "serverName": "MCP OAuth v2 Test Server",
-    "version": "2.0.0",
-    "transport": "http-stream",
-    "port": 3000,
+    "serverName": "MCP OAuth Integration Test Server",
+    "version": "3.0.0",
+    "transport": "stdio",
+    "enabledTools": {
+      "health-check": true,
+      "user-info": true,
+      "audit-log": true
+    },
     "oauth": {
-      "scopes": [
-        "mcp:read",
-        "mcp:write",
-        "mcp:admin"
-      ],
-      "protectedResource": true
+      "protectedResource": true,
+      "scopes": ["openid"]
     }
   }
 }

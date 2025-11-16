@@ -67,7 +67,7 @@ async function main() {
     console.error('✗ MCP server is not reachable');
     console.error(`  Expected at: ${mcpCaller.getServerUrl()}`);
     console.error('  Start the server with:');
-    console.error('    CONFIG_PATH=./test-harness/config/keycloak-with-sql.json npm start');
+    console.error('    CONFIG_PATH=./test-harness/config/phase3-test-config.json npm start');
     process.exit(1);
   }
 
