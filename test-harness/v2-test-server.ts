@@ -49,7 +49,7 @@ if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'development';
 }
 
-const CONFIG_PATH = process.env.CONFIG_PATH || './test-harness/config/v2-keycloak-oauth-only.json';
+const CONFIG_PATH = process.env.CONFIG_PATH || './test-harness/config/phase3-test-config.json';
 const SERVER_PORT = parseInt(process.env.SERVER_PORT || '3000', 10);
 const NODE_ENV = process.env.NODE_ENV;
 

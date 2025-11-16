@@ -1,6 +1,6 @@
 {
   "name": "fastmcp-oauth",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Modular OAuth 2.1 authentication and delegation framework for FastMCP with pluggable delegation modules",
   "type": "module",
   "main": "dist/index.js",
@@ -83,7 +83,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "fastmcp": "^3.22.0",
+    "fastmcp": "^3.23.0",
     "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^3.0.5",
     "jose": "^6.1.0",
