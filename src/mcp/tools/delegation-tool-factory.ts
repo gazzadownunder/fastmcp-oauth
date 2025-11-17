@@ -301,7 +301,10 @@ export function createDelegationTool<TParams extends z.ZodType>(
               secError.message // Human-readable error description
             );
 
-            console.log('[DelegationToolFactory] ✓ Generated WWW-Authenticate for 403:', wwwAuthenticate);
+            console.log(
+              '[DelegationToolFactory] ✓ Generated WWW-Authenticate for 403:',
+              wwwAuthenticate
+            );
 
             // Throw Response object with WWW-Authenticate header
             // mcp-proxy's handleResponseError() (startHTTPServer.ts:72-96) handles this

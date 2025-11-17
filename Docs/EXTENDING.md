@@ -25,7 +25,7 @@ This guide shows developers how to extend the MCP OAuth Framework with custom de
 ### Built-in Tools Example (10 lines)
 
 ```typescript
-import { getAllToolFactories } from 'fastmcp-oauth-obo';
+import { getAllToolFactories } from 'fastmcp-oauth';
 
 // Register all built-in tools (sql-delegate, health-check, user-info)
 const toolFactories = getAllToolFactories();
@@ -843,7 +843,7 @@ import {
   ConfigManager,
   ConfigOrchestrator,
   FastMCPAuthMiddleware
-} from 'fastmcp-oauth-obo';
+} from 'fastmcp-oauth';
 import { FastMCP } from 'fastmcp';
 
 async function main() {

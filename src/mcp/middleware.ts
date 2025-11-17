@@ -167,14 +167,15 @@ export class FastMCPAuthMiddleware {
           // Extract scopes from mcp.oauth.scopes configuration
           const mcpConfig = this.coreContext.configManager.getMCPConfig();
           const configuredScopes = mcpConfig?.oauth?.scopes;
-          const scopeString = configuredScopes && configuredScopes.length > 0
-            ? configuredScopes.join(' ')
-            : undefined;
+          const scopeString =
+            configuredScopes && configuredScopes.length > 0
+              ? configuredScopes.join(' ')
+              : undefined;
 
           console.log('[FastMCPAuthMiddleware] Scope extraction debug:', {
             configuredScopes,
             scopeString,
-            hasScopes: !!scopeString
+            hasScopes: !!scopeString,
           });
 
           // Get server URL for resource_metadata parameter
@@ -212,7 +213,10 @@ export class FastMCPAuthMiddleware {
 
         // CRITICAL: Log WWW-Authenticate header generation for OAuth discovery debugging
         if (wwwAuthenticate) {
-          console.log('[FastMCPAuthMiddleware] ✓ WWW-Authenticate header generated:', wwwAuthenticate);
+          console.log(
+            '[FastMCPAuthMiddleware] ✓ WWW-Authenticate header generated:',
+            wwwAuthenticate
+          );
         } else {
           console.warn(
             '[FastMCPAuthMiddleware] ⚠️ WARNING: No WWW-Authenticate header generated for 401 response!'

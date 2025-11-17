@@ -1,6 +1,6 @@
 # FastMCP OAuth OBO Framework - Examples
 
-This directory contains example applications demonstrating how to use the `fastmcp-oauth-obo` framework in your own projects.
+This directory contains example applications demonstrating how to use the `fastmcp-oauth` framework in your own projects.
 
 ## Framework vs. Application Code
 
@@ -10,7 +10,7 @@ This directory contains example applications demonstrating how to use the `fastm
 - `src/mcp/` - FastMCP integration, middleware, tools
 
 **Application code** (what you write):
-- Import framework modules: `import { FastMCPOAuthServer } from 'fastmcp-oauth-obo'`
+- Import framework modules: `import { FastMCPOAuthServer } from 'fastmcp-oauth'`
 - Configure via JSON (no code changes to framework)
 - Compose your server with the modules you need
 
@@ -151,15 +151,15 @@ Shows the token exchange pattern for API delegation:
 When using this framework in your own project:
 
 ```bash
-npm install fastmcp-oauth-obo
+npm install fastmcp-oauth
 ```
 
 Then create your application entry point:
 
 ```typescript
 // my-app/server.ts
-import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
-import { SQLDelegationModule } from 'fastmcp-oauth-obo/delegation';
+import { FastMCPOAuthServer } from 'fastmcp-oauth';
+import { SQLDelegationModule } from 'fastmcp-oauth/delegation';
 
 const server = new FastMCPOAuthServer('./config/unified-config.json');
 
@@ -199,33 +199,33 @@ See `config/oauth-obo-test.json` for a complete example.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│               Your Application Code                      │
+│               Your Application Code                     │
 │  examples/*.ts - What developers write                  │
-│  - Server startup                                        │
-│  - Configuration loading                                 │
-│  - Module registration                                   │
+│  - Server startup                                       │
+│  - Configuration loading                                │
+│  - Module registration                                  │
 └──────────────────┬──────────────────────────────────────┘
                    │ imports from ↓
 ┌─────────────────────────────────────────────────────────┐
-│                  MCP Layer (Framework)                   │
+│                  MCP Layer (Framework)                  │
 │  src/mcp/ - FastMCP Integration                         │
-│  - FastMCPOAuthServer wrapper                                │
-│  - Tool factories                                        │
+│  - FastMCPOAuthServer wrapper                           │
+│  - Tool factories                                       │
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
-│               Delegation Layer (Framework)               │
+│               Delegation Layer (Framework)              │
 │  src/delegation/ - Pluggable modules                    │
-│  - SQLDelegationModule                                   │
-│  - Custom module support                                 │
+│  - SQLDelegationModule                                  │
+│  - Custom module support                                │
 └──────────────────┬──────────────────────────────────────┘
                    │ depends on ↓
 ┌─────────────────────────────────────────────────────────┐
-│                Core Layer (Framework)                    │
+│                Core Layer (Framework)                   │
 │  src/core/ - Standalone auth services                   │
-│  - AuthenticationService                                 │
-│  - JWTValidator                                          │
-│  - RoleMapper, SessionManager                            │
+│  - AuthenticationService                                │
+│  - JWTValidator                                         │
+│  - RoleMapper, SessionManager                           │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -236,7 +236,7 @@ See `config/oauth-obo-test.json` for a complete example.
 - Built with `npm run build` → `dist/examples/`
 
 **In production** (user's project):
-- Applications import from `fastmcp-oauth-obo` (npm package)
+- Applications import from `fastmcp-oauth` (npm package)
 - Users never modify framework code
 - All customization via configuration
 
@@ -320,6 +320,5 @@ See `config/oauth-obo-test.json` for a complete example.
 ## Further Reading
 
 - [Docs/EXTENDING.md](../Docs/EXTENDING.md) - Complete guide to creating custom modules
-- [Docs/refactor.md](../Docs/refactor.md) - Architecture details
 - [CLAUDE.md](../CLAUDE.md) - Framework overview
-- [Docs/oauth2 implementation.md](../Docs/oauth2%20implementation.md) - OAuth 2.1 OBO pattern
+- 

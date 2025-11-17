@@ -167,7 +167,7 @@ The framework follows a **layered modular architecture** with strict one-way dep
 
 ```bash
 # Core framework (required)
-npm install fastmcp-oauth-obo
+npm install fastmcp-oauth
 
 # Optional delegation packages (install only what you need)
 npm install @ fastmcp-oauth/rest-api-delegation   # For REST/HTTP APIs (most common)
@@ -186,7 +186,7 @@ npm run build
 Use the `MCPOAuthServer` wrapper for zero-boilerplate setup:
 
 ```typescript
-import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+import { MCPOAuthServer } from 'fastmcp-oauth';
 
 async function main() {
   // 1. Create server with config path
@@ -226,7 +226,7 @@ import {
   ConfigOrchestrator,
   MCPAuthMiddleware,
   getAllToolFactories
-} from 'fastmcp-oauth-obo';
+} from 'fastmcp-oauth';
 import { FastMCP } from 'fastmcp';
 
 async function main() {
@@ -301,7 +301,7 @@ The framework provides **built-in SQL delegation tools** that work out-of-the-bo
 **Use Case:** You want SQL delegation with minimal code.
 
 ```typescript
-import { getAllToolFactories } from 'fastmcp-oauth-obo';
+import { getAllToolFactories } from 'fastmcp-oauth';
 
 // Get all built-in tools (3 lines!)
 const toolFactories = getAllToolFactories();
@@ -352,7 +352,7 @@ for (const factory of toolFactories) {
 **Recommended Approach:** Use `createDelegationTool()` factory (see [Docs/EXTENDING.md](Docs/EXTENDING.md)):
 
 ```typescript
-import { createDelegationTool } from 'fastmcp-oauth-obo';
+import { createDelegationTool } from 'fastmcp-oauth';
 
 // Create custom tool in 5 lines
 const myTool = createDelegationTool('postgresql', {
@@ -433,7 +433,7 @@ const myTool = createDelegationTool('postgresql', {
 
 **Option 1: Built-in Tools (Recommended - 10 lines)**
 ```typescript
-import { getAllToolFactories } from 'fastmcp-oauth-obo';
+import { getAllToolFactories } from 'fastmcp-oauth';
 
 // Register all built-in tools
 const toolFactories = getAllToolFactories();
@@ -453,7 +453,7 @@ for (const factory of toolFactories) {
 
 **Option 2: Factory Pattern (If you need custom tool names - 20 lines/tool)**
 ```typescript
-import { createDelegationTool } from 'fastmcp-oauth-obo';
+import { createDelegationTool } from 'fastmcp-oauth';
 
 const customTool = createDelegationTool('postgresql', {
   name: 'custom_sql_query',  // Your custom name
@@ -493,7 +493,7 @@ MCP Server 2 (Sales Database) → tools: sql-delegate, health-check, user-info  
 The framework provides `createSQLToolsForModule()` to create tools with custom prefixes:
 
 ```typescript
-import { createSQLToolsForModule } from 'fastmcp-oauth-obo';
+import { createSQLToolsForModule } from 'fastmcp-oauth';
 
 // For HR database server
 const hrTools = createSQLToolsForModule('hr', 'postgresql');
@@ -530,7 +530,7 @@ import {
   createSQLToolsForModule,
   createHealthCheckTool,
   createUserInfoTool
-} from 'fastmcp-oauth-obo';
+} from 'fastmcp-oauth';
 
 // Register tools for database 1 (with 'db1' prefix)
 const db1Tools = createSQLToolsForModule('db1', 'postgresql1', '(HR Database)');
@@ -605,7 +605,7 @@ const widgetsTools = createSQLToolsForModule('widgets', 'postgresql_widgets', '(
 If you're using prefixed tools, exclude the default `sql-delegate` tool:
 
 ```typescript
-import { getAllToolFactories, createSQLToolsForModule } from 'fastmcp-oauth-obo';
+import { getAllToolFactories, createSQLToolsForModule } from 'fastmcp-oauth';
 
 // Get non-SQL tools only (health-check, user-info, file-browse)
 const nonSqlTools = getAllToolFactories({ excludeSqlTools: true });
@@ -682,7 +682,7 @@ The framework includes 4 comprehensive examples:
 Use the authentication framework standalone without MCP or delegation:
 
 ```typescript
-import { AuthenticationService, AuditService } from 'fastmcp-oauth-obo';
+import { AuthenticationService, AuditService } from 'fastmcp-oauth';
 
 const auditService = new AuditService({ enabled: true });
 const authService = new AuthenticationService(authConfig, auditService);
@@ -700,7 +700,7 @@ if (!result.rejected) {
 Add SQL delegation without MCP:
 
 ```typescript
-import { AuthenticationService, DelegationRegistry } from 'fastmcp-oauth-obo';
+import { AuthenticationService, DelegationRegistry } from 'fastmcp-oauth';
 import { SQLDelegationModule } from '@ fastmcp-oauth/sql-delegation';
 
 const registry = new DelegationRegistry(auditService);
@@ -720,7 +720,7 @@ const result = await registry.delegate('sql', session, 'query', {
 Create a custom delegation module (e.g., REST API delegation):
 
 ```typescript
-import { DelegationModule, DelegationResult } from 'fastmcp-oauth-obo';
+import { DelegationModule, DelegationResult } from 'fastmcp-oauth';
 
 class APIDelegationModule implements DelegationModule {
   public readonly name = 'api';
@@ -869,7 +869,7 @@ This tutorial walks you through creating a complete MCP server with OAuth authen
 ### Step 1: Install Dependencies
 
 ```bash
-npm install fastmcp-oauth-obo fastmcp
+npm install fastmcp-oauth fastmcp
 # or from source
 git clone https://github.com/gazzadownunder/fastmcp-oauth.git
 cd fastmcp-oauth && npm install && npm run build
@@ -981,7 +981,7 @@ Create `config/unified-config.json`:
 Create `server.ts`:
 
 ```typescript
-import { MCPOAuthServer } from 'fastmcp-oauth-obo';
+import { MCPOAuthServer } from 'fastmcp-oauth';
 
 async function main() {
   const server = new MCPOAuthServer('./config/unified-config.json');
@@ -1058,7 +1058,7 @@ curl -X POST http://localhost:3000/mcp \
 ### Step 6 (Optional): Add Custom Delegation Module
 
 ```typescript
-import { MCPOAuthServer, DelegationModule } from 'fastmcp-oauth-obo';
+import { MCPOAuthServer, DelegationModule } from 'fastmcp-oauth';
 
 class MyAPIModule implements DelegationModule {
   readonly name = 'myapi';
@@ -1568,7 +1568,7 @@ npm test -- --watch
 Implement the `DelegationModule` interface:
 
 ```typescript
-import { DelegationModule, DelegationResult, UserSession } from 'fastmcp-oauth-obo';
+import { DelegationModule, DelegationResult, UserSession } from 'fastmcp-oauth';
 
 class MyCustomModule implements DelegationModule {
   public readonly name = 'my-module';

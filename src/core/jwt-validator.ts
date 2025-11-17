@@ -122,7 +122,9 @@ export class JWTValidator {
    * @param idpConfigs - Array of trusted IDP configurations
    */
   async initialize(idpConfigs: IDPConfig[]): Promise<void> {
-    if (this.initialized) {return;}
+    if (this.initialized) {
+      return;
+    }
 
     this.idpConfigs = idpConfigs;
 

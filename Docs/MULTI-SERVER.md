@@ -97,7 +97,7 @@ The framework provides **two approaches** to create tools with custom prefixes:
 **Step 2: Start server**
 
 ```typescript
-import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
+import { FastMCPOAuthServer } from 'fastmcp-oauth';
 
 const server = new FastMCPOAuthServer('./config.json');
 await server.start({ transport: 'httpStream', port: 3000 });
@@ -147,7 +147,7 @@ See [CONFIGURATION.md](CONFIGURATION.md#delegation-section) for complete configu
 import {
   createSQLToolsForModule,
   getAllToolFactories
-} from 'fastmcp-oauth-obo';
+} from 'fastmcp-oauth';
 
 // Get non-SQL tools
 const nonSqlTools = getAllToolFactories({ excludeSqlTools: true });
@@ -367,7 +367,7 @@ await server.start({ transport: 'httpStream', port: 3000 });
 
 **Server Code (15 lines):**
 ```typescript
-import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
+import { FastMCPOAuthServer } from 'fastmcp-oauth';
 
 async function main() {
   const server = new FastMCPOAuthServer('./config.json');

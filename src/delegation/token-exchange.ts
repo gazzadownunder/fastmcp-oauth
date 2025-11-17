@@ -17,11 +17,7 @@
  */
 
 import type { AuditEntry } from '../core/index.js';
-import type {
-  TokenExchangeParams,
-  TokenExchangeResult,
-  DelegationTokenClaims,
-} from './types.js';
+import type { TokenExchangeParams, TokenExchangeResult, DelegationTokenClaims } from './types.js';
 import { EncryptedTokenCache } from './encrypted-token-cache.js';
 import { createSecurityError } from '../utils/errors.js';
 
@@ -299,7 +295,9 @@ export class TokenExchangeService {
    */
   getCacheMetrics() {
     const allMetrics = Array.from(this.caches.values()).map((cache) => cache.getMetrics());
-    if (allMetrics.length === 0) {return null;}
+    if (allMetrics.length === 0) {
+      return null;
+    }
 
     // Aggregate metrics
     return allMetrics.reduce((acc, metrics) => ({
@@ -376,7 +374,9 @@ export class TokenExchangeService {
   private extractSubjectFromJWT(jwt: string): string | null {
     try {
       const parts = jwt.split('.');
-      if (parts.length !== 3) {return null;}
+      if (parts.length !== 3) {
+        return null;
+      }
 
       const payload = parts[1];
       const decoded = Buffer.from(payload, 'base64url').toString('utf-8');

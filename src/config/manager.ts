@@ -64,7 +64,9 @@ export class ConfigManager {
 
       // STEP 2: Check if legacy format and migrate if needed
       if (isLegacyConfig(rawConfig)) {
-        console.warn('[ConfigManager] Detected legacy configuration format. Migrating to unified format...');
+        console.warn(
+          '[ConfigManager] Detected legacy configuration format. Migrating to unified format...'
+        );
         this.config = migrateConfigData(rawConfig);
         console.info('[ConfigManager] Configuration migrated successfully.');
       } else {

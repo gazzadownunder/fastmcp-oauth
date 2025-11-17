@@ -87,7 +87,7 @@ import {
   ConfigOrchestrator,
   FastMCPAuthMiddleware,
   getAllToolFactories
-} from 'fastmcp-oauth-obo';
+} from 'fastmcp-oauth';
 
 async function main() {
   // 1. Setup CoreContext (see QUICKSTART.md)
@@ -143,7 +143,7 @@ import {
   createListDirectoryTool,
   createReadFileTool,
   createFileInfoTool
-} from 'fastmcp-oauth-obo';
+} from 'fastmcp-oauth';
 
 // Example: Register only SQL and server tools (exclude file browse)
 const tools = [
@@ -233,7 +233,7 @@ const toolFactories = getAllToolFactories({ excludeSqlTools: true });
 **Solution:** Use `createSQLToolsForModule()` with custom prefixes:
 
 ```typescript
-import { createSQLToolsForModule, getAllToolFactories } from 'fastmcp-oauth-obo';
+import { createSQLToolsForModule, getAllToolFactories } from 'fastmcp-oauth';
 
 // Get non-SQL tools (no collisions)
 const nonSqlTools = getAllToolFactories({ excludeSqlTools: true });
@@ -286,7 +286,7 @@ for (const factory of allTools) {
 Use the `createDelegationTool()` factory:
 
 ```typescript
-import { createDelegationTool } from 'fastmcp-oauth-obo';
+import { createDelegationTool } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 // Define custom parameter schema
@@ -358,7 +358,7 @@ server.addTool({
 ### Example: REST API Delegation
 
 ```typescript
-import { createDelegationTool } from 'fastmcp-oauth-obo';
+import { createDelegationTool } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 // Create REST API delegation module first (see EXTENDING.md)
@@ -424,7 +424,7 @@ const updateUserTool = createDelegationTool('rest-api', {
 Use `createDelegationTools()` for multiple related tools:
 
 ```typescript
-import { createDelegationTools } from 'fastmcp-oauth-obo';
+import { createDelegationTools } from 'fastmcp-oauth';
 
 const apiTools = createDelegationTools('rest-api', [
   {
@@ -476,8 +476,8 @@ apiTools.forEach(tool => {
 ### Implementation
 
 ```typescript
-import type { ToolRegistration, FastMCPContext, LLMResponse } from 'fastmcp-oauth-obo';
-import { Authorization } from 'fastmcp-oauth-obo';
+import type { ToolRegistration, FastMCPContext, LLMResponse } from 'fastmcp-oauth';
+import { Authorization } from 'fastmcp-oauth';
 import { z } from 'zod';
 
 const auth = new Authorization();
@@ -656,7 +656,7 @@ for (const tool of tools) {
 ### Approach 2: Built-in Tools (Recommended - 10 lines)
 
 ```typescript
-import { getAllToolFactories } from 'fastmcp-oauth-obo';
+import { getAllToolFactories } from 'fastmcp-oauth';
 
 // Use built-in tools instead
 const toolFactories = getAllToolFactories();
@@ -691,7 +691,7 @@ for (const factory of toolFactories) {
 **Use Case:** Deploying multiple MCP servers (HR database, Sales database, etc.) to avoid tool name collisions
 
 ```typescript
-import { createSQLToolsForModule, getAllToolFactories } from 'fastmcp-oauth-obo';
+import { createSQLToolsForModule, getAllToolFactories } from 'fastmcp-oauth';
 
 // Get non-SQL tools (no collisions)
 const nonSqlTools = getAllToolFactories({ excludeSqlTools: true });
@@ -736,7 +736,7 @@ for (const factory of allTools) {
 If you need custom tool names but want framework benefits:
 
 ```typescript
-import { createDelegationTool } from 'fastmcp-oauth-obo';
+import { createDelegationTool } from 'fastmcp-oauth';
 
 const sqlQueryTool = createDelegationTool('postgresql', {
   name: 'sql_query',  // Keep custom name

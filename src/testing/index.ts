@@ -4,7 +4,7 @@
  * Provides factory functions and mocks for testing custom delegation modules.
  *
  * Usage:
- *   import { createMockUserSession, createMockCoreContext } from 'fastmcp-oauth-obo/testing';
+ *   import { createMockUserSession, createMockCoreContext } from 'fastmcp-oauth/testing';
  *
  *   const session = createMockUserSession({ role: 'admin' });
  *   const coreContext = createMockCoreContext();
@@ -270,7 +270,9 @@ export class MockDelegationModule implements DelegationModule {
   wasCalledWith(action: string, params?: any): boolean {
     return this.delegateCallLog.some((call) => {
       const actionMatches = call.action === action;
-      if (!params) {return actionMatches;}
+      if (!params) {
+        return actionMatches;
+      }
       return actionMatches && JSON.stringify(call.params) === JSON.stringify(params);
     });
   }
