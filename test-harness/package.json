@@ -1,5 +1,5 @@
 {
-  "name": "fastmcp-oauth-obo-test-harness",
+  "name": "fastmcp-oauth-test-harness",
   "version": "1.0.0",
   "description": "Test harness for FastMCP OAuth OBO framework with Keycloak integration",
   "type": "module",

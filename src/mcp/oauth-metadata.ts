@@ -215,7 +215,7 @@ export function generateWWWAuthenticateHeader(
   const shouldIncludeMetadata =
     includeProtectedResource !== undefined
       ? includeProtectedResource
-      : mcpConfig?.oauth?.protectedResource ?? true;
+      : (mcpConfig?.oauth?.protectedResource ?? true);
 
   // Determine server URL for resource_metadata parameter
   // Use provided serverUrl or construct from config
@@ -267,7 +267,7 @@ function generateBearerHeader(
     includeMetadata,
     resourceMetadataUrl,
     error,
-    errorDescription
+    errorDescription,
   });
 
   // Build WWW-Authenticate header per RFC 6750 Section 3 and RFC 9728
@@ -331,7 +331,7 @@ export async function fetchAuthorizationServerMetadata(
   try {
     const response = await fetch(wellKnownUrl);
     if (response.ok) {
-      const metadata = await response.json() as AuthorizationServerMetadata;
+      const metadata = (await response.json()) as AuthorizationServerMetadata;
       console.log(`[OAuth Metadata] Fetched authorization server metadata from ${wellKnownUrl}`);
       return metadata;
     }
@@ -344,7 +344,7 @@ export async function fetchAuthorizationServerMetadata(
   try {
     const response = await fetch(oidcUrl);
     if (response.ok) {
-      const metadata = await response.json() as AuthorizationServerMetadata;
+      const metadata = (await response.json()) as AuthorizationServerMetadata;
       console.log(`[OAuth Metadata] Fetched authorization server metadata from ${oidcUrl}`);
       return metadata;
     }
@@ -389,7 +389,9 @@ export async function getAuthorizationServerMetadata(
   }
 
   // Find the IDP configuration
-  const idpConfig = authConfig.trustedIDPs.find((idp: { issuer: string }) => idp.issuer === targetIssuer);
+  const idpConfig = authConfig.trustedIDPs.find(
+    (idp: { issuer: string }) => idp.issuer === targetIssuer
+  );
 
   if (!idpConfig) {
     console.error(`[OAuth Metadata] No trusted IDP found for issuer: ${targetIssuer}`);
@@ -409,7 +411,11 @@ export async function getAuthorizationServerMetadata(
     issuer: targetIssuer,
     token_endpoint: idpConfig.tokenExchange?.tokenEndpoint || `${targetIssuer}/token`,
     jwks_uri: idpConfig.jwksUri || `${targetIssuer}/.well-known/jwks.json`,
-    grant_types_supported: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:token-exchange'],
+    grant_types_supported: [
+      'authorization_code',
+      'refresh_token',
+      'urn:ietf:params:oauth:grant-type:token-exchange',
+    ],
     response_types_supported: ['code'],
     token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
     // registration_endpoint is typically not in IDP config, must be fetched from well-known

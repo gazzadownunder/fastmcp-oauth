@@ -109,7 +109,10 @@ export interface FastMCPContext {
  * };
  * ```
  */
-export type ToolHandler<P = any, R = LLMResponse> = (params: P, context: FastMCPContext) => Promise<R>;
+export type ToolHandler<P = any, R = LLMResponse> = (
+  params: P,
+  context: FastMCPContext
+) => Promise<R>;
 
 // ============================================================================
 // Tool Registration Types

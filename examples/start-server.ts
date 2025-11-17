@@ -1,12 +1,12 @@
 /**
  * Example: MCP OAuth Server Application Entry Point
  *
- * This demonstrates how developers should use the fastmcp-oauth-obo framework
+ * This demonstrates how developers should use the fastmcp-oauth framework
  * in their own applications.
  *
  * Framework users install the package and import from it:
- *   npm install fastmcp-oauth-obo
- *   import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
+ *   npm install fastmcp-oauth
+ *   import { FastMCPOAuthServer } from 'fastmcp-oauth';
  *
  * This example uses relative imports during framework development.
  */

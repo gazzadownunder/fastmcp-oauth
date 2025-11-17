@@ -30,7 +30,7 @@ Before starting, ensure you have:
 ### Option 1: Install from npm (Production)
 
 ```bash
-npm install fastmcp-oauth-obo
+npm install fastmcp-oauth
 ```
 
 ### Option 2: Clone from source (Development)
@@ -95,7 +95,7 @@ Create `config/unified-config.json`:
 Create `server.ts`:
 
 ```typescript
-import { FastMCPOAuthServer } from 'fastmcp-oauth-obo';
+import { FastMCPOAuthServer } from 'fastmcp-oauth';
 
 async function main() {
   // Create server with config path
@@ -163,7 +163,7 @@ import {
   ConfigOrchestrator,
   FastMCPAuthMiddleware,
   getAllToolFactories
-} from 'fastmcp-oauth-obo';
+} from 'fastmcp-oauth';
 import { FastMCP } from 'fastmcp';
 
 async function main() {

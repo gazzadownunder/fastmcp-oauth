@@ -35,7 +35,9 @@ export const SecretDescriptorSchema = z.object({
   $secret: z
     .string()
     .min(1)
-    .describe('Logical secret name for runtime resolution (e.g., "DB_PASSWORD", "OAUTH_CLIENT_SECRET")'),
+    .describe(
+      'Logical secret name for runtime resolution (e.g., "DB_PASSWORD", "OAUTH_CLIENT_SECRET")'
+    ),
 });
 
 /**
@@ -150,7 +152,9 @@ export const SQLConfigSchema = z.object({
       'Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens'
     )
     .optional()
-    .describe('Tool name prefix (e.g., "sql1", "hr", "legacy"). Overrides delegation.defaultToolPrefix.'),
+    .describe(
+      'Tool name prefix (e.g., "sql1", "hr", "legacy"). Overrides delegation.defaultToolPrefix.'
+    ),
   server: z.string().min(1).describe('SQL Server hostname or IP'),
   database: z.string().min(1).describe('Database name'),
   options: z
@@ -194,7 +198,9 @@ export const KerberosConfigSchema = z.object({
       'Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens'
     )
     .optional()
-    .describe('Tool name prefix (e.g., "file-browse", "kerberos"). Overrides delegation.defaultToolPrefix.'),
+    .describe(
+      'Tool name prefix (e.g., "file-browse", "kerberos"). Overrides delegation.defaultToolPrefix.'
+    ),
   serviceAccount: z
     .string()
     .min(1)
@@ -230,7 +236,9 @@ export const PostgreSQLConfigSchema = z.object({
       'Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens'
     )
     .optional()
-    .describe('Tool name prefix (e.g., "sql1", "hr-sql", "sales"). Overrides delegation.defaultToolPrefix.'),
+    .describe(
+      'Tool name prefix (e.g., "sql1", "hr-sql", "sales"). Overrides delegation.defaultToolPrefix.'
+    ),
   host: z.string().min(1).describe('PostgreSQL hostname or IP'),
   port: z.number().int().min(1).max(65535).optional().default(5432).describe('PostgreSQL port'),
   database: z.string().min(1).describe('Database name'),
@@ -292,7 +300,9 @@ export const DelegationConfigSchema = z.object({
     )
     .optional()
     .default('sql')
-    .describe('Default tool prefix for all modules (default: "sql"). Modules can override this with their own toolPrefix.'),
+    .describe(
+      'Default tool prefix for all modules (default: "sql"). Modules can override this with their own toolPrefix.'
+    ),
   modules: z
     .record(z.any())
     .optional()

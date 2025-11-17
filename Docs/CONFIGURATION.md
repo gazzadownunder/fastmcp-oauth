@@ -1867,7 +1867,7 @@ The framework validates configuration at startup using Zod schemas ([src/config/
 Use `ConfigManager.validateConfig()` to validate configuration before starting server:
 
 ```typescript
-import { ConfigManager } from 'fastmcp-oauth-obo';
+import { ConfigManager } from 'fastmcp-oauth';
 
 const configManager = new ConfigManager();
 try {

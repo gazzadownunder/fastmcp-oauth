@@ -46,7 +46,12 @@ export type { FastMCPRequest, FastMCPAuthResult } from './middleware.js';
 // Middleware & Authorization
 // ============================================================================
 
-export { FastMCPAuthMiddleware, MCPAuthMiddleware, requireAuth, requireRole } from './middleware.js';
+export {
+  FastMCPAuthMiddleware,
+  MCPAuthMiddleware,
+  requireAuth,
+  requireRole,
+} from './middleware.js';
 export { Authorization } from './authorization.js';
 
 // ============================================================================
@@ -66,16 +71,13 @@ export { FastMCPOAuthServer, MCPOAuthServer } from './server.js';
 // OAuth Metadata (RFC 8414, RFC 7591, RFC 9728)
 // ============================================================================
 
-export type {
-  AuthorizationServerMetadata,
-  ProtectedResourceMetadata
-} from './oauth-metadata.js';
+export type { AuthorizationServerMetadata, ProtectedResourceMetadata } from './oauth-metadata.js';
 
 export {
   generateProtectedResourceMetadata,
   generateWWWAuthenticateHeader,
   fetchAuthorizationServerMetadata,
-  getAuthorizationServerMetadata
+  getAuthorizationServerMetadata,
 } from './oauth-metadata.js';
 
 // ============================================================================
